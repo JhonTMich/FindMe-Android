@@ -1,0 +1,244 @@
+package com.example.findme.data.repository
+
+import com.example.findme.data.model.ProfileDto
+import com.example.findme.data.model.ScheduleDto
+import com.example.findme.data.model.StatusOverrideDto
+import com.example.findme.data.network.SupabaseClientProvider
+import com.example.findme.domain.model.UserCurrentStatus
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.realtime
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+
+object StatusRepository {
+    val LIMA_ZONE: ZoneId = ZoneId.of("America/Lima")
+
+    suspend fun validateFamilyCode(familyCode: String): Result<ProfileDto> {
+        return try {
+            val profiles = SupabaseClientProvider.client.postgrest["profiles"]
+                .select {
+                    filter {
+                        eq("family_code", familyCode.trim().uppercase())
+                    }
+                }
+                .decodeList<ProfileDto>()
+
+            val found = profiles.firstOrNull()
+            if (found != null) {
+                Result.success(found)
+            } else {
+                Result.failure(Exception("Código familiar no encontrado o no válido"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Error de conexión al validar código: ${e.message}"))
+        }
+    }
+
+    suspend fun fetchSchedules(userId: String): List<ScheduleDto> {
+        return try {
+            SupabaseClientProvider.client.postgrest["schedule"]
+                .select {
+                    filter {
+                        eq("user_id", userId)
+                    }
+                }
+                .decodeList<ScheduleDto>()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun fetchOverrides(userId: String): List<StatusOverrideDto> {
+        return try {
+            SupabaseClientProvider.client.postgrest["status_override"]
+                .select {
+                    filter {
+                        eq("user_id", userId)
+                    }
+                }
+                .decodeList<StatusOverrideDto>()
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun observeCurrentStatus(
+        userId: String,
+        displayName: String,
+        selectedDayOfWeek: Int
+    ): Flow<UserCurrentStatus> = flow {
+        // Primario: Emitir cargando
+        emit(
+            UserCurrentStatus.Loading(
+                displayName = displayName,
+                selectedDayOfWeek = selectedDayOfWeek
+            )
+        )
+
+        var cachedSchedules = fetchSchedules(userId)
+        var cachedOverrides = fetchOverrides(userId)
+
+        emit(calculateStatus(displayName, cachedSchedules, cachedOverrides, selectedDayOfWeek))
+
+        // Intentar suscribirse a Realtime de Supabase
+        try {
+            val channel = SupabaseClientProvider.client.realtime.channel("status-repo-$userId") {}
+            val realtimeFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public")
+            channel.subscribe()
+
+            coroutineScope {
+                launch {
+                    realtimeFlow.collect {
+                        cachedSchedules = fetchSchedules(userId)
+                        cachedOverrides = fetchOverrides(userId)
+                        emit(
+                            calculateStatus(
+                                displayName,
+                                cachedSchedules,
+                                cachedOverrides,
+                                selectedDayOfWeek
+                            )
+                        )
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            // Fallback en caso de error en Realtime
+        }
+
+        // Ticker de respaldo cada 15 segundos para actualizar el contador de minutos y la barra de progreso
+        while (true) {
+            delay(15_000)
+            cachedSchedules = fetchSchedules(userId)
+            cachedOverrides = fetchOverrides(userId)
+            emit(calculateStatus(displayName, cachedSchedules, cachedOverrides, selectedDayOfWeek))
+        }
+    }
+
+    suspend fun getDirectCurrentStatus(
+        userId: String,
+        displayName: String,
+        selectedDayOfWeek: Int = ZonedDateTime.now(LIMA_ZONE).dayOfWeek.value
+    ): UserCurrentStatus {
+        val schedules = fetchSchedules(userId)
+        val overrides = fetchOverrides(userId)
+        return calculateStatus(displayName, schedules, overrides, selectedDayOfWeek)
+    }
+
+    fun calculateStatus(
+        displayName: String,
+        schedules: List<ScheduleDto>,
+        overrides: List<StatusOverrideDto>,
+        selectedDayOfWeek: Int,
+        nowInLima: ZonedDateTime = ZonedDateTime.now(LIMA_ZONE)
+    ): UserCurrentStatus {
+        val todayLimaDay = nowInLima.dayOfWeek.value
+        val currentTime = nowInLima.toLocalTime()
+
+        val daySchedules = schedules
+            .filter { it.dayOfWeek == selectedDayOfWeek }
+            .sortedBy { parseLocalTimeOrNull(it.startTime) ?: LocalTime.MIN }
+
+        // Paso 1 (Override)
+        val activeOverride = overrides
+            .filter { it.isActive }
+            .firstOrNull { overrideDto ->
+                val expiresInstant = parseIsoToInstant(overrideDto.expiresAt)
+                expiresInstant != null && expiresInstant.isAfter(nowInLima.toInstant())
+            }
+
+        if (activeOverride != null) {
+            return UserCurrentStatus.Override(
+                displayName = displayName,
+                customLocation = activeOverride.customLocation,
+                customMessage = activeOverride.customMessage,
+                expiresAt = activeOverride.expiresAt,
+                selectedDayOfWeek = selectedDayOfWeek,
+                todaySchedules = daySchedules
+            )
+        }
+
+        // Paso 2 (Schedule UPAO para el día actual)
+        val todayActualSchedules = schedules
+            .filter { it.dayOfWeek == todayLimaDay }
+            .sortedBy { parseLocalTimeOrNull(it.startTime) ?: LocalTime.MIN }
+
+        val currentSchedule = todayActualSchedules.firstOrNull { schedule ->
+            val start = parseLocalTimeOrNull(schedule.startTime)
+            val end = parseLocalTimeOrNull(schedule.endTime)
+            if (start != null && end != null) {
+                !currentTime.isBefore(start) && currentTime.isBefore(end)
+            } else false
+        }
+
+        if (currentSchedule != null) {
+            val start = parseLocalTimeOrNull(currentSchedule.startTime) ?: currentTime
+            val end = parseLocalTimeOrNull(currentSchedule.endTime) ?: currentTime
+            val totalSec = Duration.between(start, end).seconds.coerceAtLeast(1)
+            val elapsedSec = Duration.between(start, currentTime).seconds.coerceAtLeast(0)
+            val remainingMin = (Duration.between(currentTime, end).seconds / 60).coerceAtLeast(0)
+            val progress = (elapsedSec.toFloat() / totalSec.toFloat()).coerceIn(0f, 1f)
+
+            return UserCurrentStatus.InClass(
+                displayName = displayName,
+                currentSchedule = currentSchedule,
+                remainingMinutes = remainingMin,
+                progress = progress,
+                selectedDayOfWeek = selectedDayOfWeek,
+                todaySchedules = daySchedules
+            )
+        }
+
+        // Paso 3 (Fallback: Tiempo libre / En casa)
+        return UserCurrentStatus.FreeTime(
+            displayName = displayName,
+            selectedDayOfWeek = selectedDayOfWeek,
+            todaySchedules = daySchedules
+        )
+    }
+
+    fun parseLocalTimeOrNull(timeStr: String): LocalTime? {
+        return try {
+            val trimmed = timeStr.trim()
+            val parts = trimmed.split(":")
+            if (parts.size >= 2) {
+                val hour = parts[0].toInt()
+                val minute = parts[1].toInt()
+                val second = if (parts.size >= 3) parts[2].toInt() else 0
+                LocalTime.of(hour, minute, second)
+            } else {
+                LocalTime.parse(trimmed)
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun parseIsoToInstant(isoString: String): Instant? {
+        return try {
+            Instant.parse(isoString)
+        } catch (_: Exception) {
+            try {
+                OffsetDateTime.parse(isoString).toInstant()
+            } catch (_: Exception) {
+                try {
+                    ZonedDateTime.parse(isoString).toInstant()
+                } catch (_: Exception) {
+                    null
+                }
+            }
+        }
+    }
+}
