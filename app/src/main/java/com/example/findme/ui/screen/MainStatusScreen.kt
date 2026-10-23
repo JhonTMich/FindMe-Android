@@ -168,7 +168,7 @@ fun MainStatusScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "Horario Semanal UPAO",
+                                        text = "Horario de la semana",
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = TextPrimary
