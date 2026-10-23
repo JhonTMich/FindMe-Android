@@ -1,11 +1,14 @@
 package com.example.findme.data.model
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.example.findme.ui.theme.AccentFree
+import com.example.findme.ui.theme.AccentUniversity
+import com.example.findme.ui.theme.AccentWork
 
 enum class ActivityCategory(
     val key: String,
@@ -18,26 +21,26 @@ enum class ActivityCategory(
     UNIVERSITY(
         key = "university",
         label = "Universidad",
-        accentColor = Color(0xFFE55B44),
-        containerColor = Color(0xFFFDF0ED),
-        badgeBgColor = Color(0xFFA05244),
+        accentColor = AccentUniversity,
+        containerColor = Color(0xFF2E1E1C),
+        badgeBgColor = AccentUniversity,
         icon = Icons.Default.School
     ),
     WORK(
         key = "work",
         label = "Trabajo",
-        accentColor = Color(0xFF00897B),
-        containerColor = Color(0xFFE0F2F1),
-        badgeBgColor = Color(0xFF004D40),
+        accentColor = AccentWork,
+        containerColor = Color(0xFF152A38),
+        badgeBgColor = AccentWork,
         icon = Icons.Default.Work
     ),
     FREE(
         key = "free",
         label = "Tiempo Libre",
-        accentColor = Color(0xFF2E7D32),
-        containerColor = Color(0xFFE8F5E9),
-        badgeBgColor = Color(0xFF1B5E20),
-        icon = Icons.Default.Home
+        accentColor = AccentFree,
+        containerColor = Color(0xFF132B25),
+        badgeBgColor = AccentFree,
+        icon = Icons.Default.Restaurant
     );
 
     companion object {
@@ -47,7 +50,7 @@ enum class ActivityCategory(
 
             return when {
                 keyClean == "work" || titleClean.contains("trabajo") || titleClean.contains("oficina") -> WORK
-                keyClean == "free" || keyClean == "meal" || titleClean.contains("libre") || titleClean.contains("almuerzo") || titleClean.contains("gimnasio") -> FREE
+                keyClean == "free" || keyClean == "meal" || titleClean.contains("libre") || titleClean.contains("almuerzo") || titleClean.contains("comida") || titleClean.contains("gimnasio") -> FREE
                 else -> UNIVERSITY
             }
         }

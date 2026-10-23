@@ -26,15 +26,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.findme.data.model.ActivityCategory
 import com.example.findme.data.model.ScheduleDto
-
-private val DarkTeal = Color(0xFF005F56)
-private val CardBg = Color(0xFFFFFFFF)
+import com.example.findme.ui.theme.AccentWork
+import com.example.findme.ui.theme.DarkCardBg
+import com.example.findme.ui.theme.DarkCardBorder
+import com.example.findme.ui.theme.DarkInnerBg
+import com.example.findme.ui.theme.TextPrimary
+import com.example.findme.ui.theme.TextSecondary
 
 @Composable
 fun CronogramaHoyCard(
@@ -44,9 +46,9 @@ fun CronogramaHoyCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg),
-        border = BorderStroke(1.dp, Color(0xFFE8ECEF))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -63,7 +65,7 @@ fun CronogramaHoyCard(
                     Icon(
                         imageVector = Icons.Default.EditCalendar,
                         contentDescription = null,
-                        tint = DarkTeal,
+                        tint = AccentWork,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -71,25 +73,7 @@ fun CronogramaHoyCard(
                         text = "Cronograma de hoy",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF212121)
-                    )
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { onVerHorarioCompleto() }
-                ) {
-                    Text(
-                        text = "Ver horario completo",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = DarkTeal
-                    )
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = DarkTeal,
-                        modifier = Modifier.size(16.dp)
+                        color = TextPrimary
                     )
                 }
             }
@@ -100,7 +84,7 @@ fun CronogramaHoyCard(
                 Text(
                     text = "No hay actividades registradas para hoy.",
                     fontSize = 13.sp,
-                    color = Color.Gray,
+                    color = TextSecondary,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
             } else {
@@ -109,7 +93,7 @@ fun CronogramaHoyCard(
 
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = Color(0xFFF9FBFB),
+                        color = DarkInnerBg,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 4.dp)
@@ -135,7 +119,7 @@ fun CronogramaHoyCard(
                                     text = item.title,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF212121)
+                                    color = TextPrimary
                                 )
                             }
 

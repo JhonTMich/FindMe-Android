@@ -23,16 +23,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.findme.data.model.ActivityCategory
 import com.example.findme.data.model.ScheduleDto
-
-private val DarkTeal = Color(0xFF005F56)
-private val CardBg = Color(0xFFFFFFFF)
-private val InnerContainerBg = Color(0xFFF2F7FA)
+import com.example.findme.ui.theme.AccentFree
+import com.example.findme.ui.theme.AccentWork
+import com.example.findme.ui.theme.DarkCardBg
+import com.example.findme.ui.theme.DarkCardBorder
+import com.example.findme.ui.theme.DarkInnerBg
+import com.example.findme.ui.theme.TextPrimary
+import com.example.findme.ui.theme.TextSecondary
 
 @Composable
 fun NextActivityCard(
@@ -47,16 +49,16 @@ fun NextActivityCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBg),
-        border = BorderStroke(1.dp, Color(0xFFE8ECEF))
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            // Header
+            // Header Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -65,13 +67,13 @@ fun NextActivityCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "⏩ ",
-                        fontSize = 14.sp
+                        fontSize = 13.sp
                     )
                     Text(
                         text = "PRÓXIMA ACTIVIDAD • A CONTINUACIÓN",
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = DarkTeal,
+                        color = AccentWork,
                         letterSpacing = 0.5.sp
                     )
                 }
@@ -79,13 +81,13 @@ fun NextActivityCard(
                 if (minutesUntilNext != null && minutesUntilNext > 0) {
                     Surface(
                         shape = RoundedCornerShape(50),
-                        color = Color(0xFFE0F2F1)
+                        color = AccentFree.copy(alpha = 0.15f)
                     ) {
                         Text(
                             text = "En $minutesUntilNext min",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DarkTeal,
+                            color = AccentFree,
                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
                     }
@@ -94,10 +96,10 @@ fun NextActivityCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Inner Card
+            // Inner Card Box
             Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = InnerContainerBg,
+                shape = RoundedCornerShape(16.dp),
+                color = DarkInnerBg,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -106,11 +108,11 @@ fun NextActivityCard(
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Category Icon Box
+                    // Category Icon
                     Surface(
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(14.dp),
                         color = category.containerColor,
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(46.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
@@ -134,7 +136,7 @@ fun NextActivityCard(
                                 text = nextSchedule.title,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF212121)
+                                color = TextPrimary
                             )
 
                             Surface(
@@ -157,29 +159,29 @@ fun NextActivityCard(
                             Icon(
                                 imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
-                                tint = Color(0xFF616161),
+                                tint = TextSecondary,
                                 modifier = Modifier.size(13.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "${nextSchedule.startTime.take(5)} - ${nextSchedule.endTime.take(5)}",
                                 fontSize = 12.sp,
-                                color = Color(0xFF616161)
+                                color = TextSecondary
                             )
 
-                            Text(text = " • ", fontSize = 12.sp, color = Color.Gray)
+                            Text(text = " • ", fontSize = 12.sp, color = TextSecondary)
 
                             Icon(
                                 imageVector = Icons.Default.NearMe,
                                 contentDescription = null,
-                                tint = Color(0xFF616161),
+                                tint = TextSecondary,
                                 modifier = Modifier.size(13.dp)
                             )
                             Spacer(modifier = Modifier.width(3.dp))
                             Text(
                                 text = nextSchedule.location,
                                 fontSize = 12.sp,
-                                color = Color(0xFF616161)
+                                color = TextSecondary
                             )
                         }
                     }
@@ -198,20 +200,20 @@ fun NextActivityCard(
                         Text(
                             text = "Luego: ",
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = TextSecondary
                         )
                         Text(
                             text = followingSchedule.title,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF37474F)
+                            color = TextPrimary
                         )
                     }
 
                     Text(
                         text = "${followingSchedule.startTime.take(5)} - ${followingSchedule.endTime.take(5)}",
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = TextSecondary
                     )
                 }
             }

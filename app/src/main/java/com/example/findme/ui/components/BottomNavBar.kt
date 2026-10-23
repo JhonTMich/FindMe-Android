@@ -1,5 +1,6 @@
 package com.example.findme.ui.components
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,8 +27,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-private val DarkTeal = Color(0xFF005F56)
+import com.example.findme.ui.theme.AccentWork
+import com.example.findme.ui.theme.DarkCardBorder
+import com.example.findme.ui.theme.DarkSurface
+import com.example.findme.ui.theme.TextSecondary
 
 data class NavTabItem(
     val id: String,
@@ -48,8 +51,10 @@ fun BottomNavBar(
     )
 
     Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = Color.White,
+        modifier = modifier
+            .fillMaxWidth()
+            .border(width = 1.dp, color = DarkCardBorder),
+        color = DarkSurface,
         shadowElevation = 8.dp
     ) {
         Row(
@@ -71,14 +76,14 @@ fun BottomNavBar(
                     if (isSelected) {
                         Surface(
                             shape = CircleShape,
-                            color = DarkTeal,
+                            color = AccentWork,
                             modifier = Modifier.size(36.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = tab.icon,
                                     contentDescription = tab.title,
-                                    tint = Color.White,
+                                    tint = Color.Black,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -87,7 +92,7 @@ fun BottomNavBar(
                         Icon(
                             imageVector = tab.icon,
                             contentDescription = tab.title,
-                            tint = Color(0xFF757575),
+                            tint = TextSecondary,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -98,7 +103,7 @@ fun BottomNavBar(
                         text = tab.title,
                         fontSize = 11.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) DarkTeal else Color(0xFF757575)
+                        color = if (isSelected) AccentWork else TextSecondary
                     )
                 }
             }

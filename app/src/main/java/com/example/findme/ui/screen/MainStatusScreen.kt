@@ -1,5 +1,6 @@
 package com.example.findme.ui.screen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +27,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,10 +41,12 @@ import com.example.findme.ui.components.HeroStatusCard
 import com.example.findme.ui.components.NextActivityCard
 import com.example.findme.ui.components.ScheduleItemCard
 import com.example.findme.ui.screen.profile.ProfileScreen
-import java.time.Duration
+import com.example.findme.ui.theme.DarkBackground
+import com.example.findme.ui.theme.DarkCardBg
+import com.example.findme.ui.theme.DarkCardBorder
+import com.example.findme.ui.theme.TextPrimary
+import com.example.findme.ui.theme.TextSecondary
 import java.time.ZonedDateTime
-
-private val MainBg = Color(0xFFF3F8F8)
 
 @Composable
 fun MainStatusScreen(
@@ -60,46 +62,34 @@ fun MainStatusScreen(
     val schedules = uiState.todaySchedules
 
     // Calculation for "PRÓXIMA ACTIVIDAD"
-    val inClassStatus = uiState as? UserCurrentStatus.InClass
-    val currentScheduleId = inClassStatus?.currentSchedule?.id
+    val nowInLima = ZonedDateTime.now(StatusRepository.LIMA_ZONE).toLocalTime()
+    val todayLimaDay = ZonedDateTime.now(StatusRepository.LIMA_ZONE).dayOfWeek.value
 
-    val nextSchedule = if (currentScheduleId != null) {
-        val currentIndex = schedules.indexOfFirst { it.id == currentScheduleId }
-        if (currentIndex != -1 && currentIndex + 1 < schedules.size) {
-            schedules[currentIndex + 1]
-        } else null
-    } else {
-        val nowInLima = ZonedDateTime.now(StatusRepository.LIMA_ZONE).toLocalTime()
-        schedules.firstOrNull { schedule ->
+    val futureTodaySchedules = if (selectedDay == todayLimaDay) {
+        schedules.filter { schedule ->
             val start = StatusRepository.parseLocalTimeOrNull(schedule.startTime)
-            start != null && !start.isBefore(nowInLima)
-        }
-    }
+            start != null && start.isAfter(nowInLima)
+        }.sortedBy { StatusRepository.parseLocalTimeOrNull(it.startTime) }
+    } else emptyList()
 
-    val followingSchedule = if (nextSchedule != null) {
-        val nextIndex = schedules.indexOfFirst { it.id == nextSchedule.id }
-        if (nextIndex != -1 && nextIndex + 1 < schedules.size) {
-            schedules[nextIndex + 1]
-        } else null
-    } else null
+    val nextSchedule = futureTodaySchedules.firstOrNull()
+    val followingSchedule = futureTodaySchedules.getOrNull(1)
 
-    val minutesUntilNext = if (inClassStatus != null) {
-        inClassStatus.remainingMinutes
-    } else if (nextSchedule != null) {
-        val nowInLima = ZonedDateTime.now(StatusRepository.LIMA_ZONE).toLocalTime()
+    val minutesUntilNext = if (nextSchedule != null) {
         val start = StatusRepository.parseLocalTimeOrNull(nextSchedule.startTime)
         if (start != null) {
-            (Duration.between(nowInLima, start).seconds / 60).coerceAtLeast(0)
+            val startMinutes = start.hour * 60 + start.minute
+            val currentMinutes = nowInLima.hour * 60 + nowInLima.minute
+            (startMinutes - currentMinutes).toLong().coerceAtLeast(0)
         } else null
     } else null
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = MainBg,
+        containerColor = DarkBackground,
         topBar = {
             FindMeTopHeader(
-                displayName = uiState.displayName,
-                onRefresh = { viewModel.refresh() },
+                motherName = userSession?.motherName ?: "Mamá",
                 onLogout = { viewModel.logout() }
             )
         },
@@ -169,18 +159,19 @@ fun MainStatusScreen(
                                         text = "Horario Semanal UPAO",
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF212121)
+                                        color = TextPrimary
                                     )
 
                                     Surface(
                                         shape = CircleShape,
-                                        color = Color(0xFFECEFF1)
+                                        color = DarkCardBg,
+                                        border = BorderStroke(1.dp, DarkCardBorder)
                                     ) {
                                         Text(
-                                            text = "${schedules.size} materias",
+                                            text = "${schedules.size} Actividades",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.SemiBold,
-                                            color = Color(0xFF455A64),
+                                            color = TextSecondary,
                                             modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                         )
                                     }
@@ -202,7 +193,8 @@ fun MainStatusScreen(
                                         .fillMaxWidth()
                                         .padding(top = 8.dp),
                                     shape = RoundedCornerShape(20.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
+                                    colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+                                    border = BorderStroke(1.dp, DarkCardBorder)
                                 ) {
                                     Box(
                                         modifier = Modifier
@@ -212,16 +204,9 @@ fun MainStatusScreen(
                                     ) {
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                             Text(
-                                                text = "🎉 ¡Día Libre!",
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color(0xFF424242)
-                                            )
-                                            Spacer(modifier = Modifier.height(4.dp))
-                                            Text(
                                                 text = "No hay actividades registradas para este día.",
                                                 fontSize = 13.sp,
-                                                color = Color.Gray
+                                                color = TextSecondary
                                             )
                                         }
                                     }

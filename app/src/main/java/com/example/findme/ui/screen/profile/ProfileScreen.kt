@@ -30,7 +30,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,10 +42,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.findme.data.local.UserSession
-
-private val DarkTeal = Color(0xFF005F56)
-private val CoralAccent = Color(0xFFE55B44)
-private val GreenActive = Color(0xFF2E7D32)
+import com.example.findme.ui.theme.AccentFree
+import com.example.findme.ui.theme.AccentUniversity
+import com.example.findme.ui.theme.AccentWork
+import com.example.findme.ui.theme.DarkCardBg
+import com.example.findme.ui.theme.DarkCardBorder
+import com.example.findme.ui.theme.DarkInnerBg
+import com.example.findme.ui.theme.TextPrimary
+import com.example.findme.ui.theme.TextSecondary
 
 @Composable
 fun ProfileScreen(
@@ -75,9 +78,9 @@ fun ProfileScreen(
         // User Profile Header Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+            border = BorderStroke(1.dp, DarkCardBorder)
         ) {
             Column(
                 modifier = Modifier
@@ -87,14 +90,14 @@ fun ProfileScreen(
             ) {
                 Surface(
                     shape = CircleShape,
-                    color = DarkTeal.copy(alpha = 0.15f),
+                    color = AccentWork.copy(alpha = 0.15f),
                     modifier = Modifier.size(84.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = DarkTeal,
+                            tint = AccentWork,
                             modifier = Modifier.size(48.dp)
                         )
                     }
@@ -102,19 +105,20 @@ fun ProfileScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // App user name (motherName)
                 Text(
-                    text = userSession?.displayName ?: "Usuario",
+                    text = userSession?.motherName ?: "Mamá",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF212121)
+                    color = TextPrimary
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Cuenta de Monitoreo Familiar",
+                    text = "Titular de la cuenta",
                     fontSize = 13.sp,
-                    color = Color.Gray
+                    color = TextSecondary
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -122,7 +126,7 @@ fun ProfileScreen(
                 // Family Code Chip
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = Color(0xFFF0F4F8)
+                    color = DarkInnerBg
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
@@ -131,15 +135,15 @@ fun ProfileScreen(
                         Icon(
                             imageVector = Icons.Default.Key,
                             contentDescription = null,
-                            tint = DarkTeal,
+                            tint = AccentWork,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Código: ${userSession?.familyCode ?: "JH-7842"}",
+                            text = "Código: ${userSession?.familyCode ?: "JH-7842"}", //cambiar a futuro, codigo se debe generar no ser por defecto
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
-                            color = DarkTeal
+                            color = AccentWork
                         )
                     }
                 }
@@ -149,9 +153,9 @@ fun ProfileScreen(
         // Connection Status Card
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
-            border = BorderStroke(1.dp, Color(0xFFC8E6C9))
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+            border = BorderStroke(1.dp, DarkCardBorder)
         ) {
             Row(
                 modifier = Modifier
@@ -161,7 +165,7 @@ fun ProfileScreen(
             ) {
                 Surface(
                     shape = CircleShape,
-                    color = Color.White
+                    color = DarkInnerBg
                 ) {
                     Box(
                         modifier = Modifier.padding(10.dp),
@@ -171,7 +175,7 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .size(10.dp)
                                 .alpha(alphaPulse)
-                                .background(GreenActive, CircleShape)
+                                .background(AccentFree, CircleShape)
                         )
                     }
                 }
@@ -180,16 +184,16 @@ fun ProfileScreen(
 
                 Column {
                     Text(
-                        text = "Sincronizado con: ${userSession?.displayName ?: "Usuario"}",
+                        text = "Sincronizado con ${userSession?.displayName ?: "Usuario"}",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1B5E20)
+                        color = AccentFree
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Conexión en tiempo real activa vía Supabase",
+                        text = "Conexión en tiempo real",
                         fontSize = 12.sp,
-                        color = Color(0xFF2E7D32)
+                        color = TextSecondary
                     )
                 }
             }
@@ -201,7 +205,7 @@ fun ProfileScreen(
         Button(
             onClick = onLogout,
             shape = RoundedCornerShape(18.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = CoralAccent),
+            colors = ButtonDefaults.buttonColors(containerColor = AccentUniversity),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp)
@@ -215,7 +219,7 @@ fun ProfileScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Desvincular Cuenta",
+                    text = "Desvincular",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White

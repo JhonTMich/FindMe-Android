@@ -44,19 +44,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.findme.domain.model.UserCurrentStatus
-
-private val CoralAccent = Color(0xFFE55B44)
-private val CoralTrack = Color(0xFFFCDACF)
-private val PeachPillBg = Color(0xFFFDF0ED)
-private val TerracottaPillBg = Color(0xFFA05244)
-private val LocationChipBg = Color(0xFFF0F4F8)
-private val ProgressBoxBg = Color(0xFFF2F7FA)
-
-private val PastelGreenBg = Color(0xFFE8F5E9)
-private val SoftGreen = Color(0xFF2E7D32)
-
-private val PastelPurpleBg = Color(0xFFEDE7F6)
-private val SoftPurple = Color(0xFF7E57C2)
+import com.example.findme.ui.theme.AccentFree
+import com.example.findme.ui.theme.AccentUniversity
+import com.example.findme.ui.theme.AccentWork
+import com.example.findme.ui.theme.DarkCardBg
+import com.example.findme.ui.theme.DarkCardBorder
+import com.example.findme.ui.theme.DarkInnerBg
+import com.example.findme.ui.theme.TextPrimary
+import com.example.findme.ui.theme.TextSecondary
 
 @Composable
 fun HeroStatusCard(
@@ -116,10 +111,9 @@ private fun InClassHeroCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color(0xFFF0EBE9)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -135,7 +129,7 @@ private fun InClassHeroCard(
                 // Live Dot + Status
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = PeachPillBg
+                    color = AccentUniversity.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -145,14 +139,14 @@ private fun InClassHeroCard(
                             modifier = Modifier
                                 .size(8.dp)
                                 .alpha(alphaPulse)
-                                .background(TerracottaPillBg, CircleShape)
+                                .background(AccentUniversity, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "EN VIVO AHORA",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TerracottaPillBg,
+                            color = AccentUniversity,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -161,7 +155,7 @@ private fun InClassHeroCard(
                 // Category Badge
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = PeachPillBg
+                    color = AccentUniversity.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -170,7 +164,7 @@ private fun InClassHeroCard(
                         Icon(
                             imageVector = Icons.Default.School,
                             contentDescription = null,
-                            tint = TerracottaPillBg,
+                            tint = AccentUniversity,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -178,7 +172,7 @@ private fun InClassHeroCard(
                             text = "Universidad",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TerracottaPillBg
+                            color = AccentUniversity
                         )
                     }
                 }
@@ -191,7 +185,7 @@ private fun InClassHeroCard(
                 text = "${status.displayName} está en la Universidad",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF212121)
+                color = TextPrimary
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -201,7 +195,7 @@ private fun InClassHeroCard(
                 text = "Clase de ${status.currentSchedule.title}",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF616161)
+                color = TextSecondary
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -209,7 +203,7 @@ private fun InClassHeroCard(
             // Location Chip
             Surface(
                 shape = RoundedCornerShape(50),
-                color = LocationChipBg
+                color = DarkInnerBg
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -218,14 +212,14 @@ private fun InClassHeroCard(
                     Icon(
                         imageVector = Icons.Default.LocationOn,
                         contentDescription = null,
-                        tint = Color(0xFF005F56),
+                        tint = AccentWork,
                         modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = status.currentSchedule.location,
                         fontSize = 12.sp,
-                        color = Color(0xFF37474F),
+                        color = TextSecondary,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -236,7 +230,7 @@ private fun InClassHeroCard(
             // Progress Section Box
             Surface(
                 shape = RoundedCornerShape(20.dp),
-                color = ProgressBoxBg,
+                color = DarkInnerBg,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -254,7 +248,7 @@ private fun InClassHeroCard(
                             Icon(
                                 imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
-                                tint = TerracottaPillBg,
+                                tint = AccentUniversity,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -262,13 +256,13 @@ private fun InClassHeroCard(
                                 text = "$startFmt - $endFmt",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF37474F)
+                                color = TextPrimary
                             )
                         }
 
                         Surface(
                             shape = RoundedCornerShape(50),
-                            color = TerracottaPillBg
+                            color = AccentUniversity
                         ) {
                             Text(
                                 text = "Termina en ${status.remainingMinutes} min",
@@ -289,8 +283,8 @@ private fun InClassHeroCard(
                             .fillMaxWidth()
                             .height(8.dp)
                             .clip(CircleShape),
-                        color = CoralAccent,
-                        trackColor = CoralTrack
+                        color = AccentUniversity,
+                        trackColor = AccentUniversity.copy(alpha = 0.2f)
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -304,20 +298,20 @@ private fun InClassHeroCard(
                         Text(
                             text = "Inicio: $startFmt",
                             fontSize = 11.sp,
-                            color = Color.Gray
+                            color = TextSecondary
                         )
 
                         Text(
                             text = "${(status.progress * 100).toInt()}% completado",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = TerracottaPillBg
+                            color = AccentUniversity
                         )
 
                         Text(
                             text = "Fin: $endFmt",
                             fontSize = 11.sp,
-                            color = Color.Gray
+                            color = TextSecondary
                         )
                     }
                 }
@@ -334,9 +328,9 @@ private fun OverrideHeroCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = PastelPurpleBg),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -350,7 +344,7 @@ private fun OverrideHeroCard(
             ) {
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = AccentWork.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -360,14 +354,14 @@ private fun OverrideHeroCard(
                             modifier = Modifier
                                 .size(8.dp)
                                 .alpha(alphaPulse)
-                                .background(SoftPurple, CircleShape)
+                                .background(AccentWork, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "EN VIVO AHORA",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = SoftPurple,
+                            color = AccentWork,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -375,7 +369,7 @@ private fun OverrideHeroCard(
 
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = SoftPurple.copy(alpha = 0.15f)
+                    color = AccentWork.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -384,7 +378,7 @@ private fun OverrideHeroCard(
                         Icon(
                             imageVector = Icons.Default.Info,
                             contentDescription = null,
-                            tint = SoftPurple,
+                            tint = AccentWork,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -392,7 +386,7 @@ private fun OverrideHeroCard(
                             text = "Aviso Especial",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = SoftPurple
+                            color = AccentWork
                         )
                     }
                 }
@@ -403,26 +397,26 @@ private fun OverrideHeroCard(
             Text(
                 text = "${status.displayName} está en:",
                 fontSize = 15.sp,
-                color = Color.DarkGray
+                color = TextSecondary
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = status.customLocation,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = SoftPurple
+                color = TextPrimary
             )
 
             if (!status.customMessage.isNullOrEmpty()) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = Color.White.copy(alpha = 0.8f)
+                    color = DarkInnerBg
                 ) {
                     Text(
                         text = "💬 \"${status.customMessage}\"",
                         fontSize = 13.sp,
-                        color = Color(0xFF37474F),
+                        color = TextSecondary,
                         modifier = Modifier.padding(12.dp)
                     )
                 }
@@ -439,9 +433,9 @@ private fun FreeTimeHeroCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = PastelGreenBg),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -455,7 +449,7 @@ private fun FreeTimeHeroCard(
             ) {
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = AccentFree.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -465,14 +459,14 @@ private fun FreeTimeHeroCard(
                             modifier = Modifier
                                 .size(8.dp)
                                 .alpha(alphaPulse)
-                                .background(SoftGreen, CircleShape)
+                                .background(AccentFree, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "EN VIVO AHORA",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = SoftGreen,
+                            color = AccentFree,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -480,7 +474,7 @@ private fun FreeTimeHeroCard(
 
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = SoftGreen.copy(alpha = 0.15f)
+                    color = AccentFree.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -489,7 +483,7 @@ private fun FreeTimeHeroCard(
                         Icon(
                             imageVector = Icons.Default.Home,
                             contentDescription = null,
-                            tint = SoftGreen,
+                            tint = AccentFree,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -497,7 +491,7 @@ private fun FreeTimeHeroCard(
                             text = "Tiempo Libre",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = SoftGreen
+                            color = AccentFree
                         )
                     }
                 }
@@ -509,7 +503,7 @@ private fun FreeTimeHeroCard(
                 text = "${status.displayName} está en Casa",
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1B5E20)
+                color = AccentFree
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -517,7 +511,7 @@ private fun FreeTimeHeroCard(
             Text(
                 text = "Sin clases programadas en este momento 🏠",
                 fontSize = 13.sp,
-                color = Color(0xFF33691E)
+                color = TextSecondary
             )
         }
     }
@@ -527,8 +521,9 @@ private fun FreeTimeHeroCard(
 private fun LoadingHeroCard(modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -537,9 +532,9 @@ private fun LoadingHeroCard(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Cargando estado en tiempo real...",
+                text = "Consultando estado...",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
+                color = TextSecondary
             )
         }
     }
@@ -549,8 +544,9 @@ private fun LoadingHeroCard(modifier: Modifier = Modifier) {
 private fun ErrorHeroCard(message: String, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -561,13 +557,13 @@ private fun ErrorHeroCard(message: String, modifier: Modifier = Modifier) {
                 text = "Error al obtener estado",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onErrorContainer
+                color = MaterialTheme.colorScheme.error
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = message,
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                color = TextSecondary
             )
         }
     }

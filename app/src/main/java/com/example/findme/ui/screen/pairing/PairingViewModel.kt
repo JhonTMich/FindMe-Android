@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class PairingUiState(
+    val motherNameInput: String = "Mamá",
     val familyCodeInput: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
@@ -24,6 +25,13 @@ class PairingViewModel(application: Application) : AndroidViewModel(application)
     private val _uiState = MutableStateFlow(PairingUiState())
     val uiState: StateFlow<PairingUiState> = _uiState.asStateFlow()
 
+    fun onMotherNameChanged(newName: String) {
+        _uiState.value = _uiState.value.copy(
+            motherNameInput = newName,
+            errorMessage = null
+        )
+    }
+
     fun onCodeChanged(newCode: String) {
         _uiState.value = _uiState.value.copy(
             familyCodeInput = newCode.uppercase(),
@@ -32,7 +40,14 @@ class PairingViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun submitPairingCode() {
+        val motherName = _uiState.value.motherNameInput.trim()
         val code = _uiState.value.familyCodeInput.trim()
+
+        if (motherName.isEmpty()) {
+            _uiState.value = _uiState.value.copy(errorMessage = "Por favor ingresa cómo te llamas")
+            return
+        }
+
         if (code.isEmpty()) {
             _uiState.value = _uiState.value.copy(errorMessage = "Por favor ingresa un código familiar")
             return
@@ -47,7 +62,8 @@ class PairingViewModel(application: Application) : AndroidViewModel(application)
                     userPrefsRepo.saveUserSession(
                         userId = profile.id,
                         displayName = profile.displayName,
-                        familyCode = profile.familyCode
+                        familyCode = profile.familyCode,
+                        motherName = motherName
                     )
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,

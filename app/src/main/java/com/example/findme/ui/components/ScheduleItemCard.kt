@@ -29,7 +29,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.findme.data.model.ActivityCategory
 import com.example.findme.data.model.ScheduleDto
+import com.example.findme.ui.theme.AccentUniversity
+import com.example.findme.ui.theme.DarkCardBg
+import com.example.findme.ui.theme.DarkCardBorder
+import com.example.findme.ui.theme.DarkInnerBg
+import com.example.findme.ui.theme.TextPrimary
+import com.example.findme.ui.theme.TextSecondary
 
 @Composable
 fun ScheduleItemCard(
@@ -37,13 +44,13 @@ fun ScheduleItemCard(
     modifier: Modifier = Modifier,
     isActiveClass: Boolean = false
 ) {
-    val containerBg = if (isActiveClass) Color(0xFFFFF3E0) else Color(0xFFFAFAFA)
-    val strokeColor = if (isActiveClass) Color(0xFFFF7043) else Color(0xFFE0E0E0)
+    val category = ActivityCategory.fromKey(schedule.category, schedule.title)
+    val strokeColor = if (isActiveClass) category.accentColor else DarkCardBorder
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = containerBg),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
         border = BorderStroke(1.dp, strokeColor)
     ) {
         Row(
@@ -57,7 +64,7 @@ fun ScheduleItemCard(
                 modifier = Modifier
                     .size(width = 6.dp, height = 48.dp)
                     .background(
-                        color = if (isActiveClass) Color(0xFFFF7043) else Color(0xFFB0BEC5),
+                        color = category.accentColor,
                         shape = CircleShape
                     )
             )
@@ -75,7 +82,7 @@ fun ScheduleItemCard(
 
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = if (isActiveClass) Color(0xFFFFCCBC) else Color(0xFFECEFF1)
+                        color = DarkInnerBg
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -84,7 +91,7 @@ fun ScheduleItemCard(
                             Icon(
                                 imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
-                                tint = if (isActiveClass) Color(0xFFD84315) else Color(0xFF546E7A),
+                                tint = category.accentColor,
                                 modifier = Modifier.size(12.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
@@ -92,7 +99,7 @@ fun ScheduleItemCard(
                                 text = "$startFmt - $endFmt",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isActiveClass) Color(0xFFD84315) else Color(0xFF37474F)
+                                color = category.accentColor
                             )
                         }
                     }
@@ -100,7 +107,7 @@ fun ScheduleItemCard(
                     if (isActiveClass) {
                         Surface(
                             shape = CircleShape,
-                            color = Color(0xFFFF7043)
+                            color = AccentUniversity
                         ) {
                             Text(
                                 text = "EN CURSO",
@@ -119,7 +126,7 @@ fun ScheduleItemCard(
                     text = schedule.title,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF212121)
+                    color = TextPrimary
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -128,14 +135,14 @@ fun ScheduleItemCard(
                     Icon(
                         imageVector = Icons.Default.LocationOn,
                         contentDescription = null,
-                        tint = Color.Gray,
+                        tint = TextSecondary,
                         modifier = Modifier.size(14.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = schedule.location,
                         fontSize = 13.sp,
-                        color = Color(0xFF616161)
+                        color = TextSecondary
                     )
                 }
             }
