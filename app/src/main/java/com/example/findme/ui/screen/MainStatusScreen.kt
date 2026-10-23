@@ -185,7 +185,7 @@ fun MainStatusScreen(
                                         border = BorderStroke(1.dp, DarkCardBorder)
                                     ) {
                                         Text(
-                                            text = if (isLoadingSchedules) "Cargando..." else "${schedulesForSelectedDay.size} Actividades",
+                                            text = if (isLoadingSchedules && schedulesForSelectedDay.isEmpty()) "Sincronizando..." else "${schedulesForSelectedDay.size} Actividades",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = TextSecondary,
@@ -203,7 +203,7 @@ fun MainStatusScreen(
                             }
                         }
 
-                        if (isLoadingSchedules) {
+                        if (isLoadingSchedules && schedulesForSelectedDay.isEmpty()) {
                             item {
                                 Card(
                                     modifier = Modifier

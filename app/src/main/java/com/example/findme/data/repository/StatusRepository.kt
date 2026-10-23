@@ -1,5 +1,8 @@
 package com.example.findme.data.repository
 
+import android.content.Context
+import com.example.findme.data.local.AppDatabase
+import com.example.findme.data.local.toDto
 import com.example.findme.data.model.ProfileDto
 import com.example.findme.data.model.ScheduleDto
 import com.example.findme.data.model.StatusOverrideDto
@@ -13,6 +16,7 @@ import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -46,7 +50,7 @@ object StatusRepository {
         }
     }
 
-    suspend fun fetchSchedules(userId: String): List<ScheduleDto> {
+    suspend fun fetchSchedules(userId: String, context: Context? = null): List<ScheduleDto> {
         return try {
             SupabaseClientProvider.client.postgrest["schedule"]
                 .select {
@@ -56,7 +60,16 @@ object StatusRepository {
                 }
                 .decodeList<ScheduleDto>()
         } catch (_: Exception) {
-            emptyList()
+            if (context != null) {
+                try {
+                    val dao = AppDatabase.getDatabase(context).scheduleDao()
+                    dao.getAllSchedulesFlow(userId).first().map { it.toDto() }
+                } catch (_: Exception) {
+                    emptyList()
+                }
+            } else {
+                emptyList()
+            }
         }
     }
 
@@ -203,9 +216,10 @@ object StatusRepository {
     suspend fun getDirectCurrentStatus(
         userId: String,
         displayName: String,
-        selectedDayOfWeek: Int = ZonedDateTime.now(LIMA_ZONE).dayOfWeek.value
+        selectedDayOfWeek: Int = ZonedDateTime.now(LIMA_ZONE).dayOfWeek.value,
+        context: Context? = null
     ): UserCurrentStatus {
-        val schedules = fetchSchedules(userId)
+        val schedules = fetchSchedules(userId, context)
         val overrides = fetchOverrides(userId)
         return calculateStatus(displayName, schedules, overrides, selectedDayOfWeek)
     }

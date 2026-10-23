@@ -56,7 +56,8 @@ class UserStatusWidget : GlanceAppWidget() {
             try {
                 StatusRepository.getDirectCurrentStatus(
                     userId = userSession.userId,
-                    displayName = userSession.displayName
+                    displayName = userSession.displayName,
+                    context = context
                 )
             } catch (_: Exception) {
                 null

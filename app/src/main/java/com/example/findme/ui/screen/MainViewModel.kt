@@ -1,12 +1,16 @@
 package com.example.findme.ui.screen
 
 import android.app.Application
+import android.util.Log
 import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.findme.data.local.AppDatabase
 import com.example.findme.data.local.UserPreferencesRepository
 import com.example.findme.data.local.UserSession
+import com.example.findme.data.local.toDto
 import com.example.findme.data.model.ScheduleDto
+import com.example.findme.data.repository.ScheduleRepository
 import com.example.findme.data.repository.StatusRepository
 import com.example.findme.domain.model.UserCurrentStatus
 import com.example.findme.widget.FindMeControlWidget
@@ -18,6 +22,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalTime
@@ -26,6 +32,8 @@ import java.time.ZonedDateTime
 @OptIn(ExperimentalCoroutinesApi::class)
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val db = AppDatabase.getDatabase(application)
+    private val scheduleRepository = ScheduleRepository(db.scheduleDao())
     private val userPrefsRepo = UserPreferencesRepository(application)
     private val todayLimaDay = ZonedDateTime.now(StatusRepository.LIMA_ZONE).dayOfWeek.value
 
@@ -46,12 +54,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedDay = MutableStateFlow(todayLimaDay)
     val selectedDay: StateFlow<Int> = _selectedDay.asStateFlow()
 
-    private val _allSchedules = MutableStateFlow<List<ScheduleDto>>(emptyList())
-    private val _isLoadingSchedules = MutableStateFlow(true)
-    val isLoadingSchedules: StateFlow<Boolean> = _isLoadingSchedules.asStateFlow()
+    private val _isSyncingSchedules = MutableStateFlow(false)
+    val isLoadingSchedules: StateFlow<Boolean> = _isSyncingSchedules.asStateFlow()
 
-    // Filtered schedules in memory (0 ms latency on day selection)
-    val schedulesForSelectedDay: StateFlow<List<ScheduleDto>> = combine(_allSchedules, _selectedDay) { list, day ->
+    // Stream all schedules from local Room DB with 0 ms latency
+    val allSchedulesStream: StateFlow<List<ScheduleDto>> = userSession.flatMapLatest { session ->
+        if (session != null) {
+            scheduleRepository.getWeeklyScheduleStream(session.userId).map { entities ->
+                entities.map { it.toDto() }
+            }
+        } else {
+            flowOf(emptyList())
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
+
+    // Filtered schedules for selected day (0 ms latency on day selection)
+    val schedulesForSelectedDay: StateFlow<List<ScheduleDto>> = combine(allSchedulesStream, _selectedDay) { list, day ->
         list.filter { it.dayOfWeek == day }
             .sortedBy { StatusRepository.parseLocalTimeOrNull(it.startTime) ?: LocalTime.MIN }
     }.stateIn(
@@ -61,26 +83,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     init {
-        // Prefetch weekly schedules on launch when userSession is available
+        // Observe userSession and immediately sync from network in background
         viewModelScope.launch {
             userSession.collect { session ->
                 if (session != null) {
-                    loadWeeklySchedules(session.userId)
+                    syncScheduleFromNetwork(session.userId)
                 }
             }
         }
     }
 
-    private fun loadWeeklySchedules(userId: String) {
+    fun syncScheduleFromNetwork(userId: String) {
         viewModelScope.launch {
-            _isLoadingSchedules.value = true
-            val schedules = StatusRepository.fetchSchedules(userId)
-            _allSchedules.value = schedules
-            _isLoadingSchedules.value = false
+            _isSyncingSchedules.value = true
+            scheduleRepository.syncScheduleFromNetwork(userId)
+            _isSyncingSchedules.value = false
         }
     }
 
-    val uiState: StateFlow<UserCurrentStatus> = combine(userSession, _selectedDay, _allSchedules) { session, day, schedules ->
+    val uiState: StateFlow<UserCurrentStatus> = combine(userSession, _selectedDay, allSchedulesStream) { session, day, schedules ->
         Triple(session, day, schedules)
     }.flatMapLatest { (session, day, schedules) ->
         if (session != null) {
@@ -144,12 +165,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refresh() {
         val session = userSession.value ?: return
-        loadWeeklySchedules(session.userId)
+        syncScheduleFromNetwork(session.userId)
     }
 
     fun logout() {
         viewModelScope.launch {
+            val currentUserId = userSession.value?.userId
+            if (!currentUserId.isNullOrEmpty()) {
+                try {
+                    scheduleRepository.clearUserSchedule(currentUserId)
+                } catch (e: Exception) {
+                    Log.e("MainViewModel", "Error clearing user schedule on logout", e)
+                }
+            }
             userPrefsRepo.clearSession()
+            updateWidgets()
         }
     }
 }
