@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">¿Dónde está?</string>
-    <string name="widget_description">Muestra la ubicación familiar en tiempo real</string>
+    <string name="app_name" translatable="false">FindMe</string>
+    <string name="widget_description" translatable="false">Muestra la ubicación familiar en tiempo real</string>
 </resources>
