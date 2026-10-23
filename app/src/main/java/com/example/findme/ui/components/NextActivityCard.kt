@@ -66,10 +66,6 @@ fun NextActivityCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "⏩ ",
-                        fontSize = 13.sp
-                    )
-                    Text(
                         text = "PRÓXIMA ACTIVIDAD • A CONTINUACIÓN",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -84,7 +80,7 @@ fun NextActivityCard(
                         color = AccentFree.copy(alpha = 0.15f)
                     ) {
                         Text(
-                            text = "En $minutesUntilNext min",
+                            text = "En ${formatDurationMinutes(minutesUntilNext)}",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = AccentFree,

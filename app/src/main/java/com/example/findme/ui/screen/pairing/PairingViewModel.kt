@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class PairingUiState(
-    val motherNameInput: String = "Mamá",
+    val motherNameInput: String = "",
     val familyCodeInput: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null,

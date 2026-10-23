@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -43,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.findme.data.model.ActivityCategory
 import com.example.findme.domain.model.UserCurrentStatus
 import com.example.findme.ui.theme.AccentFree
 import com.example.findme.ui.theme.AccentUniversity
@@ -52,6 +52,17 @@ import com.example.findme.ui.theme.DarkCardBorder
 import com.example.findme.ui.theme.DarkInnerBg
 import com.example.findme.ui.theme.TextPrimary
 import com.example.findme.ui.theme.TextSecondary
+
+fun formatDurationMinutes(minutes: Long): String {
+    if (minutes <= 0) return "0m"
+    val hours = minutes / 60
+    val mins = minutes % 60
+    return if (hours > 0) {
+        if (mins > 0) "${hours}h ${mins}m" else "${hours}h"
+    } else {
+        "${mins}m"
+    }
+}
 
 @Composable
 fun HeroStatusCard(
@@ -108,6 +119,22 @@ private fun InClassHeroCard(
 ) {
     val startFmt = formatTimeAmPm(status.currentSchedule.startTime)
     val endFmt = formatTimeAmPm(status.currentSchedule.endTime)
+    val category = ActivityCategory.fromKey(status.currentSchedule.category, status.currentSchedule.title)
+
+    val (mainTitle, subtitleText) = when (category) {
+        ActivityCategory.WORK -> Pair(
+            "${status.displayName} está trabajando",
+            status.currentSchedule.title
+        )
+        ActivityCategory.UNIVERSITY -> Pair(
+            "${status.displayName} está en la Universidad",
+            "Clase de ${status.currentSchedule.title}"
+        )
+        ActivityCategory.FREE -> Pair(
+            "${status.displayName} está libre / en descanso",
+            status.currentSchedule.title
+        )
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -129,7 +156,7 @@ private fun InClassHeroCard(
                 // Live Dot + Status
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = AccentUniversity.copy(alpha = 0.15f)
+                    color = category.accentColor.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -139,14 +166,14 @@ private fun InClassHeroCard(
                             modifier = Modifier
                                 .size(8.dp)
                                 .alpha(alphaPulse)
-                                .background(AccentUniversity, CircleShape)
+                                .background(category.accentColor, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "EN VIVO AHORA",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = AccentUniversity,
+                            color = category.accentColor,
                             letterSpacing = 0.5.sp
                         )
                     }
@@ -155,24 +182,24 @@ private fun InClassHeroCard(
                 // Category Badge
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = AccentUniversity.copy(alpha = 0.15f)
+                    color = category.accentColor.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.School,
+                            imageVector = category.icon,
                             contentDescription = null,
-                            tint = AccentUniversity,
+                            tint = category.accentColor,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Universidad",
+                            text = category.label,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = AccentUniversity
+                            color = category.accentColor
                         )
                     }
                 }
@@ -182,7 +209,7 @@ private fun InClassHeroCard(
 
             // Main Title
             Text(
-                text = "${status.displayName} está en la Universidad",
+                text = mainTitle,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
@@ -190,9 +217,9 @@ private fun InClassHeroCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Course Subtitle
+            // Subtitle
             Text(
-                text = "Clase de ${status.currentSchedule.title}",
+                text = subtitleText,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextSecondary
@@ -212,7 +239,7 @@ private fun InClassHeroCard(
                     Icon(
                         imageVector = Icons.Default.LocationOn,
                         contentDescription = null,
-                        tint = AccentWork,
+                        tint = category.accentColor,
                         modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
@@ -244,11 +271,14 @@ private fun InClassHeroCard(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier.weight(1f, fill = false),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Schedule,
                                 contentDescription = null,
-                                tint = AccentUniversity,
+                                tint = category.accentColor,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -260,12 +290,14 @@ private fun InClassHeroCard(
                             )
                         }
 
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         Surface(
                             shape = RoundedCornerShape(50),
-                            color = AccentUniversity
+                            color = category.accentColor
                         ) {
                             Text(
-                                text = "Termina en ${status.remainingMinutes} min",
+                                text = "Termina en ${formatDurationMinutes(status.remainingMinutes)}",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
@@ -283,8 +315,8 @@ private fun InClassHeroCard(
                             .fillMaxWidth()
                             .height(8.dp)
                             .clip(CircleShape),
-                        color = AccentUniversity,
-                        trackColor = AccentUniversity.copy(alpha = 0.2f)
+                        color = category.accentColor,
+                        trackColor = category.accentColor.copy(alpha = 0.2f)
                     )
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -305,7 +337,7 @@ private fun InClassHeroCard(
                             text = "${(status.progress * 100).toInt()}% completado",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = AccentUniversity
+                            color = category.accentColor
                         )
 
                         Text(
@@ -419,6 +451,35 @@ private fun OverrideHeroCard(
                         color = TextSecondary,
                         modifier = Modifier.padding(12.dp)
                     )
+                }
+            }
+
+            // Dual Status Badge: Virtual Class while on the way
+            if (status.concurrentVirtualClass != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = AccentUniversity.copy(alpha = 0.2f),
+                    border = BorderStroke(1.dp, AccentUniversity.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🎧",
+                            fontSize = 16.sp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "En clase virtual: ${status.concurrentVirtualClass.title}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentUniversity
+                        )
+                    }
                 }
             }
         }

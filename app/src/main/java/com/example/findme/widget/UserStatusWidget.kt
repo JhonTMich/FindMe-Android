@@ -27,6 +27,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.example.findme.data.local.UserPreferencesRepository
+import com.example.findme.data.model.ActivityCategory
 import com.example.findme.data.repository.StatusRepository
 import com.example.findme.domain.model.UserCurrentStatus
 
@@ -55,7 +56,8 @@ class UserStatusWidget : GlanceAppWidget() {
             try {
                 StatusRepository.getDirectCurrentStatus(
                     userId = userSession.userId,
-                    displayName = userSession.displayName
+                    displayName = userSession.displayName,
+                    context = context
                 )
             } catch (_: Exception) {
                 null
@@ -67,11 +69,22 @@ class UserStatusWidget : GlanceAppWidget() {
         provideContent {
             val (locationText, subtitleText, cardBgColor, categoryLabel) = when (status) {
                 is UserCurrentStatus.InClass -> {
+                    val category = ActivityCategory.fromKey(status.currentSchedule.category, status.currentSchedule.title)
+                    val locText = when (category) {
+                        ActivityCategory.WORK -> "Trabajando (${status.currentSchedule.location})"
+                        ActivityCategory.FREE -> "Tiempo Libre (${status.currentSchedule.location})"
+                        ActivityCategory.UNIVERSITY -> status.currentSchedule.location
+                    }
+                    val catLabel = when (category) {
+                        ActivityCategory.WORK -> "💼 TRABAJO"
+                        ActivityCategory.FREE -> "🏠 LIBRE"
+                        ActivityCategory.UNIVERSITY -> "📚 EN CLASE"
+                    }
                     Quadruple(
-                        "Universidad UPAO",
+                        locText,
                         "${status.currentSchedule.title} • ${status.currentSchedule.location}",
                         Color(0xFFFFE0B2),
-                        "📚 EN CLASE"
+                        catLabel
                     )
                 }
                 is UserCurrentStatus.Override -> {
