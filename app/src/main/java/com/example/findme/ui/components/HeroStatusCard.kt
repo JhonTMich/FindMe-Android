@@ -421,6 +421,35 @@ private fun OverrideHeroCard(
                     )
                 }
             }
+
+            // Dual Status Badge: Virtual Class while on the way
+            if (status.concurrentVirtualClass != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = AccentUniversity.copy(alpha = 0.2f),
+                    border = BorderStroke(1.dp, AccentUniversity.copy(alpha = 0.5f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "🎧",
+                            fontSize = 16.sp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "En clase virtual: ${status.concurrentVirtualClass.title}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentUniversity
+                        )
+                    }
+                }
+            }
         }
     }
 }

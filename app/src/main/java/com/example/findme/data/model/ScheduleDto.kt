@@ -12,5 +12,6 @@ data class ScheduleDto(
     @SerialName("end_time") val endTime: String,   // "HH:MM:SS"
     val title: String,
     val location: String,
-    val category: String = "university"
+    val category: String = "university",
+    val modality: String = "presencial"
 )

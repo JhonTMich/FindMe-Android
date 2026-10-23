@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.findme.data.repository.StatusRepository
 import com.example.findme.domain.model.UserCurrentStatus
+import com.example.findme.ui.components.AdminQuickActionsCard
 import com.example.findme.ui.components.BottomNavBar
 import com.example.findme.ui.components.CronogramaHoyCard
 import com.example.findme.ui.components.DayScheduleSelector
@@ -56,6 +57,7 @@ fun MainStatusScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedDay by viewModel.selectedDay.collectAsStateWithLifecycle()
     val userSession by viewModel.userSession.collectAsStateWithLifecycle()
+    val isAdminRole by viewModel.isAdminRole.collectAsStateWithLifecycle()
 
     var selectedTabId by remember { mutableStateOf("hoy") }
 
@@ -115,6 +117,16 @@ fun MainStatusScreen(
                         // 1. Hero Status Card
                         item {
                             HeroStatusCard(status = uiState)
+                        }
+
+                        // 1b. Admin Quick Actions Card (if admin)
+                        if (isAdminRole) {
+                            item {
+                                AdminQuickActionsCard(
+                                    onSetOnTheWay = { viewModel.setOnTheWay() },
+                                    onSetArrivedHome = { viewModel.setArrivedHome() }
+                                )
+                            }
                         }
 
                         // 2. Próxima Actividad Card
@@ -231,6 +243,11 @@ fun MainStatusScreen(
                 "perfil" -> {
                     ProfileScreen(
                         userSession = userSession,
+                        isAdminRole = isAdminRole,
+                        onAuthenticateAdmin = { password -> viewModel.authenticateAdmin(password) },
+                        onToggleAdminMode = { isAdmin -> viewModel.setAdminRole(isAdmin) },
+                        onSetOnTheWay = { viewModel.setOnTheWay() },
+                        onSetArrivedHome = { viewModel.setArrivedHome() },
                         onLogout = { viewModel.logout() }
                     )
                 }

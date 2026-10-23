@@ -74,12 +74,47 @@ object StatusRepository {
         }
     }
 
+    suspend fun setOnTheWayOverride(userId: String): Result<Unit> {
+        return try {
+            clearOverrides(userId)
+            val expiresAtIso = Instant.now().plusSeconds(45 * 60).toString()
+            val override = StatusOverrideDto(
+                userId = userId,
+                isActive = true,
+                customLocation = "En camino a casa",
+                customMessage = "De regreso al hogar",
+                expiresAt = expiresAtIso
+            )
+            SupabaseClientProvider.client.postgrest["status_override"].insert(override)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun clearOverrides(userId: String): Result<Unit> {
+        return try {
+            SupabaseClientProvider.client.postgrest["status_override"].update(
+                {
+                    set("is_active", false)
+                }
+            ) {
+                filter {
+                    eq("user_id", userId)
+                    eq("is_active", true)
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     fun observeCurrentStatus(
         userId: String,
         displayName: String,
         selectedDayOfWeek: Int
     ): Flow<UserCurrentStatus> = flow {
-        // Primario: Emitir cargando
         emit(
             UserCurrentStatus.Loading(
                 displayName = displayName,
@@ -92,7 +127,6 @@ object StatusRepository {
 
         emit(calculateStatus(displayName, cachedSchedules, cachedOverrides, selectedDayOfWeek))
 
-        // Intentar suscribirse a Realtime de Supabase
         try {
             val channel = SupabaseClientProvider.client.realtime.channel("status-repo-$userId") {}
             val realtimeFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public")
@@ -118,7 +152,6 @@ object StatusRepository {
             // Fallback en caso de error en Realtime
         }
 
-        // Ticker de respaldo cada 15 segundos para actualizar el contador de minutos y la barra de progreso
         while (true) {
             delay(15_000)
             cachedSchedules = fetchSchedules(userId)
@@ -159,18 +192,6 @@ object StatusRepository {
                 expiresInstant != null && expiresInstant.isAfter(nowInLima.toInstant())
             }
 
-        if (activeOverride != null) {
-            return UserCurrentStatus.Override(
-                displayName = displayName,
-                customLocation = activeOverride.customLocation,
-                customMessage = activeOverride.customMessage,
-                expiresAt = activeOverride.expiresAt,
-                selectedDayOfWeek = selectedDayOfWeek,
-                todaySchedules = daySchedules
-            )
-        }
-
-        // Paso 2 (Schedule UPAO para el día actual)
         val todayActualSchedules = schedules
             .filter { it.dayOfWeek == todayLimaDay }
             .sortedBy { parseLocalTimeOrNull(it.startTime) ?: LocalTime.MIN }
@@ -183,6 +204,27 @@ object StatusRepository {
             } else false
         }
 
+        if (activeOverride != null) {
+            val concurrentVirtualClass = if (currentSchedule != null && (
+                    currentSchedule.modality.equals("virtual", ignoreCase = true) ||
+                    currentSchedule.location.contains("virtual", ignoreCase = true) ||
+                    currentSchedule.category.equals("virtual", ignoreCase = true)
+                )) {
+                currentSchedule
+            } else null
+
+            return UserCurrentStatus.Override(
+                displayName = displayName,
+                customLocation = activeOverride.customLocation,
+                customMessage = activeOverride.customMessage,
+                expiresAt = activeOverride.expiresAt,
+                concurrentVirtualClass = concurrentVirtualClass,
+                selectedDayOfWeek = selectedDayOfWeek,
+                todaySchedules = daySchedules
+            )
+        }
+
+        // Paso 2 (Schedule UPAO para el día actual)
         if (currentSchedule != null) {
             val start = parseLocalTimeOrNull(currentSchedule.startTime) ?: currentTime
             val end = parseLocalTimeOrNull(currentSchedule.endTime) ?: currentTime

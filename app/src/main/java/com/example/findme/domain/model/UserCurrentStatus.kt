@@ -12,6 +12,7 @@ sealed interface UserCurrentStatus {
         val customLocation: String,
         val customMessage: String?,
         val expiresAt: String,
+        val concurrentVirtualClass: ScheduleDto? = null,
         override val selectedDayOfWeek: Int,
         override val todaySchedules: List<ScheduleDto>
     ) : UserCurrentStatus
