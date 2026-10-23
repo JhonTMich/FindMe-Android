@@ -1,6 +1,7 @@
 package com.example.findme.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.findme.data.repository.StatusRepository
+import com.example.findme.ui.theme.AccentUniversity
+import com.example.findme.ui.theme.AccentWork
+import com.example.findme.ui.theme.DarkCardBg
+import com.example.findme.ui.theme.DarkCardBorder
+import com.example.findme.ui.theme.TextSecondary
 import java.time.ZonedDateTime
 
 data class DayItem(
@@ -60,12 +66,14 @@ fun DayScheduleSelector(
         items(days, key = { it.dayOfWeek }) { day ->
             val isSelected = day.dayOfWeek == selectedDayOfWeek
 
-            val cardBg = if (isSelected) Color(0xFF212121) else Color(0xFFF0F0F0)
-            val textColor = if (isSelected) Color.White else Color(0xFF424242)
+            val cardBg = if (isSelected) AccentWork else DarkCardBg
+            val textColor = if (isSelected) Color.Black else TextSecondary
+            val borderModifier = if (isSelected) Modifier else Modifier.border(1.dp, DarkCardBorder, RoundedCornerShape(20.dp))
 
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
+                    .then(borderModifier)
                     .background(cardBg)
                     .clickable { onDaySelected(day.dayOfWeek) }
                     .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -77,13 +85,13 @@ fun DayScheduleSelector(
                     if (day.isToday) {
                         Surface(
                             shape = CircleShape,
-                            color = if (isSelected) Color(0xFFFF7043) else Color(0xFFFFCCBC)
+                            color = AccentUniversity
                         ) {
                             Text(
                                 text = "HOY",
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isSelected) Color.White else Color(0xFFD84315),
+                                color = Color.White,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }

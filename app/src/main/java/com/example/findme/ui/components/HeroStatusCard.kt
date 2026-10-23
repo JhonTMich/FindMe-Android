@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,18 +44,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.findme.domain.model.UserCurrentStatus
-
-// Soft Pastel Palette
-private val PastelOrangeBg = Color(0xFFFFF3E0)
-private val PastelOrangeCard = Color(0xFFFFE0B2)
-private val SoftOrange = Color(0xFFFF7043)
-private val SoftOrangeTrack = Color(0xFFFFCCBC)
-
-private val PastelGreenBg = Color(0xEFE8F5E9)
-private val SoftGreen = Color(0xFF4CAF50)
-
-private val PastelPurpleBg = Color(0xFFEDE7F6)
-private val SoftPurple = Color(0xFF7E57C2)
+import com.example.findme.ui.theme.AccentFree
+import com.example.findme.ui.theme.AccentUniversity
+import com.example.findme.ui.theme.AccentWork
+import com.example.findme.ui.theme.DarkCardBg
+import com.example.findme.ui.theme.DarkCardBorder
+import com.example.findme.ui.theme.DarkInnerBg
+import com.example.findme.ui.theme.TextPrimary
+import com.example.findme.ui.theme.TextSecondary
 
 @Composable
 fun HeroStatusCard(
@@ -108,16 +106,19 @@ private fun InClassHeroCard(
     alphaPulse: Float,
     modifier: Modifier = Modifier
 ) {
+    val startFmt = formatTimeAmPm(status.currentSchedule.startTime)
+    val endFmt = formatTimeAmPm(status.currentSchedule.endTime)
+
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = PastelOrangeBg),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
+                .padding(22.dp)
         ) {
             // Header Badges
             Row(
@@ -128,7 +129,7 @@ private fun InClassHeroCard(
                 // Live Dot + Status
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = AccentUniversity.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -138,15 +139,15 @@ private fun InClassHeroCard(
                             modifier = Modifier
                                 .size(8.dp)
                                 .alpha(alphaPulse)
-                                .background(SoftOrange, CircleShape)
+                                .background(AccentUniversity, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "EN VIVO",
+                            text = "EN VIVO AHORA",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = SoftOrange,
-                            letterSpacing = 0.8.sp
+                            color = AccentUniversity,
+                            letterSpacing = 0.5.sp
                         )
                     }
                 }
@@ -154,7 +155,7 @@ private fun InClassHeroCard(
                 // Category Badge
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = PastelOrangeCard
+                    color = AccentUniversity.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -163,117 +164,157 @@ private fun InClassHeroCard(
                         Icon(
                             imageVector = Icons.Default.School,
                             contentDescription = null,
-                            tint = SoftOrange,
+                            tint = AccentUniversity,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "Universidad UPAO",
+                            text = "Universidad",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFFD84315)
+                            fontWeight = FontWeight.Bold,
+                            color = AccentUniversity
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             // Main Title
             Text(
-                text = "${status.displayName} está en Clase",
-                fontSize = 24.sp,
+                text = "${status.displayName} está en la Universidad",
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF3E2723)
+                color = TextPrimary
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            // Course Name
+            // Course Subtitle
             Text(
-                text = status.currentSchedule.title,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = SoftOrange
+                text = "Clase de ${status.currentSchedule.title}",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextSecondary
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Location Badge
+            // Location Chip
             Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = Color.White.copy(alpha = 0.8f)
+                shape = RoundedCornerShape(50),
+                color = DarkInnerBg
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.LocationOn,
                         contentDescription = null,
-                        tint = SoftOrange,
-                        modifier = Modifier.size(16.dp)
+                        tint = AccentWork,
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = status.currentSchedule.location,
-                        fontSize = 13.sp,
-                        color = Color(0xFF4E342E),
+                        fontSize = 12.sp,
+                        color = TextSecondary,
                         fontWeight = FontWeight.Medium
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
-            // Progress Section
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(16.dp))
-                    .padding(16.dp)
+            // Progress Section Box
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = DarkInnerBg,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val startFmt = status.currentSchedule.startTime.take(5)
-                    val endFmt = status.currentSchedule.endTime.take(5)
-                    Text(
-                        text = "$startFmt - $endFmt",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF4E342E)
-                    )
-                    Text(
-                        text = "${status.remainingMinutes} min restantes",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = SoftOrange
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                LinearProgressIndicator(
-                    progress = { status.progress },
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(10.dp)
-                        .clip(CircleShape),
-                    color = SoftOrange,
-                    trackColor = SoftOrangeTrack
-                )
+                        .padding(16.dp)
+                ) {
+                    // Top Time Range + Remaining Pill
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null,
+                                tint = AccentUniversity,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "$startFmt - $endFmt",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = AccentUniversity
+                        ) {
+                            Text(
+                                text = "Termina en ${status.remainingMinutes} min",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
 
-                Text(
-                    text = "${(status.progress * 100).toInt()}% transcurrido",
-                    fontSize = 11.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.align(Alignment.End)
-                )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Progress Bar
+                    LinearProgressIndicator(
+                        progress = { status.progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(CircleShape),
+                        color = AccentUniversity,
+                        trackColor = AccentUniversity.copy(alpha = 0.2f)
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Bottom Row Details
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Inicio: $startFmt",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+
+                        Text(
+                            text = "${(status.progress * 100).toInt()}% completado",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AccentUniversity
+                        )
+
+                        Text(
+                            text = "Fin: $endFmt",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
             }
         }
     }
@@ -287,14 +328,14 @@ private fun OverrideHeroCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = PastelPurpleBg),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
+                .padding(22.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -303,7 +344,7 @@ private fun OverrideHeroCard(
             ) {
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = AccentWork.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -313,22 +354,22 @@ private fun OverrideHeroCard(
                             modifier = Modifier
                                 .size(8.dp)
                                 .alpha(alphaPulse)
-                                .background(SoftPurple, CircleShape)
+                                .background(AccentWork, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "EN VIVO",
+                            text = "EN VIVO AHORA",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = SoftPurple,
-                            letterSpacing = 0.8.sp
+                            color = AccentWork,
+                            letterSpacing = 0.5.sp
                         )
                     }
                 }
 
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = SoftPurple.copy(alpha = 0.15f)
+                    color = AccentWork.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -337,7 +378,7 @@ private fun OverrideHeroCard(
                         Icon(
                             imageVector = Icons.Default.Info,
                             contentDescription = null,
-                            tint = SoftPurple,
+                            tint = AccentWork,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -345,47 +386,44 @@ private fun OverrideHeroCard(
                             text = "Aviso Especial",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = SoftPurple
+                            color = AccentWork
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             Text(
                 text = "${status.displayName} está en:",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.DarkGray
+                fontSize = 15.sp,
+                color = TextSecondary
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = status.customLocation,
-                fontSize = 26.sp,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = SoftPurple
+                color = TextPrimary
             )
 
-            if (!status.customMessage.isNull_or_blank()) {
-                Spacer(modifier = Modifier.height(12.dp))
+            if (!status.customMessage.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = Color.White.copy(alpha = 0.8f)
+                    color = DarkInnerBg
                 ) {
                     Text(
                         text = "💬 \"${status.customMessage}\"",
-                        fontSize = 14.sp,
-                        color = Color(0xFF37474F),
-                        modifier = Modifier.padding(14.dp)
+                        fontSize = 13.sp,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(12.dp)
                     )
                 }
             }
         }
     }
 }
-
-private fun String?.isNull_or_blank(): Boolean = this == null || this.trim().isEmpty()
 
 @Composable
 private fun FreeTimeHeroCard(
@@ -395,14 +433,14 @@ private fun FreeTimeHeroCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = PastelGreenBg),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
+                .padding(22.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -411,7 +449,7 @@ private fun FreeTimeHeroCard(
             ) {
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = Color.White.copy(alpha = 0.9f)
+                    color = AccentFree.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -421,22 +459,22 @@ private fun FreeTimeHeroCard(
                             modifier = Modifier
                                 .size(8.dp)
                                 .alpha(alphaPulse)
-                                .background(SoftGreen, CircleShape)
+                                .background(AccentFree, CircleShape)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "EN VIVO",
+                            text = "EN VIVO AHORA",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = SoftGreen,
-                            letterSpacing = 0.8.sp
+                            color = AccentFree,
+                            letterSpacing = 0.5.sp
                         )
                     }
                 }
 
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = SoftGreen.copy(alpha = 0.15f)
+                    color = AccentFree.copy(alpha = 0.15f)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
@@ -445,7 +483,7 @@ private fun FreeTimeHeroCard(
                         Icon(
                             imageVector = Icons.Default.Home,
                             contentDescription = null,
-                            tint = SoftGreen,
+                            tint = AccentFree,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -453,27 +491,27 @@ private fun FreeTimeHeroCard(
                             text = "Tiempo Libre",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF2E7D32)
+                            color = AccentFree
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             Text(
                 text = "${status.displayName} está en Casa",
-                fontSize = 24.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1B5E20)
+                color = AccentFree
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             Text(
                 text = "Sin clases programadas en este momento 🏠",
-                fontSize = 14.sp,
-                color = Color(0xFF33691E)
+                fontSize = 13.sp,
+                color = TextSecondary
             )
         }
     }
@@ -483,8 +521,9 @@ private fun FreeTimeHeroCard(
 private fun LoadingHeroCard(modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -493,9 +532,9 @@ private fun LoadingHeroCard(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Cargando estado en tiempo real...",
+                text = "Consultando estado...",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray
+                color = TextSecondary
             )
         }
     }
@@ -505,26 +544,46 @@ private fun LoadingHeroCard(modifier: Modifier = Modifier) {
 private fun ErrorHeroCard(message: String, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp)
+                .padding(22.dp)
         ) {
             Text(
                 text = "Error al obtener estado",
-                fontSize = 18.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onErrorContainer
+                color = MaterialTheme.colorScheme.error
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = message,
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f)
+                fontSize = 12.sp,
+                color = TextSecondary
             )
         }
+    }
+}
+
+private fun formatTimeAmPm(timeStr: String): String {
+    return try {
+        val parts = timeStr.trim().split(":")
+        if (parts.size >= 2) {
+            val hour = parts[0].toInt()
+            val minute = parts[1].toInt()
+            val amPm = if (hour >= 12) "PM" else "AM"
+            val hour12 = when {
+                hour == 0 -> 12
+                hour > 12 -> hour - 12
+                else -> hour
+            }
+            String.format("%02d:%02d %s", hour12, minute, amPm)
+        } else timeStr
+    } catch (_: Exception) {
+        timeStr
     }
 }

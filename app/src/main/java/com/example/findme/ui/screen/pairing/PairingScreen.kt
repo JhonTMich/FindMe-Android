@@ -7,14 +7,19 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,6 +47,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.findme.ui.theme.AccentWork
+import com.example.findme.ui.theme.DarkBackground
+import com.example.findme.ui.theme.DarkCardBg
+import com.example.findme.ui.theme.DarkCardBorder
+import com.example.findme.ui.theme.TextPrimary
+import com.example.findme.ui.theme.TextSecondary
 
 @Composable
 fun PairingScreen(
@@ -59,32 +70,38 @@ fun PairingScreen(
     }
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = Color(0xFFFAFAFA)
+        modifier = modifier
+            .fillMaxSize()
+            .imePadding(),
+        containerColor = DarkBackground
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(24.dp),
+                .statusBarsPadding()
+                .padding(horizontal = 24.dp),
             contentAlignment = Alignment.Center
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 // Header Icon
                 Surface(
                     shape = CircleShape,
-                    color = Color(0xFFFFE0B2),
+                    color = AccentWork.copy(alpha = 0.15f),
                     modifier = Modifier.size(80.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.Key,
                             contentDescription = null,
-                            tint = Color(0xFFD84315),
+                            tint = AccentWork,
                             modifier = Modifier.size(40.dp)
                         )
                     }
@@ -97,16 +114,16 @@ fun PairingScreen(
                     text = "Vinculación Familiar",
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF212121),
+                    color = TextPrimary,
                     textAlign = TextAlign.Center
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Ingresa el código familiar único (ej. JH-7842) generado desde el panel web para sincronizar la ubicación en tiempo real.",
+                    text = "Ingresa tu nombre e introduce el código familiar",
                     fontSize = 14.sp,
-                    color = Color(0xFF616161),
+                    color = TextSecondary,
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp,
                     modifier = Modifier.padding(horizontal = 12.dp)
@@ -114,25 +131,64 @@ fun PairingScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Input Field
+                // Mother Name Input Field
+                OutlinedTextField(
+                    value = uiState.motherNameInput,
+                    onValueChange = { viewModel.onMotherNameChanged(it) },
+                    label = { Text("¿Cómo te llamas?") },
+                    singleLine = true,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = TextSecondary
+                        )
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = DarkCardBg,
+                        unfocusedContainerColor = DarkCardBg,
+                        focusedBorderColor = AccentWork,
+                        unfocusedBorderColor = DarkCardBorder,
+                        focusedLabelColor = AccentWork,
+                        unfocusedLabelColor = TextSecondary,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        cursorColor = AccentWork
+                    ),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Next
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Family Code Input Field
                 OutlinedTextField(
                     value = uiState.familyCodeInput,
                     onValueChange = { viewModel.onCodeChanged(it) },
                     label = { Text("Código Familiar") },
-                    placeholder = { Text("JH-7842") },
                     singleLine = true,
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.QrCode,
                             contentDescription = null,
-                            tint = Color(0xFF757575)
+                            tint = TextSecondary
                         )
                     },
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFFF7043),
-                        focusedLabelColor = Color(0xFFD84315),
-                        cursorColor = Color(0xFFFF7043)
+                        focusedContainerColor = DarkCardBg,
+                        unfocusedContainerColor = DarkCardBg,
+                        focusedBorderColor = AccentWork,
+                        unfocusedBorderColor = DarkCardBorder,
+                        focusedLabelColor = AccentWork,
+                        unfocusedLabelColor = TextSecondary,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        cursorColor = AccentWork
                     ),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Characters,
@@ -175,22 +231,22 @@ fun PairingScreen(
                     },
                     enabled = !uiState.isLoading,
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF7043)),
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentWork),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
                 ) {
                     if (uiState.isLoading) {
                         CircularProgressIndicator(
-                            color = Color.White,
+                            color = Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                     } else {
                         Text(
-                            text = "Vincular Cuenta",
+                            text = "Vincular",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.Black
                         )
                     }
                 }

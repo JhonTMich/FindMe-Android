@@ -15,7 +15,8 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "us
 data class UserSession(
     val userId: String,
     val displayName: String,
-    val familyCode: String
+    val familyCode: String,
+    val motherName: String = "Mamá"
 )
 
 class UserPreferencesRepository(private val context: Context) {
@@ -24,18 +25,21 @@ class UserPreferencesRepository(private val context: Context) {
         private val KEY_USER_ID = stringPreferencesKey("user_id")
         private val KEY_DISPLAY_NAME = stringPreferencesKey("display_name")
         private val KEY_FAMILY_CODE = stringPreferencesKey("family_code")
+        private val KEY_MOTHER_NAME = stringPreferencesKey("mother_name")
     }
 
     val userSessionFlow: Flow<UserSession?> = context.dataStore.data.map { prefs ->
         val userId = prefs[KEY_USER_ID]
         val displayName = prefs[KEY_DISPLAY_NAME]
         val familyCode = prefs[KEY_FAMILY_CODE]
+        val motherName = prefs[KEY_MOTHER_NAME]
 
         if (!userId.isNullOrEmpty() && !displayName.isNullOrEmpty()) {
             UserSession(
                 userId = userId,
                 displayName = displayName,
-                familyCode = familyCode.orEmpty()
+                familyCode = familyCode.orEmpty(),
+                motherName = if (!motherName.isNullOrEmpty()) motherName else "Mamá"
             )
         } else {
             null
@@ -46,11 +50,17 @@ class UserPreferencesRepository(private val context: Context) {
         return userSessionFlow.firstOrNull()
     }
 
-    suspend fun saveUserSession(userId: String, displayName: String, familyCode: String) {
+    suspend fun saveUserSession(
+        userId: String,
+        displayName: String,
+        familyCode: String,
+        motherName: String = "Mamá"
+    ) {
         context.dataStore.edit { prefs ->
             prefs[KEY_USER_ID] = userId
             prefs[KEY_DISPLAY_NAME] = displayName
             prefs[KEY_FAMILY_CODE] = familyCode
+            prefs[KEY_MOTHER_NAME] = motherName
         }
     }
 
