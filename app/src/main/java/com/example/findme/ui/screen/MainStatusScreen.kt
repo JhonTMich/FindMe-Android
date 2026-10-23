@@ -11,12 +11,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,6 +44,7 @@ import com.example.findme.ui.components.HeroStatusCard
 import com.example.findme.ui.components.NextActivityCard
 import com.example.findme.ui.components.ScheduleItemCard
 import com.example.findme.ui.screen.profile.ProfileScreen
+import com.example.findme.ui.theme.AccentWork
 import com.example.findme.ui.theme.DarkBackground
 import com.example.findme.ui.theme.DarkCardBg
 import com.example.findme.ui.theme.DarkCardBorder
@@ -58,6 +61,8 @@ fun MainStatusScreen(
     val selectedDay by viewModel.selectedDay.collectAsStateWithLifecycle()
     val userSession by viewModel.userSession.collectAsStateWithLifecycle()
     val isAdminRole by viewModel.isAdminRole.collectAsStateWithLifecycle()
+    val schedulesForSelectedDay by viewModel.schedulesForSelectedDay.collectAsStateWithLifecycle()
+    val isLoadingSchedules by viewModel.isLoadingSchedules.collectAsStateWithLifecycle()
 
     var selectedTabId by remember { mutableStateOf("hoy") }
 
@@ -180,7 +185,7 @@ fun MainStatusScreen(
                                         border = BorderStroke(1.dp, DarkCardBorder)
                                     ) {
                                         Text(
-                                            text = "${schedules.size} Actividades",
+                                            text = if (isLoadingSchedules) "Cargando..." else "${schedulesForSelectedDay.size} Actividades",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = TextSecondary,
@@ -198,7 +203,30 @@ fun MainStatusScreen(
                             }
                         }
 
-                        if (schedules.isEmpty()) {
+                        if (isLoadingSchedules) {
+                            item {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp),
+                                    shape = RoundedCornerShape(20.dp),
+                                    colors = CardDefaults.cardColors(containerColor = DarkCardBg),
+                                    border = BorderStroke(1.dp, DarkCardBorder)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(28.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            color = AccentWork,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (schedulesForSelectedDay.isEmpty()) {
                             item {
                                 Card(
                                     modifier = Modifier
@@ -225,7 +253,7 @@ fun MainStatusScreen(
                                 }
                             }
                         } else {
-                            items(schedules, key = { it.id.ifEmpty { it.title + it.startTime } }) { schedule ->
+                            items(schedulesForSelectedDay, key = { it.id.ifEmpty { it.title + it.startTime } }) { schedule ->
                                 val isCurrentInClass = (uiState as? UserCurrentStatus.InClass)?.currentSchedule?.id == schedule.id
                                 ScheduleItemCard(
                                     schedule = schedule,

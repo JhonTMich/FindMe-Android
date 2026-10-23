@@ -110,22 +110,15 @@ object StatusRepository {
         }
     }
 
-    fun observeCurrentStatus(
+    fun observeCurrentStatusWithSchedules(
         userId: String,
         displayName: String,
+        schedules: List<ScheduleDto>,
         selectedDayOfWeek: Int
     ): Flow<UserCurrentStatus> = flow {
-        emit(
-            UserCurrentStatus.Loading(
-                displayName = displayName,
-                selectedDayOfWeek = selectedDayOfWeek
-            )
-        )
-
-        var cachedSchedules = fetchSchedules(userId)
         var cachedOverrides = fetchOverrides(userId)
 
-        emit(calculateStatus(displayName, cachedSchedules, cachedOverrides, selectedDayOfWeek))
+        emit(calculateStatus(displayName, schedules, cachedOverrides, selectedDayOfWeek))
 
         try {
             val channel = SupabaseClientProvider.client.realtime.channel("status-repo-$userId") {}
@@ -135,12 +128,11 @@ object StatusRepository {
             coroutineScope {
                 launch {
                     realtimeFlow.collect {
-                        cachedSchedules = fetchSchedules(userId)
                         cachedOverrides = fetchOverrides(userId)
                         emit(
                             calculateStatus(
                                 displayName,
-                                cachedSchedules,
+                                schedules,
                                 cachedOverrides,
                                 selectedDayOfWeek
                             )
@@ -154,9 +146,57 @@ object StatusRepository {
 
         while (true) {
             delay(15_000)
-            cachedSchedules = fetchSchedules(userId)
-            cachedOverrides = fetchOverrides(userId)
-            emit(calculateStatus(displayName, cachedSchedules, cachedOverrides, selectedDayOfWeek))
+            emit(calculateStatus(displayName, schedules, cachedOverrides, selectedDayOfWeek))
+        }
+    }
+
+    fun observeCurrentStatus(
+        userId: String,
+        displayName: String,
+        selectedDayOfWeek: Int
+    ): Flow<UserCurrentStatus> = flow {
+        emit(
+            UserCurrentStatus.Loading(
+                displayName = displayName,
+                selectedDayOfWeek = selectedDayOfWeek
+            )
+        )
+
+        val cachedSchedules = fetchSchedules(userId)
+        val cachedOverrides = fetchOverrides(userId)
+
+        emit(calculateStatus(displayName, cachedSchedules, cachedOverrides, selectedDayOfWeek))
+
+        try {
+            val channel = SupabaseClientProvider.client.realtime.channel("status-repo-$userId") {}
+            val realtimeFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public")
+            channel.subscribe()
+
+            coroutineScope {
+                launch {
+                    realtimeFlow.collect {
+                        val latestSchedules = fetchSchedules(userId)
+                        val latestOverrides = fetchOverrides(userId)
+                        emit(
+                            calculateStatus(
+                                displayName,
+                                latestSchedules,
+                                latestOverrides,
+                                selectedDayOfWeek
+                            )
+                        )
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            // Fallback en caso de error en Realtime
+        }
+
+        while (true) {
+            delay(15_000)
+            val latestSchedules = fetchSchedules(userId)
+            val latestOverrides = fetchOverrides(userId)
+            emit(calculateStatus(displayName, latestSchedules, latestOverrides, selectedDayOfWeek))
         }
     }
 
