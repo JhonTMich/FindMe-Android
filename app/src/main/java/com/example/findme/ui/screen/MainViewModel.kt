@@ -13,6 +13,8 @@ import com.example.findme.data.model.ScheduleDto
 import com.example.findme.data.repository.ScheduleRepository
 import com.example.findme.data.repository.StatusRepository
 import com.example.findme.domain.model.UserCurrentStatus
+import com.example.findme.util.NotificationHelper
+import com.example.findme.util.ScheduleNotifier
 import com.example.findme.widget.FindMeControlWidget
 import com.example.findme.widget.UserStatusWidget
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -82,25 +84,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         initialValue = emptyList()
     )
 
-    init {
-        // Observe userSession and immediately sync from network in background
-        viewModelScope.launch {
-            userSession.collect { session ->
-                if (session != null) {
-                    syncScheduleFromNetwork(session.userId)
-                }
-            }
-        }
-    }
-
-    fun syncScheduleFromNetwork(userId: String) {
-        viewModelScope.launch {
-            _isSyncingSchedules.value = true
-            scheduleRepository.syncScheduleFromNetwork(userId)
-            _isSyncingSchedules.value = false
-        }
-    }
-
     val uiState: StateFlow<UserCurrentStatus> = combine(userSession, _selectedDay, allSchedulesStream) { session, day, schedules ->
         Triple(session, day, schedules)
     }.flatMapLatest { (session, day, schedules) ->
@@ -119,6 +102,63 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = UserCurrentStatus.Loading(selectedDayOfWeek = todayLimaDay)
     )
+
+    init {
+        // Observe userSession and immediately sync from network in background
+        viewModelScope.launch {
+            userSession.collect { session ->
+                if (session != null) {
+                    syncScheduleFromNetwork(session.userId)
+                }
+            }
+        }
+
+        // Setup local push notification observer for monitor role
+        viewModelScope.launch {
+            var previousState: UserCurrentStatus? = null
+            uiState.collect { state ->
+                val wasAdmin = isAdminRole.value
+                if (!wasAdmin && previousState != null) {
+                    val prevOverride = previousState as? UserCurrentStatus.Override
+                    val currOverride = state as? UserCurrentStatus.Override
+
+                    if (currOverride != null && prevOverride?.customLocation != currOverride.customLocation) {
+                        NotificationHelper.showStatusNotification(
+                            getApplication(),
+                            "Actualización de Estado",
+                            "${state.displayName} está ahora: ${currOverride.customLocation}"
+                        )
+                    } else if (prevOverride != null && currOverride == null && state !is UserCurrentStatus.Loading) {
+                        NotificationHelper.showStatusNotification(
+                            getApplication(),
+                            "Actualización de Estado",
+                            "${state.displayName} ha llegado a su destino (Ya llegué)."
+                        )
+                    }
+                }
+                if (state !is UserCurrentStatus.Loading) {
+                    previousState = state
+                }
+            }
+        }
+
+        // Programar alertas de Room (WorkManager)
+        viewModelScope.launch {
+            allSchedulesStream.collect { schedules ->
+                if (schedules.isNotEmpty() && !isAdminRole.value) {
+                    ScheduleNotifier.scheduleAlertsForSchedules(getApplication(), schedules)
+                }
+            }
+        }
+    }
+
+    fun syncScheduleFromNetwork(userId: String) {
+        viewModelScope.launch {
+            _isSyncingSchedules.value = true
+            scheduleRepository.syncScheduleFromNetwork(userId)
+            _isSyncingSchedules.value = false
+        }
+    }
 
     fun authenticateAdmin(password: String): Boolean {
         return if (password == UserPreferencesRepository.ADMIN_PASSWORD) {
@@ -140,6 +180,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val session = userSession.value ?: return
         viewModelScope.launch {
             StatusRepository.setOnTheWayOverride(session.userId)
+            updateWidgets()
+        }
+    }
+
+    fun setOnTheStreet() {
+        val session = userSession.value ?: return
+        viewModelScope.launch {
+            StatusRepository.setOnTheStreetOverride(session.userId)
             updateWidgets()
         }
     }

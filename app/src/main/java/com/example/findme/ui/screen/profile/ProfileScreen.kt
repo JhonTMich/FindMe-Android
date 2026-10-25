@@ -70,6 +70,7 @@ fun ProfileScreen(
     onAuthenticateAdmin: (String) -> Boolean,
     onToggleAdminMode: (Boolean) -> Unit,
     onSetOnTheWay: () -> Unit,
+    onSetOnTheStreet: () -> Unit,
     onSetArrivedHome: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
@@ -225,6 +226,7 @@ fun ProfileScreen(
         if (isAdminRole) {
             AdminQuickActionsCard(
                 onSetOnTheWay = onSetOnTheWay,
+                onSetOnTheStreet = onSetOnTheStreet,
                 onSetArrivedHome = onSetArrivedHome
             )
         }

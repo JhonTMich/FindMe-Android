@@ -49,6 +49,23 @@ class ControlOnTheWayAction : ActionCallback {
     }
 }
 
+class ControlOnTheStreetAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+        val userPrefsRepo = UserPreferencesRepository(context)
+        val session = userPrefsRepo.getUserSession()
+        val isAdmin = userPrefsRepo.isAdminRole()
+        if (isAdmin && session != null) {
+            StatusRepository.setOnTheStreetOverride(session.userId)
+            UserStatusWidget().updateAll(context)
+            FindMeControlWidget().updateAll(context)
+        }
+    }
+}
+
 class ControlArrivedHomeAction : ActionCallback {
     override suspend fun onAction(
         context: Context,
@@ -118,10 +135,21 @@ class FindMeControlWidget : GlanceAppWidget() {
                         horizontalAlignment = Alignment.Horizontal.CenterHorizontally
                     ) {
                         Button(
-                            text = "🚶 Salí / En camino",
+                            text = "🚶 En camino",
                             onClick = actionRunCallback<ControlOnTheWayAction>()
                         )
                         Spacer(modifier = GlanceModifier.width(8.dp))
+                        Button(
+                            text = "📍 En la calle",
+                            onClick = actionRunCallback<ControlOnTheStreetAction>()
+                        )
+                    }
+                    Spacer(modifier = GlanceModifier.height(8.dp))
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Vertical.CenterVertically,
+                        horizontalAlignment = Alignment.Horizontal.CenterHorizontally
+                    ) {
                         Button(
                             text = "🏠 Ya llegué",
                             onClick = actionRunCallback<ControlArrivedHomeAction>()

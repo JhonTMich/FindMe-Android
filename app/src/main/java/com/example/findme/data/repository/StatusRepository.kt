@@ -50,6 +50,23 @@ object StatusRepository {
         }
     }
 
+    suspend fun getAdminProfile(): Result<ProfileDto> {
+        return try {
+            val profiles = SupabaseClientProvider.client.postgrest["profiles"]
+                .select()
+                .decodeList<ProfileDto>()
+
+            val found = profiles.firstOrNull()
+            if (found != null) {
+                Result.success(found)
+            } else {
+                Result.failure(Exception("No se encontró perfil de administrador"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Error de conexión al obtener perfil admin: ${e.message}"))
+        }
+    }
+
     suspend fun fetchSchedules(userId: String, context: Context? = null): List<ScheduleDto> {
         return try {
             SupabaseClientProvider.client.postgrest["schedule"]
@@ -96,6 +113,25 @@ object StatusRepository {
                 isActive = true,
                 customLocation = "En camino a casa",
                 customMessage = "De regreso al hogar",
+                expiresAt = expiresAtIso
+            )
+            SupabaseClientProvider.client.postgrest["status_override"].insert(override)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setOnTheStreetOverride(userId: String): Result<Unit> {
+        return try {
+            clearOverrides(userId)
+            // Expiración configurable, usaremos 2 horas por defecto
+            val expiresAtIso = Instant.now().plusSeconds(2 * 3600).toString()
+            val override = StatusOverrideDto(
+                userId = userId,
+                isActive = true,
+                customLocation = "En la calle",
+                customMessage = "Fuera de casa",
                 expiresAt = expiresAtIso
             )
             SupabaseClientProvider.client.postgrest["status_override"].insert(override)

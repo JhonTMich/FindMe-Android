@@ -129,6 +129,7 @@ fun MainStatusScreen(
                             item {
                                 AdminQuickActionsCard(
                                     onSetOnTheWay = { viewModel.setOnTheWay() },
+                                    onSetOnTheStreet = { viewModel.setOnTheStreet() },
                                     onSetArrivedHome = { viewModel.setArrivedHome() }
                                 )
                             }
@@ -275,6 +276,7 @@ fun MainStatusScreen(
                         onAuthenticateAdmin = { password -> viewModel.authenticateAdmin(password) },
                         onToggleAdminMode = { isAdmin -> viewModel.setAdminRole(isAdmin) },
                         onSetOnTheWay = { viewModel.setOnTheWay() },
+                        onSetOnTheStreet = { viewModel.setOnTheStreet() },
                         onSetArrivedHome = { viewModel.setArrivedHome() },
                         onLogout = { viewModel.logout() }
                     )
