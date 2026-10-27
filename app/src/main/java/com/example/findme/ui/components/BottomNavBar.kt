@@ -1,6 +1,6 @@
 package com.example.findme.ui.components
 
-import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.PersonOutline
-import androidx.compose.material.icons.filled.ViewWeek
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,10 +27,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.findme.ui.theme.AccentWork
 import com.example.findme.ui.theme.DarkCardBorder
 import com.example.findme.ui.theme.DarkSurface
-import com.example.findme.ui.theme.TextSecondary
 
 data class NavTabItem(
     val id: String,
@@ -46,16 +44,14 @@ fun BottomNavBar(
 ) {
     val tabs = listOf(
         NavTabItem("hoy", "Hoy", Icons.Default.CalendarToday),
-        NavTabItem("horario", "Horario", Icons.Default.ViewWeek),
+        NavTabItem("horario", "Horario", Icons.Default.CalendarMonth),
         NavTabItem("perfil", "Perfil", Icons.Default.PersonOutline)
     )
 
     Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(width = 1.dp, color = DarkCardBorder),
+        modifier = modifier.fillMaxWidth(),
         color = DarkSurface,
-        shadowElevation = 8.dp
+        border = BorderStroke(1.dp, DarkCardBorder)
     ) {
         Row(
             modifier = Modifier
@@ -71,19 +67,19 @@ fun BottomNavBar(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .clickable { onTabSelected(tab.id) }
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .padding(horizontal = 20.dp, vertical = 4.dp)
                 ) {
                     if (isSelected) {
                         Surface(
                             shape = CircleShape,
-                            color = AccentWork,
-                            modifier = Modifier.size(36.dp)
+                            color = Color(0xFF22264C),
+                            modifier = Modifier.size(38.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = tab.icon,
                                     contentDescription = tab.title,
-                                    tint = Color.Black,
+                                    tint = Color(0xFFA5B4FC),
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -92,7 +88,7 @@ fun BottomNavBar(
                         Icon(
                             imageVector = tab.icon,
                             contentDescription = tab.title,
-                            tint = TextSecondary,
+                            tint = Color(0xFF64748B),
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -101,9 +97,9 @@ fun BottomNavBar(
 
                     Text(
                         text = tab.title,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) AccentWork else TextSecondary
+                        color = if (isSelected) Color(0xFF818CF8) else Color(0xFF64748B)
                     )
                 }
             }

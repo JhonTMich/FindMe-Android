@@ -2,17 +2,26 @@ package com.example.findme.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Dark Theme Palette - FindMe
-val DarkBackground = Color(0xFF0B111E)
-val DarkSurface = Color(0xFF0D1527)
-val DarkCardBg = Color(0xFF161F30)
-val DarkCardBorder = Color(0xFF253248)
-val DarkInnerBg = Color(0xFF101826)
+// Dark Theme Palette - FindMe (Redesigned matching mock-up)
+val DarkBackground = Color(0xFF090D16)
+val DarkSurface = Color(0xFF0D121F)
+val DarkCardBg = Color(0xFF12192A)
+val DarkCardBorder = Color(0xFF1E283D)
+val DarkInnerBg = Color(0xFF172036)
 
 val TextPrimary = Color(0xFFFFFFFF)
-val TextSecondary = Color(0xFF8E9EB5)
+val TextSecondary = Color(0xFF8E9BAE)
+val TextMuted = Color(0xFF64748B)
 
-// Category Accents
+// Accent Colors
+val IndigoPrimary = Color(0xFF5856D6)       // Bright indigo/blue for active elements
+val IndigoCardBg = Color(0xFF181F38)        // Active card background
+val IndigoCardBorder = Color(0xFF4F46E5)    // Active card border
+val StatusGreen = Color(0xFF10B981)         // Green for "Sincronizado", "Seguro"
+val StatusGreenBg = Color(0xFF0D382A)       // Dark green background pill
+val StatusGreenText = Color(0xFF34D399)     // Light green text
+
 val AccentUniversity = Color(0xFFE05D3D) // Terracotta / Naranja óxido
 val AccentFree = Color(0xFF10B981)       // Verde menta esmeralda
-val AccentWork = Color(0xFF38BDF8)       // Cian / Azul brillante
+val AccentWork = Color(0xFF5856D6)       // Indigo brillante
+
