@@ -10,11 +10,11 @@ val DarkCardBorder = Color(0xFF1E283D)
 val DarkInnerBg = Color(0xFF172036)
 
 val TextPrimary = Color(0xFFFFFFFF)
-val TextSecondary = Color(0xFF8E9BAE)
-val TextMuted = Color(0xFF64748B)
+val TextSecondary = Color(0xFFABB8CB)
+val TextMuted = Color(0xFF93A3B8)
 
 // Accent Colors
-val IndigoPrimary = Color(0xFF5856D6)       // Bright indigo/blue for active elements
+val IndigoPrimary = Color(0xFF9B9AFF)       // Bright indigo/blue for active elements
 val IndigoCardBg = Color(0xFF181F38)        // Active card background
 val IndigoCardBorder = Color(0xFF4F46E5)    // Active card border
 val StatusGreen = Color(0xFF10B981)         // Green for "Sincronizado", "Seguro"
@@ -23,5 +23,5 @@ val StatusGreenText = Color(0xFF34D399)     // Light green text
 
 val AccentUniversity = Color(0xFFE05D3D) // Terracotta / Naranja óxido
 val AccentFree = Color(0xFF10B981)       // Verde menta esmeralda
-val AccentWork = Color(0xFF5856D6)       // Indigo brillante
+val AccentWork = Color(0xFF9B9AFF)       // Indigo brillante
 
