@@ -69,7 +69,7 @@ fun ProfileScreen(userSession: UserSession?, activityAlerts: Boolean, statusAler
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         AccentIcon(Icons.Default.FavoriteBorder, Color(0xFF67D8E8))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                            Text("PERSONA VINCULADA", style = MaterialTheme.typography.labelSmall, color = TextSecondary, letterSpacing = .8.sp)
+                            Text("USUARIO VINCULADO", style = MaterialTheme.typography.labelSmall, color = TextSecondary, letterSpacing = .8.sp)
                             Text(userSession?.displayName.orEmpty(), style = MaterialTheme.typography.titleMedium, color = Color.White)
                             Text("Código: ${userSession?.familyCode.orEmpty()}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         }
@@ -79,7 +79,7 @@ fun ProfileScreen(userSession: UserSession?, activityAlerts: Boolean, statusAler
         }
         SettingsCard {
             SettingsHeading(Icons.Default.NotificationsNone, "Notificaciones", "Elige qué quieres recibir", Color(0xFFFFC778))
-            SettingsSwitch("Inicio de actividades", "Avisos cuando comienza una actividad del horario.", activityAlerts, onActivityAlerts)
+            SettingsSwitch("Inicio de actividades", "Notificar cuando comienza una actividad.", activityAlerts, onActivityAlerts)
             HorizontalDivider(color = DarkCardBorder)
             SettingsSwitch("Cambios de estado", "Avisos sobre los estados compartidos.", statusAlerts, onStatusAlerts)
             Text(if (notificationsAllowed)
@@ -106,7 +106,7 @@ fun ProfileScreen(userSession: UserSession?, activityAlerts: Boolean, statusAler
             Spacer(Modifier.width(8.dp))
             Text("Desvincular cuenta", color = MaterialTheme.colorScheme.error)
         }
-        Text("FindMe · Acompañar desde cerca", color = TextMuted, style = MaterialTheme.typography.labelSmall,
+        Text("FindMe · UtilityForCoders", color = TextMuted, style = MaterialTheme.typography.labelSmall,
             modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp))
     }
     if (confirmUnlink) AlertDialog(onDismissRequest = { confirmUnlink = false },
