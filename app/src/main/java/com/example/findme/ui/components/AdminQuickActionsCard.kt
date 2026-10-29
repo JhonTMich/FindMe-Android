@@ -29,6 +29,7 @@ import com.example.findme.ui.theme.TextPrimary
 @Composable
 fun AdminQuickActionsCard(
     onSetOnTheWay: () -> Unit,
+    onSetOnTheStreet: () -> Unit,
     onSetArrivedHome: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -66,14 +67,31 @@ fun AdminQuickActionsCard(
                     colors = ButtonDefaults.buttonColors(containerColor = AccentWork)
                 ) {
                     Text(
-                        text = "🚶 En camino",
-                        fontSize = 13.sp,
+                        text = "🚶 A casa",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
                 }
 
-                // Button 2: Ya llegué
+                // Button 2: En la calle
+                Button(
+                    onClick = onSetOnTheStreet,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF0A500))
+                ) {
+                    Text(
+                        text = "📍 En la calle",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+
+                // Button 3: Ya llegué
                 Button(
                     onClick = onSetArrivedHome,
                     modifier = Modifier
@@ -83,8 +101,8 @@ fun AdminQuickActionsCard(
                     colors = ButtonDefaults.buttonColors(containerColor = AccentFree)
                 ) {
                     Text(
-                        text = "🏠 Ya llegué",
-                        fontSize = 13.sp,
+                        text = "🏠 Llegué",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )

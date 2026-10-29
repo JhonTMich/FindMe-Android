@@ -1,6 +1,7 @@
 package com.example.findme.data.repository
 
 import android.content.Context
+import android.util.Log
 import com.example.findme.data.local.AppDatabase
 import com.example.findme.data.local.toDto
 import com.example.findme.data.model.ProfileDto
@@ -14,6 +15,18 @@ import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -27,7 +40,7 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 object StatusRepository {
-    val LIMA_ZONE: ZoneId = ZoneId.of("America/Lima")
+    val SYSTEM_ZONE: ZoneId get() = ZoneId.systemDefault()
 
     suspend fun validateFamilyCode(familyCode: String): Result<ProfileDto> {
         return try {
@@ -50,6 +63,23 @@ object StatusRepository {
         }
     }
 
+    suspend fun getAdminProfile(): Result<ProfileDto> {
+        return try {
+            val profiles = SupabaseClientProvider.client.postgrest["profiles"]
+                .select()
+                .decodeList<ProfileDto>()
+
+            val found = profiles.firstOrNull()
+            if (found != null) {
+                Result.success(found)
+            } else {
+                Result.failure(Exception("No se encontró perfil de administrador"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Error de conexión al obtener perfil admin: ${e.message}"))
+        }
+    }
+
     suspend fun fetchSchedules(userId: String, context: Context? = null): List<ScheduleDto> {
         return try {
             SupabaseClientProvider.client.postgrest["schedule"]
@@ -59,6 +89,8 @@ object StatusRepository {
                     }
                 }
                 .decodeList<ScheduleDto>()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             if (context != null) {
                 try {
@@ -82,6 +114,8 @@ object StatusRepository {
                     }
                 }
                 .decodeList<StatusOverrideDto>()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (_: Exception) {
             emptyList()
         }
@@ -96,6 +130,25 @@ object StatusRepository {
                 isActive = true,
                 customLocation = "En camino a casa",
                 customMessage = "De regreso al hogar",
+                expiresAt = expiresAtIso
+            )
+            SupabaseClientProvider.client.postgrest["status_override"].insert(override)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun setOnTheStreetOverride(userId: String): Result<Unit> {
+        return try {
+            clearOverrides(userId)
+            // Expiración configurable, usaremos 2 horas por defecto
+            val expiresAtIso = Instant.now().plusSeconds(2 * 3600).toString()
+            val override = StatusOverrideDto(
+                userId = userId,
+                isActive = true,
+                customLocation = "En la calle",
+                customMessage = "Fuera de casa",
                 expiresAt = expiresAtIso
             )
             SupabaseClientProvider.client.postgrest["status_override"].insert(override)
@@ -128,95 +181,85 @@ object StatusRepository {
         displayName: String,
         schedules: List<ScheduleDto>,
         selectedDayOfWeek: Int
-    ): Flow<UserCurrentStatus> = flow {
-        var cachedOverrides = fetchOverrides(userId)
-
-        emit(calculateStatus(displayName, schedules, cachedOverrides, selectedDayOfWeek))
-
-        try {
-            val channel = SupabaseClientProvider.client.realtime.channel("status-repo-$userId") {}
-            val realtimeFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public")
-            channel.subscribe()
-
-            coroutineScope {
-                launch {
-                    realtimeFlow.collect {
-                        cachedOverrides = fetchOverrides(userId)
-                        emit(
-                            calculateStatus(
-                                displayName,
-                                schedules,
-                                cachedOverrides,
-                                selectedDayOfWeek
-                            )
-                        )
-                    }
-                }
-            }
-        } catch (_: Exception) {
-            // Fallback en caso de error en Realtime
-        }
-
-        while (true) {
-            delay(15_000)
-            emit(calculateStatus(displayName, schedules, cachedOverrides, selectedDayOfWeek))
-        }
-    }
+    ): Flow<UserCurrentStatus> = observeStatusWithClock(
+        displayName = displayName,
+        schedules = flowOf(schedules),
+        overrides = observeRemoteValues(userId, "overrides") { fetchOverrides(userId) },
+        selectedDayOfWeek = selectedDayOfWeek
+    )
 
     fun observeCurrentStatus(
         userId: String,
         displayName: String,
         selectedDayOfWeek: Int
-    ): Flow<UserCurrentStatus> = flow {
-        emit(
-            UserCurrentStatus.Loading(
-                displayName = displayName,
-                selectedDayOfWeek = selectedDayOfWeek
-            )
-        )
+    ): Flow<UserCurrentStatus> = observeStatusWithClock(
+        displayName = displayName,
+        schedules = observeRemoteValues(userId, "schedules") { fetchSchedules(userId) },
+        overrides = observeRemoteValues(userId, "overrides") { fetchOverrides(userId) },
+        selectedDayOfWeek = selectedDayOfWeek
+    )
 
-        val cachedSchedules = fetchSchedules(userId)
-        val cachedOverrides = fetchOverrides(userId)
+    // The clock runs independently of database traffic and WebSocket subscriptions.
+    internal fun observeStatusWithClock(
+        displayName: String,
+        schedules: Flow<List<ScheduleDto>>,
+        overrides: Flow<List<StatusOverrideDto>>,
+        selectedDayOfWeek: Int,
+        ticks: Flow<ZonedDateTime> = systemClockTicks()
+    ): Flow<UserCurrentStatus> = combine(schedules, overrides, ticks) { currentSchedules, currentOverrides, now ->
+        calculateStatus(displayName, currentSchedules, currentOverrides, selectedDayOfWeek, now)
+    }.distinctUntilChanged()
 
-        emit(calculateStatus(displayName, cachedSchedules, cachedOverrides, selectedDayOfWeek))
+    private fun systemClockTicks(): Flow<ZonedDateTime> = flow {
+        while (true) {
+            emit(ZonedDateTime.now(SYSTEM_ZONE))
+            delay(15_000)
+        }
+    }
 
-        try {
-            val channel = SupabaseClientProvider.client.realtime.channel("status-repo-$userId") {}
-            val realtimeFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public")
-            channel.subscribe()
-
-            coroutineScope {
-                launch {
-                    realtimeFlow.collect {
-                        val latestSchedules = fetchSchedules(userId)
-                        val latestOverrides = fetchOverrides(userId)
-                        emit(
-                            calculateStatus(
-                                displayName,
-                                latestSchedules,
-                                latestOverrides,
-                                selectedDayOfWeek
-                            )
-                        )
+    private fun <T> observeRemoteValues(
+        userId: String,
+        source: String,
+        fetch: suspend () -> T
+    ): Flow<T> = channelFlow {
+        val refreshMutex = Mutex()
+        suspend fun refresh() = refreshMutex.withLock { send(fetch()) }
+        refresh()
+        // Polling remains available even when a subscribed socket is silent or reconnecting.
+        launch {
+            while (isActive) {
+                delay(15_000)
+                refresh()
+            }
+        }
+        launch {
+            try {
+                val client = SupabaseClientProvider.client
+                val channel = client.realtime.channel("status-$source-$userId-${java.util.UUID.randomUUID()}") {}
+                try {
+                    coroutineScope {
+                        val changes = channel.postgresChangeFlow<PostgresAction>(schema = "public")
+                        launch { changes.collect { refresh() } }
+                        channel.subscribe()
+                        awaitCancellation()
+                    }
+                } finally {
+                    withContext(NonCancellable) {
+                        withTimeoutOrNull(2_000) { client.realtime.removeChannel(channel) }
                     }
                 }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                Log.w("StatusRepository", "Realtime unavailable; continuing to poll", error)
             }
-        } catch (_: Exception) {
-            // Fallback en caso de error en Realtime
-        }
-
-        while (true) {
-            delay(15_000)
-            val latestSchedules = fetchSchedules(userId)
-            val latestOverrides = fetchOverrides(userId)
-            emit(calculateStatus(displayName, latestSchedules, latestOverrides, selectedDayOfWeek))
         }
     }
 
     suspend fun getDirectCurrentStatus(
         userId: String,
         displayName: String,
-        selectedDayOfWeek: Int = ZonedDateTime.now(LIMA_ZONE).dayOfWeek.value,
+        selectedDayOfWeek: Int = ZonedDateTime.now(SYSTEM_ZONE).dayOfWeek.value,
         context: Context? = null
     ): UserCurrentStatus {
         val schedules = fetchSchedules(userId, context)
@@ -229,7 +272,7 @@ object StatusRepository {
         schedules: List<ScheduleDto>,
         overrides: List<StatusOverrideDto>,
         selectedDayOfWeek: Int,
-        nowInLima: ZonedDateTime = ZonedDateTime.now(LIMA_ZONE)
+        nowInLima: ZonedDateTime = ZonedDateTime.now(SYSTEM_ZONE)
     ): UserCurrentStatus {
         val todayLimaDay = nowInLima.dayOfWeek.value
         val currentTime = nowInLima.toLocalTime()
@@ -238,7 +281,7 @@ object StatusRepository {
             .filter { it.dayOfWeek == selectedDayOfWeek }
             .sortedBy { parseLocalTimeOrNull(it.startTime) ?: LocalTime.MIN }
 
-        // Paso 1 (Override)
+        // Find an unexpired manual announcement without overriding the schedule.
         val activeOverride = overrides
             .filter { it.isActive }
             .firstOrNull { overrideDto ->
@@ -258,27 +301,7 @@ object StatusRepository {
             } else false
         }
 
-        if (activeOverride != null) {
-            val concurrentVirtualClass = if (currentSchedule != null && (
-                    currentSchedule.modality.equals("virtual", ignoreCase = true) ||
-                    currentSchedule.location.contains("virtual", ignoreCase = true) ||
-                    currentSchedule.category.equals("virtual", ignoreCase = true)
-                )) {
-                currentSchedule
-            } else null
-
-            return UserCurrentStatus.Override(
-                displayName = displayName,
-                customLocation = activeOverride.customLocation,
-                customMessage = activeOverride.customMessage,
-                expiresAt = activeOverride.expiresAt,
-                concurrentVirtualClass = concurrentVirtualClass,
-                selectedDayOfWeek = selectedDayOfWeek,
-                todaySchedules = daySchedules
-            )
-        }
-
-        // Paso 2 (Schedule UPAO para el día actual)
+        // An activity is active from its start time (inclusive) until its end (exclusive).
         if (currentSchedule != null) {
             val start = parseLocalTimeOrNull(currentSchedule.startTime) ?: currentTime
             val end = parseLocalTimeOrNull(currentSchedule.endTime) ?: currentTime
@@ -297,7 +320,19 @@ object StatusRepository {
             )
         }
 
-        // Paso 3 (Fallback: Tiempo libre / En casa)
+        // Manual announcements apply when there is no activity in progress.
+        if (activeOverride != null) {
+            return UserCurrentStatus.Override(
+                displayName = displayName,
+                customLocation = activeOverride.customLocation,
+                customMessage = activeOverride.customMessage,
+                expiresAt = activeOverride.expiresAt,
+                selectedDayOfWeek = selectedDayOfWeek,
+                todaySchedules = daySchedules
+            )
+        }
+
+        // No scheduled activity or active announcement.
         return UserCurrentStatus.FreeTime(
             displayName = displayName,
             selectedDayOfWeek = selectedDayOfWeek,
@@ -306,18 +341,13 @@ object StatusRepository {
     }
 
     fun parseLocalTimeOrNull(timeStr: String): LocalTime? {
+        val normalized = timeStr.trim().let { value ->
+            // Preserve support for a single-digit hour, while accepting PostgreSQL fractional seconds.
+            if (value.indexOf(':') == 1) "0$value" else value
+        }
         return try {
-            val trimmed = timeStr.trim()
-            val parts = trimmed.split(":")
-            if (parts.size >= 2) {
-                val hour = parts[0].toInt()
-                val minute = parts[1].toInt()
-                val second = if (parts.size >= 3) parts[2].toInt() else 0
-                LocalTime.of(hour, minute, second)
-            } else {
-                LocalTime.parse(trimmed)
-            }
-        } catch (_: Exception) {
+            LocalTime.parse(normalized)
+        } catch (_: java.time.format.DateTimeParseException) {
             null
         }
     }

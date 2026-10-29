@@ -26,7 +26,7 @@ class ScheduleViewModel(application: Application) : AndroidViewModel(application
     private val db = AppDatabase.getDatabase(application)
     private val scheduleRepository = ScheduleRepository(db.scheduleDao())
     private val userPrefsRepo = UserPreferencesRepository(application)
-    private val todayLimaDay = ZonedDateTime.now(StatusRepository.LIMA_ZONE).dayOfWeek.value
+    private val todayLimaDay = ZonedDateTime.now(StatusRepository.SYSTEM_ZONE).dayOfWeek.value
 
     private val _selectedDay = MutableStateFlow(todayLimaDay)
     val selectedDay: StateFlow<Int> = _selectedDay.asStateFlow()

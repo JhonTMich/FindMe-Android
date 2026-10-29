@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -17,6 +18,12 @@ interface ScheduleDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertSchedules(schedules: List<ScheduleEntity>)
+
+    @Transaction
+    fun replaceUserSchedules(userId: String, schedules: List<ScheduleEntity>) {
+        clearUserSchedule(userId)
+        insertSchedules(schedules)
+    }
 
     @Query("DELETE FROM schedules WHERE userId = :userId")
     fun clearUserSchedule(userId: String)

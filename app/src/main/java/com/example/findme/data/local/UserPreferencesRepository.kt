@@ -27,6 +27,8 @@ class UserPreferencesRepository(private val context: Context) {
         private val KEY_DISPLAY_NAME = stringPreferencesKey("display_name")
         private val KEY_FAMILY_CODE = stringPreferencesKey("family_code")
         private val KEY_MOTHER_NAME = stringPreferencesKey("mother_name")
+        private val KEY_ACTIVITY_ALERTS = booleanPreferencesKey("activity_alerts")
+        private val KEY_STATUS_ALERTS = booleanPreferencesKey("status_alerts")
         private val KEY_IS_ADMIN_ROLE = booleanPreferencesKey("is_admin_role")
 
         const val ADMIN_PASSWORD = "1234"
@@ -52,6 +54,15 @@ class UserPreferencesRepository(private val context: Context) {
 
     val isAdminRoleFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_IS_ADMIN_ROLE] ?: false
+    }
+
+    val activityAlerts = context.dataStore.data.map { it[KEY_ACTIVITY_ALERTS] ?: true }
+    val statusAlerts = context.dataStore.data.map { it[KEY_STATUS_ALERTS] ?: true }
+    suspend fun setActivityAlerts(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_ACTIVITY_ALERTS] = enabled }
+    }
+    suspend fun setStatusAlerts(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_STATUS_ALERTS] = enabled }
     }
 
     suspend fun getUserSession(): UserSession? {

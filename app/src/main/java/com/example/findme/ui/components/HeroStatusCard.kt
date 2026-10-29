@@ -1,650 +1,101 @@
 package com.example.findme.ui.components
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.findme.data.model.ActivityCategory
 import com.example.findme.domain.model.UserCurrentStatus
-import com.example.findme.ui.theme.AccentFree
-import com.example.findme.ui.theme.AccentUniversity
-import com.example.findme.ui.theme.AccentWork
-import com.example.findme.ui.theme.DarkCardBg
-import com.example.findme.ui.theme.DarkCardBorder
-import com.example.findme.ui.theme.DarkInnerBg
-import com.example.findme.ui.theme.TextPrimary
-import com.example.findme.ui.theme.TextSecondary
+import com.example.findme.ui.theme.*
 
 fun formatDurationMinutes(minutes: Long): String {
-    if (minutes <= 0) return "0m"
-    val hours = minutes / 60
-    val mins = minutes % 60
-    return if (hours > 0) {
-        if (mins > 0) "${hours}h ${mins}m" else "${hours}h"
-    } else {
-        "${mins}m"
-    }
+    val value = minutes.coerceAtLeast(0)
+    return if (value >= 60) "${value / 60} h ${value % 60} min" else "$value min"
 }
 
 @Composable
-fun HeroStatusCard(
-    status: UserCurrentStatus,
-    modifier: Modifier = Modifier
-) {
-    val transition = rememberInfiniteTransition(label = "pulse")
-    val alphaPulse by transition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "alphaPulse"
-    )
-
-    when (status) {
-        is UserCurrentStatus.InClass -> {
-            InClassHeroCard(
-                status = status,
-                alphaPulse = alphaPulse,
-                modifier = modifier
-            )
-        }
-        is UserCurrentStatus.Override -> {
-            OverrideHeroCard(
-                status = status,
-                alphaPulse = alphaPulse,
-                modifier = modifier
-            )
-        }
-        is UserCurrentStatus.FreeTime -> {
-            FreeTimeHeroCard(
-                status = status,
-                alphaPulse = alphaPulse,
-                modifier = modifier
-            )
-        }
-        is UserCurrentStatus.Loading -> {
-            LoadingHeroCard(modifier = modifier)
-        }
-        is UserCurrentStatus.Error -> {
-            ErrorHeroCard(message = status.message, modifier = modifier)
-        }
+fun HeroStatusCard(status: UserCurrentStatus, modifier: Modifier = Modifier) {
+    val accent = when (status) {
+        is UserCurrentStatus.InClass -> IndigoPrimary
+        is UserCurrentStatus.Override -> Color(0xFF67D8E8)
+        else -> StatusGreenText
     }
-}
-
-@Composable
-private fun InClassHeroCard(
-    status: UserCurrentStatus.InClass,
-    alphaPulse: Float,
-    modifier: Modifier = Modifier
-) {
-    val startFmt = formatTimeAmPm(status.currentSchedule.startTime)
-    val endFmt = formatTimeAmPm(status.currentSchedule.endTime)
-    val category = ActivityCategory.fromKey(status.currentSchedule.category, status.currentSchedule.title)
-
-    val (mainTitle, subtitleText) = when (category) {
-        ActivityCategory.WORK -> Pair(
-            "${status.displayName} está trabajando",
-            status.currentSchedule.title
-        )
-        ActivityCategory.UNIVERSITY -> Pair(
-            "${status.displayName} está en la Universidad",
-            "Clase de ${status.currentSchedule.title}"
-        )
-        ActivityCategory.FREE -> Pair(
-            "${status.displayName} está libre / en descanso",
-            status.currentSchedule.title
-        )
-    }
-
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
-        border = BorderStroke(1.dp, DarkCardBorder)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(22.dp)
-        ) {
-            // Header Badges
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Live Dot + Status
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = category.accentColor.copy(alpha = 0.15f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .alpha(alphaPulse)
-                                .background(category.accentColor, CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "EN VIVO AHORA",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = category.accentColor,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
+    Card(modifier.fillMaxWidth().animateContentSize(), shape = RoundedCornerShape(28.dp),
+        border = BorderStroke(1.dp, accent.copy(alpha = .28f)), colors = CardDefaults.cardColors(containerColor = Color.Transparent)) {
+        Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFF25264F), Color(0xFF142A35), Color(0xFF121D2D))))) {
+            Canvas(Modifier.matchParentSize()) {
+                val center = Offset(size.width * .99f, size.height * .22f)
+                listOf(.23f, .37f, .52f, .68f).forEach { radius ->
+                    drawCircle(accent.copy(alpha = .08f), size.width * radius, center, style = Stroke(1.dp.toPx()))
                 }
-
-                // Category Badge
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = category.accentColor.copy(alpha = 0.15f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = category.icon,
-                            contentDescription = null,
-                            tint = category.accentColor,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = category.label,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = category.accentColor
-                        )
-                    }
-                }
+                drawCircle(accent.copy(alpha = .07f), size.width * .32f, center)
+                drawCircle(accent.copy(alpha = .5f), 4.dp.toPx(), Offset(size.width * .83f, size.height * .3f))
             }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Main Title
-            Text(
-                text = mainTitle,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Subtitle
-            Text(
-                text = subtitleText,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextSecondary
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Location Chip
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = DarkInnerBg
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = null,
-                        tint = category.accentColor,
-                        modifier = Modifier.size(15.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = status.currentSchedule.location,
-                        fontSize = 12.sp,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Progress Section Box
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = DarkInnerBg,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    // Top Time Range + Remaining Pill
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            modifier = Modifier.weight(1f, fill = false),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Schedule,
-                                contentDescription = null,
-                                tint = category.accentColor,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "$startFmt - $endFmt",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Surface(
-                            shape = RoundedCornerShape(50),
-                            color = category.accentColor
-                        ) {
-                            Text(
-                                text = "Termina en ${formatDurationMinutes(status.remainingMinutes)}",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                            )
+            Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(shape = RoundedCornerShape(18.dp), color = Color.White.copy(alpha = .09f), border = BorderStroke(1.dp, Color.White.copy(alpha = .12f))) {
+                        Box(Modifier.size(50.dp), contentAlignment = Alignment.Center) {
+                            Text(status.displayName.take(1).uppercase(), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Progress Bar
-                    LinearProgressIndicator(
-                        progress = { status.progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp)
-                            .clip(CircleShape),
-                        color = category.accentColor,
-                        trackColor = category.accentColor.copy(alpha = 0.2f)
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Bottom Row Details
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Inicio: $startFmt",
-                            fontSize = 11.sp,
-                            color = TextSecondary
-                        )
-
-                        Text(
-                            text = "${(status.progress * 100).toInt()}% completado",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = category.accentColor
-                        )
-
-                        Text(
-                            text = "Fin: $endFmt",
-                            fontSize = 11.sp,
-                            color = TextSecondary
-                        )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("ESTADO ACTUAL", style = MaterialTheme.typography.labelSmall, color = Color(0xFFB7BFDE), letterSpacing = 1.5.sp)
+                        Text(status.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
                     }
+                }
+                StatusPill(when (status) {
+                    is UserCurrentStatus.InClass -> "Actividad en curso"
+                    is UserCurrentStatus.Override -> "Estado compartido"
+                    is UserCurrentStatus.Loading -> "Consultando"
+                    is UserCurrentStatus.Error -> "Sin información"
+                    else -> "Según el horario"
+                }, accent, status is UserCurrentStatus.InClass || status is UserCurrentStatus.Override)
+                val title = when (status) {
+                    is UserCurrentStatus.InClass -> status.currentSchedule.title
+                    is UserCurrentStatus.Override -> status.customLocation
+                    is UserCurrentStatus.Loading -> "Consultando actividad…"
+                    is UserCurrentStatus.Error -> "Estado no disponible"
+                    else -> "Sin actividad en curso"
+                }
+                Text(title, fontSize = 26.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(when (status) {
+                    is UserCurrentStatus.InClass -> listOf(status.currentSchedule.location,
+                        "Termina en ${formatDurationMinutes(status.remainingMinutes)}").filter { it.isNotBlank() }.joinToString(" · ")
+                    is UserCurrentStatus.Override -> status.customMessage ?: "Estado compartido por la persona vinculada"
+                    is UserCurrentStatus.Loading -> "Preparando la información de hoy"
+                    is UserCurrentStatus.Error -> status.message
+                    else -> "Según el horario de hoy. La ubicación no está confirmada."
+                }, style = MaterialTheme.typography.bodyMedium, color = Color(0xFFBDCADE))
+                if (status is UserCurrentStatus.InClass) {
+                    val progress by animateFloatAsState(status.progress.coerceIn(0f, 1f), tween(800), label = "activityProgress")
+                    LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(5.dp),
+                        color = accent, trackColor = Color.White.copy(alpha = .1f))
+                }
+                HorizontalDivider(color = Color.White.copy(alpha = .1f))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(if (status is UserCurrentStatus.Override) Icons.Default.Forum else Icons.Default.CalendarToday, null,
+                        tint = accent, modifier = Modifier.size(15.dp))
+                    Text(if (status is UserCurrentStatus.Override) "Información compartida" else "Información del horario de hoy",
+                        style = MaterialTheme.typography.labelSmall, color = Color(0xFFBDCADE))
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun OverrideHeroCard(
-    status: UserCurrentStatus.Override,
-    alphaPulse: Float,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
-        border = BorderStroke(1.dp, DarkCardBorder)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(22.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = AccentWork.copy(alpha = 0.15f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .alpha(alphaPulse)
-                                .background(AccentWork, CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "EN VIVO AHORA",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentWork,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = AccentWork.copy(alpha = 0.15f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = AccentWork,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Aviso Especial",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = AccentWork
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Text(
-                text = "${status.displayName} está en:",
-                fontSize = 15.sp,
-                color = TextSecondary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = status.customLocation,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-
-            if (!status.customMessage.isNullOrEmpty()) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = DarkInnerBg
-                ) {
-                    Text(
-                        text = "💬 \"${status.customMessage}\"",
-                        fontSize = 13.sp,
-                        color = TextSecondary,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
-            }
-
-            // Dual Status Badge: Virtual Class while on the way
-            if (status.concurrentVirtualClass != null) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = AccentUniversity.copy(alpha = 0.2f),
-                    border = BorderStroke(1.dp, AccentUniversity.copy(alpha = 0.5f))
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "🎧",
-                            fontSize = 16.sp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "En clase virtual: ${status.concurrentVirtualClass.title}",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentUniversity
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FreeTimeHeroCard(
-    status: UserCurrentStatus.FreeTime,
-    alphaPulse: Float,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
-        border = BorderStroke(1.dp, DarkCardBorder)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(22.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = AccentFree.copy(alpha = 0.15f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .alpha(alphaPulse)
-                                .background(AccentFree, CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "EN VIVO AHORA",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = AccentFree,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = AccentFree.copy(alpha = 0.15f)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Home,
-                            contentDescription = null,
-                            tint = AccentFree,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Tiempo Libre",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = AccentFree
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Text(
-                text = "${status.displayName} está en Casa",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                color = AccentFree
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Sin clases programadas en este momento 🏠",
-                fontSize = 13.sp,
-                color = TextSecondary
-            )
-        }
-    }
-}
-
-@Composable
-private fun LoadingHeroCard(modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
-        border = BorderStroke(1.dp, DarkCardBorder)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Consultando estado...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary
-            )
-        }
-    }
-}
-
-@Composable
-private fun ErrorHeroCard(message: String, modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCardBg),
-        border = BorderStroke(1.dp, DarkCardBorder)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(22.dp)
-        ) {
-            Text(
-                text = "Error al obtener estado",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.error
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = message,
-                fontSize = 12.sp,
-                color = TextSecondary
-            )
-        }
-    }
-}
-
-private fun formatTimeAmPm(timeStr: String): String {
-    return try {
-        val parts = timeStr.trim().split(":")
-        if (parts.size >= 2) {
-            val hour = parts[0].toInt()
-            val minute = parts[1].toInt()
-            val amPm = if (hour >= 12) "PM" else "AM"
-            val hour12 = when {
-                hour == 0 -> 12
-                hour > 12 -> hour - 12
-                else -> hour
-            }
-            String.format("%02d:%02d %s", hour12, minute, amPm)
-        } else timeStr
-    } catch (_: Exception) {
-        timeStr
     }
 }
