@@ -77,7 +77,7 @@ fun ScheduleTimelineCard(
     modifier: Modifier = Modifier
 ) {
     val items = if (schedules.isNotEmpty()) {
-        val nowInLima = ZonedDateTime.now(StatusRepository.LIMA_ZONE).toLocalTime()
+        val nowInLima = ZonedDateTime.now(StatusRepository.SYSTEM_ZONE).toLocalTime()
         schedules.map { dto ->
             val start = StatusRepository.parseLocalTimeOrNull(dto.startTime) ?: LocalTime.MIN
             val end = StatusRepository.parseLocalTimeOrNull(dto.endTime) ?: LocalTime.MAX

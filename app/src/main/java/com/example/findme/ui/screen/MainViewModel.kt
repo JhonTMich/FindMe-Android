@@ -28,6 +28,10 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import androidx.work.WorkManager
 import java.time.LocalTime
 import java.time.ZonedDateTime
 
@@ -37,7 +41,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val db = AppDatabase.getDatabase(application)
     private val scheduleRepository = ScheduleRepository(db.scheduleDao())
     private val userPrefsRepo = UserPreferencesRepository(application)
-    private val todayLimaDay = ZonedDateTime.now(StatusRepository.LIMA_ZONE).dayOfWeek.value
+    val activityAlerts = userPrefsRepo.activityAlerts.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val statusAlerts = userPrefsRepo.statusAlerts.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    fun setActivityAlerts(enabled: Boolean) { viewModelScope.launch { userPrefsRepo.setActivityAlerts(enabled) } }
+    fun setStatusAlerts(enabled: Boolean) { viewModelScope.launch { userPrefsRepo.setStatusAlerts(enabled) } }
+    private val systemDay = flow {
+        while (true) {
+            emit(java.time.LocalDate.now().dayOfWeek.value)
+            delay(15_000)
+        }
+    }.distinctUntilChanged()
+    private val todayLimaDay = ZonedDateTime.now(StatusRepository.SYSTEM_ZONE).dayOfWeek.value
 
     val userSession: StateFlow<UserSession?> = userPrefsRepo.userSessionFlow
         .stateIn(
@@ -55,6 +69,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _selectedDay = MutableStateFlow(todayLimaDay)
     val selectedDay: StateFlow<Int> = _selectedDay.asStateFlow()
+
+    private val _syncError = MutableStateFlow<String?>(null)
+    val syncError = _syncError.asStateFlow()
 
     private val _isSyncingSchedules = MutableStateFlow(false)
     val isLoadingSchedules: StateFlow<Boolean> = _isSyncingSchedules.asStateFlow()
@@ -84,7 +101,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         initialValue = emptyList()
     )
 
-    val uiState: StateFlow<UserCurrentStatus> = combine(userSession, _selectedDay, allSchedulesStream) { session, day, schedules ->
+    val uiState: StateFlow<UserCurrentStatus> = combine(userSession, systemDay, allSchedulesStream) { session, day, schedules ->
         Triple(session, day, schedules)
     }.flatMapLatest { (session, day, schedules) ->
         if (session != null) {
@@ -118,7 +135,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             var previousState: UserCurrentStatus? = null
             uiState.collect { state ->
                 val wasAdmin = isAdminRole.value
-                if (!wasAdmin && previousState != null) {
+                if (!wasAdmin && statusAlerts.value && previousState != null) {
                     val prevOverride = previousState as? UserCurrentStatus.Override
                     val currOverride = state as? UserCurrentStatus.Override
 
@@ -132,7 +149,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         NotificationHelper.showStatusNotification(
                             getApplication(),
                             "Actualización de Estado",
-                            "${state.displayName} ha llegado a su destino (Ya llegué)."
+                            when (state) {
+                                is UserCurrentStatus.InClass -> "${state.displayName}: ${state.currentSchedule.title} está en curso."
+                                else -> "${state.displayName}: ya no hay un estado compartido activo."
+                            }
                         )
                     }
                 }
@@ -144,9 +164,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         // Programar alertas de Room (WorkManager)
         viewModelScope.launch {
-            allSchedulesStream.collect { schedules ->
-                if (schedules.isNotEmpty() && !isAdminRole.value) {
+            combine(allSchedulesStream, activityAlerts, isAdminRole, userSession) { schedules, enabled, admin, session ->
+                if (enabled && !admin && session != null) schedules else emptyList()
+            }.collect { schedules ->
+                if (schedules.isNotEmpty()) {
                     ScheduleNotifier.scheduleAlertsForSchedules(getApplication(), schedules)
+                } else {
+                    WorkManager.getInstance(getApplication()).cancelAllWorkByTag("class_alert")
                 }
             }
         }
@@ -155,8 +179,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun syncScheduleFromNetwork(userId: String) {
         viewModelScope.launch {
             _isSyncingSchedules.value = true
-            scheduleRepository.syncScheduleFromNetwork(userId)
-            _isSyncingSchedules.value = false
+            _syncError.value = null
+            try {
+                val result = scheduleRepository.syncScheduleFromNetwork(userId)
+                if (userSession.value?.userId == userId && result.isFailure) {
+                    _syncError.value = "No se pudo sincronizar. Se muestra el horario guardado; pulsa actualizar para reintentar."
+                }
+            } finally {
+                _isSyncingSchedules.value = false
+            }
         }
     }
 

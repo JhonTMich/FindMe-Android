@@ -15,7 +15,7 @@ object ScheduleNotifier {
         val workManager = WorkManager.getInstance(context)
         workManager.cancelAllWorkByTag("class_alert")
         
-        val now = ZonedDateTime.now(StatusRepository.LIMA_ZONE)
+        val now = ZonedDateTime.now(StatusRepository.SYSTEM_ZONE)
         
         schedules.forEach { schedule ->
             val startTime = StatusRepository.parseLocalTimeOrNull(schedule.startTime) ?: return@forEach

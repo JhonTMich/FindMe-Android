@@ -46,7 +46,7 @@ fun DayScheduleSelector(
     onDaySelected: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val todayLimaDay = ZonedDateTime.now(StatusRepository.LIMA_ZONE).dayOfWeek.value
+    val todayLimaDay = ZonedDateTime.now(StatusRepository.SYSTEM_ZONE).dayOfWeek.value
 
     val days = listOf(
         DayItem(1, "LUN", "Lunes", todayLimaDay == 1),

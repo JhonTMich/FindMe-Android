@@ -70,7 +70,7 @@ fun ScheduleItemCard(
     val startFmt = schedule.startTime.take(5)
     val endFmt = schedule.endTime.take(5)
 
-    val nowInLima = ZonedDateTime.now(StatusRepository.LIMA_ZONE).toLocalTime()
+    val nowInLima = ZonedDateTime.now(StatusRepository.SYSTEM_ZONE).toLocalTime()
     val startTime = StatusRepository.parseLocalTimeOrNull(schedule.startTime) ?: LocalTime.MIN
     val endTime = StatusRepository.parseLocalTimeOrNull(schedule.endTime) ?: LocalTime.MAX
 

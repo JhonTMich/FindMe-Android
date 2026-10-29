@@ -8,6 +8,7 @@ import com.example.findme.data.model.ScheduleDto
 import com.example.findme.data.network.SupabaseClientProvider
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
@@ -19,7 +20,7 @@ class ScheduleRepository(private val scheduleDao: ScheduleDao) {
     fun getSchedulesByDayStream(userId: String, dayOfWeek: Int): Flow<List<ScheduleEntity>> =
         scheduleDao.getSchedulesByDayFlow(userId, dayOfWeek)
 
-    suspend fun syncScheduleFromNetwork(userId: String) = withContext(Dispatchers.IO) {
+    suspend fun syncScheduleFromNetwork(userId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             val remoteSchedules = SupabaseClientProvider.client.postgrest["schedule"]
                 .select {
@@ -29,12 +30,13 @@ class ScheduleRepository(private val scheduleDao: ScheduleDao) {
                 }
                 .decodeList<ScheduleDto>()
 
-            if (remoteSchedules.isNotEmpty()) {
-                val entities = remoteSchedules.map { it.toEntity(userId) }
-                scheduleDao.insertSchedules(entities)
-            }
+            scheduleDao.replaceUserSchedules(userId, remoteSchedules.map { it.toEntity(userId) })
+            Result.success(Unit)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (e: Exception) {
             Log.e("ScheduleRepository", "Error syncing schedule from network: ${e.message}", e)
+            Result.failure(e)
         }
     }
 
