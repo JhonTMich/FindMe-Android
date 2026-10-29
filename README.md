@@ -2,7 +2,7 @@
 
 Aplicación Kotlin con Jetpack Compose para consultar la actividad de una persona vinculada mediante un código. Esta versión concentra la interfaz en la persona que monitorea.
 
-Versión actual: **1.2** (`versionCode = 2`).
+Versión actual: **1.2.1** (`versionCode = 3`).
 
 ## Flujo de trabajo
 
@@ -27,7 +27,11 @@ El estado principal prioriza la actividad cuyo intervalo contiene la hora actual
 
 ## Actualizaciones desde GitHub
 
-Al iniciar una instancia de la app, se consulta `https://api.github.com/repos/JhonTMich/FindMe-Android/releases/latest`, en segundo plano y con tiempos de espera. También se puede comprobar manualmente desde Perfil. Una actualización disponible muestra su versión y notas; el botón abre la página del release para descargarla. La app no instala el APK automáticamente.
+Al iniciar una instancia de la app, se consulta `https://api.github.com/repos/JhonTMich/FindMe-Android/releases/latest`, en segundo plano y con tiempos de espera. También se puede comprobar manualmente desde Perfil. Una actualización disponible muestra un único aviso breve con el botón Actualizar, sin notas de parche ni enlaces al repositorio. Al aceptarlo, la app descarga el APK y muestra el progreso en ese mismo aviso. Antes de abrir el instalador de Android comprueba el tamaño, el SHA-256 publicado por GitHub cuando está disponible, el identificador del paquete, la versión y la firma del APK.
+
+La primera vez Android puede pedir autorizar a FindMe para instalar aplicaciones; al regresar se continúa con el APK ya descargado. La instalación requiere la confirmación que Android solicita. Si la app está en segundo plano, espera a que vuelva a estar visible para abrir el instalador. No requiere permisos generales de almacenamiento y solo comparte el APK mediante un FileProvider limitado a su carpeta de actualizaciones. Una descarga interrumpida se puede reintentar.
+
+Las instalaciones de la versión 1.2 todavía contienen el flujo anterior. Para habilitar este nuevo actualizador hay que instalar esta corrección una primera vez; las versiones siguientes podrán descargarse desde la app.
 
 Para distribuir una nueva versión:
 

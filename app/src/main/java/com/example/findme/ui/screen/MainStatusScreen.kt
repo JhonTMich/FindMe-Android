@@ -37,7 +37,7 @@ import java.util.Locale
 
 @Composable
 fun MainStatusScreen(viewModel: MainViewModel, updateState: UpdateState, onCheckUpdate: () -> Unit,
-    onOpenRelease: () -> Unit, modifier: Modifier = Modifier) {
+    onInstallUpdate: () -> Unit, modifier: Modifier = Modifier) {
     val status by viewModel.uiState.collectAsStateWithLifecycle()
     val day by viewModel.selectedDay.collectAsStateWithLifecycle()
     val session by viewModel.userSession.collectAsStateWithLifecycle()
@@ -74,7 +74,7 @@ fun MainStatusScreen(viewModel: MainViewModel, updateState: UpdateState, onCheck
         Crossfade(targetState = tab, modifier = Modifier.fillMaxSize().padding(padding), animationSpec = tween(230), label = "navigation") { activeTab ->
             if (activeTab == "perfil") {
                 ProfileScreen(session, activityAlerts, statusAlerts, viewModel::setActivityAlerts, viewModel::setStatusAlerts,
-                    updateState, onCheckUpdate, onOpenRelease, viewModel::logout)
+                    updateState, onCheckUpdate, onInstallUpdate, viewModel::logout)
             } else {
                 val visible = if (activeTab == "hoy") status.todaySchedules else selectedSchedules
                 LazyColumn(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF10172A), DarkBackground), endY = 1000f)), contentPadding = PaddingValues(20.dp),
