@@ -82,8 +82,8 @@ fun MainStatusScreen(viewModel: MainViewModel, updateState: UpdateState, onCheck
                     if (activeTab == "hoy") {
                         item {
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text("CERCA, INCLUSO A LA DISTANCIA", style = MaterialTheme.typography.labelSmall, color = IndigoPrimary, letterSpacing = 1.sp)
-                                Text("Su día, a tu alcance", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                                Text("SIEMPRE CERCA", style = MaterialTheme.typography.labelSmall, color = IndigoPrimary, letterSpacing = 1.sp)
+                                Text("Actividades de Hoy", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                                 Text(LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es"))), color = TextSecondary)
                             }
                         }
