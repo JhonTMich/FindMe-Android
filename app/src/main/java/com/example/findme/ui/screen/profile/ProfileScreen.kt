@@ -37,7 +37,7 @@ import com.example.findme.ui.theme.*
 @Composable
 fun ProfileScreen(userSession: UserSession?, activityAlerts: Boolean, statusAlerts: Boolean,
     onActivityAlerts: (Boolean) -> Unit, onStatusAlerts: (Boolean) -> Unit,
-    updateState: UpdateState, onCheckUpdate: () -> Unit, onOpenRelease: () -> Unit,
+    updateState: UpdateState, onCheckUpdate: () -> Unit, onInstallUpdate: () -> Unit,
     onLogout: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var notificationsAllowed by remember { mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled()) }
@@ -95,10 +95,10 @@ fun ProfileScreen(userSession: UserSession?, activityAlerts: Boolean, statusAler
             StatusPill("FindMe ${BuildConfig.VERSION_NAME}", Color(0xFF67D8E8))
             Text(updateState.message, style = MaterialTheme.typography.bodyMedium)
             if (updateState.checking) LinearProgressIndicator(Modifier.fillMaxWidth())
-            OutlinedButton(onClick = onCheckUpdate, enabled = !updateState.checking) {
+            OutlinedButton(onClick = onCheckUpdate, enabled = !updateState.checking && !updateState.downloading) {
                 Text(if (updateState.checking) "Comprobando…" else "Buscar actualizaciones")
             }
-            if (updateState.release != null) TextButton(onClick = onOpenRelease) { Text("Ver nueva versión") }
+            if (updateState.release != null && !updateState.downloading) TextButton(onClick = onInstallUpdate) { Text("Actualizar ahora") }
         }
         OutlinedButton(onClick = { confirmUnlink = true }, modifier = Modifier.fillMaxWidth(),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = .3f)), shape = RoundedCornerShape(18.dp)) {
