@@ -20,6 +20,7 @@ data class AccountState(
     val busy: Boolean = false,
     val error: String? = null,
     val notice: String? = null,
+    val confirmationEmail: String? = null,
     val profile: AccountProfile? = null,
     val schedules: List<ScheduleDto> = emptyList(),
     val statuses: List<StatusOverrideDto> = emptyList(),
@@ -98,6 +99,19 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
     }
 
     override fun refresh() = perform { load() }
+    override fun register(name: String, email: String, username: String, password: String, confirmation: String) = perform {
+        com.example.findme.domain.model.Registration.error(name, email, username, password, confirmation)?.let { throw IllegalArgumentException(it) }
+        com.example.findme.data.repository.AuthorizedSignup.register(name, email, username, password)
+        _state.update { it.copy(confirmationEmail = email.trim()) }
+    }
+    override fun resendConfirmation(email: String) = perform {
+        require(com.example.findme.domain.model.Registration.isEmail(email)) { "Introduce un correo válido." }
+        com.example.findme.data.repository.AuthorizedSignup.resend(email)
+        _state.update { it.copy(confirmationEmail = email.trim(), notice = "Solicitud enviada. Revisa tu correo y la carpeta de spam.") }
+    }
+    override fun finishRegistration() {
+        _state.update { it.copy(confirmationEmail = null, error = null, notice = null) }
+    }
     override fun saveProfile(name: String, username: String) = perform {
         val profile = repository.saveProfile(name, username)
         _state.update { old -> old.copy(profile = profile,

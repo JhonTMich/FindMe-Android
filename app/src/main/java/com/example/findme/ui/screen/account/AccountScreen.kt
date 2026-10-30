@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.findme.data.model.*
 import com.example.findme.data.repository.StatusRepository
+import com.example.findme.domain.model.Registration
 import com.example.findme.domain.model.Username
 import com.example.findme.domain.model.InvitationCode
 import com.example.findme.domain.model.UserCurrentStatus
@@ -106,7 +107,7 @@ fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () ->
                         Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 } }
-                if (!state.signedIn) LoginForm(state.busy, actions::login, onLegacy)
+                if (!state.signedIn) LoginForm(state, actions, onLegacy)
                 else if (state.profile == null) {
                     Panel {
                         Text("Cargando tu perfil…", color = TextSecondary)
@@ -154,22 +155,71 @@ private fun SectionHeading(icon: ImageVector, title: String, subtitle: String? =
 }
 
 @Composable
-private fun LoginForm(busy: Boolean, submit: (String, String) -> Unit, onLegacy: () -> Unit) {
+private fun LoginForm(state: AccountState, actions: AccountActions, onLegacy: () -> Unit) {
+    var mode by rememberSaveable { mutableStateOf("login") }
     var username by rememberSaveable { mutableStateOf("") }
+    var name by rememberSaveable { mutableStateOf("") }
+    var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    PageHeading("Tu día, compartido", "Qué bueno verte.",
-        "Organiza tus actividades y mantente conectado con quienes tú elijas.")
-    Panel {
-        SectionHeading(Icons.Default.PersonOutline, "Inicia sesión")
-        Field(username, { username = it.take(24) }, "Nombre de usuario", keyboard = KeyboardOptions(autoCorrectEnabled = false))
-        OutlinedTextField(password, { password = it }, label = { Text("Contraseña") }, singleLine = true,
-            visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-        Button(onClick = { submit(username, password) }, modifier = Modifier.fillMaxWidth(), enabled = !busy && Username.isValid(username) && password.isNotBlank()) {
-            Text("Entrar")
-        }
-        Text("El acceso es por invitación. Para obtener una cuenta, contacta al responsable de FindMe.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+    var confirmation by remember { mutableStateOf("") }
+    LaunchedEffect(state.confirmationEmail) {
+        if (state.confirmationEmail != null) { password = ""; confirmation = "" }
     }
-    TextButton(onClick = onLegacy, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Consultar vínculo anterior", color = TextMuted) }
+    state.confirmationEmail?.let { pendingEmail ->
+        PageHeading("Un paso más", "Revisa tu correo", "Confirma tu dirección antes de iniciar sesión.")
+        Panel {
+            SectionHeading(Icons.Default.MarkEmailRead, "Tu cuenta, a un paso", pendingEmail)
+            Text("Abre el enlace de confirmación y después vuelve a FindMe. Revisa también la carpeta de spam.", color = TextSecondary)
+            Button(onClick = { mode = "login"; actions.finishRegistration() }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                Text("Ya confirmé, iniciar sesión")
+            }
+            OutlinedButton(onClick = { actions.resendConfirmation(pendingEmail) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                Text("Reenviar confirmación")
+            }
+        }
+        return
+    }
+    val registering = mode == "register"
+    val resending = mode == "resend"
+    PageHeading("Tu día, compartido", when { registering -> "Tu gente, más cerca."; resending -> "Un paso más."; else -> "Qué bueno verte." },
+        if (registering) "Crea tu cuenta con un correo autorizado. Tú eliges cómo te ve tu gente." else "Organiza tus actividades y mantente conectado con quienes tú elijas.")
+    Panel {
+        SectionHeading(Icons.Default.PersonOutline, when { registering -> "Crea tu cuenta"; resending -> "Confirma tu cuenta"; else -> "Inicia sesión" })
+        if (registering) Field(name, { name = it.take(80) }, "Nombre visible", keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
+        if (registering || resending) Field(email, { email = it.take(254) }, "Correo electrónico", keyboard = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
+        if (!resending) Field(username, { username = it.take(24) }, "Nombre de usuario", keyboard = KeyboardOptions(autoCorrectEnabled = false))
+        if (registering) Text("De 3 a 24 letras sin tildes, números o guion bajo. Será tu usuario para entrar.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+        if (!resending) {
+            OutlinedTextField(password, { password = it.take(128) }, label = { Text("Contraseña") }, singleLine = true, enabled = !state.busy,
+                visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+        }
+        if (registering) {
+            OutlinedTextField(confirmation, { confirmation = it.take(128) }, label = { Text("Confirmar contraseña") }, singleLine = true, enabled = !state.busy,
+                visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
+                isError = confirmation.isNotEmpty() && password != confirmation)
+            Text(if (confirmation.isNotEmpty() && password != confirmation) "Las contraseñas no coinciden." else "Usa entre 8 y 128 caracteres. Confirma tu correo para empezar.",
+                color = if (confirmation.isNotEmpty() && password != confirmation) MaterialTheme.colorScheme.error else TextMuted, style = MaterialTheme.typography.bodySmall)
+        }
+        val valid = when {
+            registering -> Registration.error(name, email, username, password, confirmation) == null
+            resending -> Registration.isEmail(email)
+            else -> Username.isValid(username) && password.isNotBlank()
+        }
+        Button(onClick = {
+            when { registering -> actions.register(name, email, username, password, confirmation)
+                resending -> actions.resendConfirmation(email)
+                else -> actions.login(username, password) }
+        }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy && valid) {
+            Text(when { state.busy -> "Un momento…"; registering -> "Registrarme"; resending -> "Enviar confirmación"; else -> "Entrar" })
+        }
+        TextButton(onClick = { mode = if (mode == "login") "register" else "login"; password = ""; confirmation = "" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text(if (mode == "login") "Crear cuenta" else "Ya tengo cuenta", color = IndigoPrimary)
+        }
+        if (!resending) TextButton(onClick = { mode = "resend"; password = ""; confirmation = "" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text("No recibí mi confirmación", color = TextMuted)
+        }
+    }
+    TextButton(onClick = onLegacy, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Consultar vínculo anterior", color = TextMuted) }
 }
 
 @Composable

@@ -7,6 +7,9 @@ import com.example.findme.data.model.QuickMessage
 interface AccountActions {
     fun refresh() {}
     fun login(username: String, password: String) {}
+    fun register(name: String, email: String, username: String, password: String, confirmation: String) {}
+    fun resendConfirmation(email: String) {}
+    fun finishRegistration() {}
     fun logout() {}
     fun saveProfile(name: String, username: String) {}
     fun saveSchedule(existingId: String?, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {}

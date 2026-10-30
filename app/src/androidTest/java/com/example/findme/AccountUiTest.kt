@@ -139,13 +139,56 @@ class AccountUiTest {
         screenshot("account-edit-profile")
     }
 
-    @Test fun loginDoesNotOfferPublicSignup() {
+    @Test fun loginUsesOnlyUsernameAndOffersAuthorizedRegistration() {
         compose.setContent { FindmeTheme { AccountContent(AccountState(initializing = false), object : AccountActions {}) } }
         compose.onNodeWithText("Inicia sesión").assertIsDisplayed()
         compose.onNodeWithText("Nombre de usuario").assertIsDisplayed()
         compose.onNodeWithText("Correo electrónico").assertDoesNotExist()
-        compose.onNodeWithText("Crear cuenta").assertDoesNotExist()
+        compose.onNodeWithText("Crear cuenta").assertIsDisplayed()
         compose.onNodeWithText("¿Primera vez? Crea tu cuenta").assertDoesNotExist()
+    }
+
+    @Test fun registrationRequiresMatchingPasswordsAndSubmitsUserChoices() {
+        var submitted = false
+        compose.setContent { FindmeTheme {
+            AccountContent(AccountState(initializing = false), object : AccountActions {
+                override fun register(name: String, email: String, username: String, password: String, confirmation: String) {
+                    assertEquals("Chosen Name", name)
+                    assertEquals("signup@example.test", email)
+                    assertEquals("chosen_user", username)
+                    assertEquals("local-test-password", password)
+                    assertEquals(password, confirmation)
+                    submitted = true
+                }
+            })
+        } }
+        compose.onNodeWithText("Crear cuenta").performClick()
+        compose.onNodeWithText("Nombre visible").performTextInput("Chosen Name")
+        compose.onNodeWithText("Correo electrónico").performTextInput("signup@example.test")
+        compose.onNodeWithText("Nombre de usuario").performTextInput("chosen_user")
+        compose.onNodeWithText("Contraseña").performScrollTo().performTextInput("local-test-password")
+        compose.onNodeWithText("Confirmar contraseña").performScrollTo().performTextInput("wrong-password")
+        compose.onNodeWithText("Registrarme").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("Confirmar contraseña").performScrollTo().performTextReplacement("local-test-password")
+        compose.onNodeWithText("Registrarme").performScrollTo().performClick()
+        assertTrue(submitted)
+    }
+
+    @Test fun confirmationExplainsNextStepAndSupportsResending() {
+        var resent = false
+        var finished = false
+        compose.setContent { FindmeTheme {
+            AccountContent(AccountState(initializing = false, confirmationEmail = "signup@example.test"), object : AccountActions {
+                override fun resendConfirmation(email: String) { assertEquals("signup@example.test", email); resent = true }
+                override fun finishRegistration() { finished = true }
+            })
+        } }
+        compose.onNodeWithText("Revisa tu correo").assertIsDisplayed()
+        compose.onNodeWithText("Contraseña").assertDoesNotExist()
+        compose.onNodeWithText("Reenviar confirmación").performScrollTo().performClick()
+        assertTrue(resent)
+        compose.onNodeWithText("Ya confirmé, iniciar sesión").performScrollTo().performClick()
+        assertTrue(finished)
     }
 
 }
