@@ -51,6 +51,16 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-37.0' 'build-tools;36.0.0'
       - name: Verify release version rules
         run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Verify account authentication and database policies
+        run: |
+          npm install --prefix build/schema-check --no-save --ignore-scripts @electric-sql/pglite@0.3.14
+          node --test scripts/test_username_login.mjs scripts/test_authorized_signup.mjs
+          node scripts/test_account_schema.mjs
+          node scripts/test_registration_schema.mjs
+          node scripts/test_message_retention.mjs
       - name: Build release and run Android checks
         env:
           RELEASE_VERSION: ${{ steps.metadata.outputs.version }}

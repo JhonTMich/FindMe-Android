@@ -13,9 +13,8 @@ android {
         applicationId = "com.example.findme"
         minSdk = 26
         targetSdk = 35
-        versionCode = providers.gradleProperty("releaseVersionCode").orNull?.toInt() ?: 4
-        versionName = providers.gradleProperty("releaseVersionName").orNull ?: "1.2.2"
-
+        versionCode = providers.gradleProperty("releaseVersionCode").orNull?.toInt() ?: 1003000
+        versionName = providers.gradleProperty("releaseVersionName").orNull ?: "1.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -59,6 +58,7 @@ dependencies {
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.realtime)
+    implementation(libs.supabase.auth)
     implementation(libs.ktor.client.cio)
 
     // Glance Widget

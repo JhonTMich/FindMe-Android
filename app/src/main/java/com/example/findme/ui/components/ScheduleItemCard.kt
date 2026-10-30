@@ -1,5 +1,6 @@
 package com.example.findme.ui.components
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -43,7 +44,6 @@ import com.example.findme.data.model.ScheduleDto
 import com.example.findme.data.repository.StatusRepository
 import com.example.findme.ui.theme.DarkCardBg
 import com.example.findme.ui.theme.DarkCardBorder
-import com.example.findme.ui.theme.IndigoPrimary
 import com.example.findme.ui.theme.StatusGreen
 import com.example.findme.ui.theme.StatusGreenBg
 import com.example.findme.ui.theme.StatusGreenText
@@ -83,10 +83,10 @@ fun ScheduleItemCard(
     val durationText = calculateDurationText(startTime, endTime)
 
     val cardBg = if (status == ScheduleCardStatus.EN_CURSO) Color(0xFF161F38) else DarkCardBg
-    val strokeColor = if (status == ScheduleCardStatus.EN_CURSO) IndigoPrimary else DarkCardBorder
+    val strokeColor = if (status == ScheduleCardStatus.EN_CURSO) MaterialTheme.colorScheme.primary else DarkCardBorder
     val stripeColor = when (status) {
         ScheduleCardStatus.COMPLETADA -> Color(0xFF6366F1)
-        ScheduleCardStatus.EN_CURSO -> IndigoPrimary
+        ScheduleCardStatus.EN_CURSO -> MaterialTheme.colorScheme.primary
         ScheduleCardStatus.PROXIMA -> Color(0xFF34D399)
     }
 
@@ -323,7 +323,7 @@ fun ScheduleItemCard(
                     ) {
                         Button(
                             onClick = onCheckIn,
-                            colors = ButtonDefaults.buttonColors(containerColor = IndigoPrimary),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             shape = RoundedCornerShape(50),
                             modifier = Modifier
                                 .weight(2f)

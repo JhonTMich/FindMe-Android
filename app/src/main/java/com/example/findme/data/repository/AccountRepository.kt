@@ -1,0 +1,121 @@
+package com.example.findme.data.repository
+
+import com.example.findme.data.model.*
+import com.example.findme.data.network.SupabaseClientProvider
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import java.time.Instant
+import java.time.ZoneId
+import java.util.UUID
+import com.example.findme.domain.model.Username
+import com.example.findme.domain.model.InvitationCode
+
+/** The new account model is isolated from the legacy family-code tables. */
+class AccountRepository {
+    private val client get() = SupabaseClientProvider.client
+    val auth get() = client.auth
+    fun userId(): String = requireNotNull(auth.currentUserOrNull()?.id) { "Inicia sesión para continuar." }
+
+    suspend fun signIn(username: String, password: String) {
+        auth.importSession(UsernameLogin.signIn(username, password))
+    }
+
+    suspend fun ensureProfile(): AccountProfile {
+        val id = userId()
+        val existing = client.postgrest["account_profiles"].select { filter { eq("id", id) } }
+            .decodeList<AccountProfile>().firstOrNull()
+        if (existing != null) return existing
+        val user = requireNotNull(auth.currentUserOrNull())
+        val name = user.userMetadata?.get("display_name")?.jsonPrimitive?.contentOrNull.orEmpty()
+            .ifBlank { "Mi cuenta" }.take(80)
+        val profile = AccountProfile(id, name, ZoneId.systemDefault().id)
+        client.postgrest["account_profiles"].insert(profile)
+        return profile
+    }
+
+    suspend fun profiles() = client.postgrest["account_profiles"].select().decodeList<AccountProfile>()
+    suspend fun saveProfile(name: String, username: String): AccountProfile {
+        val trimmed = name.trim()
+        require(trimmed.length in 1..80 && !trimmed.equals("Mi cuenta", ignoreCase = true)) {
+            "Introduce tu nombre, de 1 a 80 caracteres."
+        }
+        require(Username.isValid(username)) { "Usa entre 3 y 24 letras sin tildes, números o guion bajo para tu usuario." }
+        return client.postgrest["account_profiles"].update(buildJsonObject {
+            put("display_name", trimmed)
+            put("username", Username.normalize(username))
+        }) {
+            filter { eq("id", userId()) }
+            select()
+        }.decodeSingle<AccountProfile>()
+    }
+    suspend fun connections() = client.postgrest["person_connections"].select().decodeList<PersonConnection>()
+    suspend fun schedules(id: String) = client.postgrest["personal_schedule"].select { filter { eq("user_id", id) } }.decodeList<ScheduleDto>()
+    suspend fun overrides(id: String) = client.postgrest["personal_status"].select { filter { eq("user_id", id) } }.decodeList<StatusOverrideDto>()
+    suspend fun accessibleSchedules() = client.postgrest["personal_schedule"].select().decodeList<ScheduleDto>()
+    suspend fun accessibleStatuses() = client.postgrest["personal_status"].select().decodeList<StatusOverrideDto>()
+
+    suspend fun saveSchedule(schedule: ScheduleDto) {
+        require(schedule.userId == userId())
+        client.postgrest["personal_schedule"].upsert(schedule)
+    }
+
+    suspend fun deleteSchedule(id: String) {
+        client.postgrest["personal_schedule"].delete { filter { eq("id", id); eq("user_id", userId()) } }
+    }
+
+    suspend fun setStatus(text: String, minutes: Long) {
+        require(text.trim().length in 1..120)
+        require(minutes in 1..1440)
+        val id = userId()
+        client.postgrest["personal_status"].upsert(StatusOverrideDto(
+            id = id, userId = id, isActive = true, customLocation = text.trim(),
+            expiresAt = Instant.now().plusSeconds(minutes * 60).toString()
+        ))
+    }
+
+    suspend fun clearStatus() {
+        client.postgrest["personal_status"].delete { filter { eq("user_id", userId()) } }
+    }
+
+    suspend fun createInvitation(): ConnectionInvitation {
+        val invitation = ConnectionInvitation(userId(), InvitationCode.generate(),
+            Instant.now().plusSeconds(86400).toString())
+        client.postgrest["connection_invitations"].upsert(invitation)
+        return invitation
+    }
+
+    suspend fun acceptInvitation(code: String) {
+        require(InvitationCode.isValid(code)) { "Introduce el código de invitación completo, por ejemplo ABCD-EFGH." }
+        client.postgrest.rpc("accept_connection_invitation", buildJsonObject { put("invitation_code", InvitationCode.normalize(code)) })
+    }
+
+    suspend fun disconnect(id: String) {
+        client.postgrest["person_connections"].delete { filter { eq("id", id) } }
+    }
+
+    suspend fun quickMessages() = client.postgrest["quick_messages"].select { filter { eq("user_id", userId()) } }.decodeList<QuickMessage>()
+    suspend fun saveQuickMessage(label: String, message: String) {
+        require(label.trim().length in 1..30 && message.trim().length in 1..240) { "Completa el nombre y el mensaje (máximo 240 caracteres)." }
+        client.postgrest["quick_messages"].insert(QuickMessage(UUID.randomUUID().toString(), userId(), label.trim(), message.trim()))
+    }
+    suspend fun deleteQuickMessage(id: String) {
+        client.postgrest["quick_messages"].delete { filter { eq("id", id); eq("user_id", userId()) } }
+    }
+    suspend fun sendSignal(recipientId: String, message: String) {
+        client.postgrest["connection_signals"].insert(buildJsonObject {
+            put("id", UUID.randomUUID().toString())
+            put("sender_id", userId())
+            put("recipient_id", recipientId)
+            put("message", message)
+        })
+    }
+    suspend fun receivedSignals() = client.postgrest["connection_signals"].select {
+        filter { eq("recipient_id", userId()); gt("created_at", Instant.now().minusSeconds(86400).toString()) }
+        order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
+        limit(20)
+    }.decodeList<ConnectionSignal>()
+}

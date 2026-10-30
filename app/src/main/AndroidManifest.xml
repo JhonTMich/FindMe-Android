@@ -30,6 +30,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:label="@string/app_name"
             android:theme="@style/Theme.Findme"
             android:windowSoftInputMode="adjustResize">
@@ -37,6 +38,12 @@
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="findme" android:host="auth" android:path="/confirmed" />
             </intent-filter>
         </activity>
 
@@ -64,6 +71,14 @@
                 android:resource="@xml/find_me_control_widget_info" />
         </receiver>
 
+        <receiver android:name=".widget.ConnectionWidgetReceiver"
+            android:exported="true" android:label="FindMe · Mi gente">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/connection_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

@@ -45,7 +45,7 @@ fun AccentIcon(icon: ImageVector, color: Color, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun StatusPill(text: String, color: Color = IndigoPrimary, pulse: Boolean = false) {
+fun StatusPill(text: String, color: Color = MaterialTheme.colorScheme.primary, pulse: Boolean = false) {
     Surface(color = color.copy(alpha = .13f), shape = CircleShape, border = BorderStroke(1.dp, color.copy(alpha = .25f))) {
         Row(Modifier.padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -72,18 +72,18 @@ fun DayOverview(schedules: List<ScheduleDto>) {
     Card(colors = CardDefaults.cardColors(containerColor = DarkCardBg), shape = RoundedCornerShape(24.dp), border = BorderStroke(1.dp, DarkCardBorder)) {
         Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(Icons.Default.DonutLarge, null, tint = IndigoPrimary, modifier = Modifier.size(19.dp))
+                Icon(Icons.Default.DonutLarge, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
                 Text("El día de un vistazo", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
                 Spacer(Modifier.weight(1f))
-                Text("${(fraction * 100).toInt()}%", color = IndigoPrimary, style = MaterialTheme.typography.labelLarge)
+                Text("${(fraction * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OverviewMetric("${schedules.size}", "Actividades", IndigoPrimary, Modifier.weight(1f))
+                OverviewMetric("${schedules.size}", "Actividades", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
                 OverviewMetric(if (minutes >= 60) "${minutes / 60}h" + if (minutes % 60 > 0) " ${minutes % 60}m" else "" else "${minutes}m", "Programadas", Color(0xFF67D8E8), Modifier.weight(1f))
                 OverviewMetric("$finished", "Finalizadas", StatusGreenText, Modifier.weight(1f))
             }
             LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
-                color = IndigoPrimary, trackColor = IndigoPrimary.copy(alpha = .12f))
+                color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.primary.copy(alpha = .12f))
         }
     }
 }
@@ -138,10 +138,10 @@ fun ScheduleEmptyCard(loading: Boolean) {
         colors = CardDefaults.cardColors(containerColor = DarkCardBg)) {
         Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(76.dp).background(Brush.radialGradient(listOf(IndigoPrimary.copy(alpha = .18f), Color.Transparent)), CircleShape),
+            Box(Modifier.size(76.dp).background(Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = .18f), Color.Transparent)), CircleShape),
                 contentAlignment = Alignment.Center) {
-                if (loading) CircularProgressIndicator(Modifier.size(28.dp), color = IndigoPrimary, strokeWidth = 2.dp)
-                else Icon(Icons.Default.EventAvailable, null, tint = IndigoPrimary, modifier = Modifier.size(36.dp))
+                if (loading) CircularProgressIndicator(Modifier.size(28.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
+                else Icon(Icons.Default.EventAvailable, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
             }
             Text(if (loading) "Cargando actividades…" else "Un espacio para desconectar", style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold, color = TextPrimary)

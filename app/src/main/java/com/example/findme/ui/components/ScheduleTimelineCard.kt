@@ -1,5 +1,6 @@
 package com.example.findme.ui.components
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -44,9 +45,6 @@ import com.example.findme.data.repository.StatusRepository
 import com.example.findme.ui.theme.DarkCardBg
 import com.example.findme.ui.theme.DarkCardBorder
 import com.example.findme.ui.theme.DarkInnerBg
-import com.example.findme.ui.theme.IndigoCardBg
-import com.example.findme.ui.theme.IndigoCardBorder
-import com.example.findme.ui.theme.IndigoPrimary
 import com.example.findme.ui.theme.TextMuted
 import com.example.findme.ui.theme.TextPrimary
 import com.example.findme.ui.theme.TextSecondary
@@ -222,14 +220,14 @@ fun ScheduleTimelineCard(
                                     Box(
                                         modifier = Modifier
                                             .size(22.dp)
-                                            .border(2.dp, IndigoPrimary, CircleShape)
+                                            .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
                                             .background(Color(0xFF1E1B4B), CircleShape),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Box(
                                             modifier = Modifier
                                                 .size(10.dp)
-                                                .background(IndigoPrimary, CircleShape)
+                                                .background(MaterialTheme.colorScheme.primary, CircleShape)
                                         )
                                     }
                                 }
@@ -280,8 +278,8 @@ fun ScheduleTimelineCard(
 private fun TimelineItemContentCard(item: TimelineScheduleItem) {
     val isEnCurso = item.statusState == ScheduleItemStatusState.EN_CURSO
 
-    val cardBg = if (isEnCurso) IndigoCardBg else DarkInnerBg
-    val cardBorder = if (isEnCurso) IndigoCardBorder else Color(0xFF1E293B)
+    val cardBg = if (isEnCurso) MaterialTheme.colorScheme.primaryContainer else DarkInnerBg
+    val cardBorder = if (isEnCurso) MaterialTheme.colorScheme.outlineVariant else Color(0xFF1E293B)
 
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -326,7 +324,7 @@ private fun TimelineItemContentCard(item: TimelineScheduleItem) {
                     ScheduleItemStatusState.EN_CURSO -> {
                         Surface(
                             shape = RoundedCornerShape(50),
-                            color = IndigoPrimary
+                            color = MaterialTheme.colorScheme.primary
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),

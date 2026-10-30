@@ -95,7 +95,11 @@ class UserPreferencesRepository(private val context: Context) {
 
     suspend fun clearSession() {
         context.dataStore.edit { prefs ->
-            prefs.clear()
+            prefs.remove(KEY_USER_ID)
+            prefs.remove(KEY_DISPLAY_NAME)
+            prefs.remove(KEY_FAMILY_CODE)
+            prefs.remove(KEY_MOTHER_NAME)
+            prefs.remove(KEY_IS_ADMIN_ROLE)
         }
     }
 }

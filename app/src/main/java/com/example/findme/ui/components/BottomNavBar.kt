@@ -11,8 +11,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.graphicsLayer
-import com.example.findme.ui.theme.IndigoPrimary
-import com.example.findme.ui.theme.IndigoCardBg
 import com.example.findme.ui.theme.TextMuted
 import com.example.findme.ui.theme.DarkSurface
 
@@ -23,8 +21,8 @@ fun BottomNavBar(modifier: Modifier = Modifier, selectedTabId: String = "hoy", o
             Triple("horario", "Horario", Icons.Default.CalendarMonth),
             Triple("perfil", "Perfil", Icons.Default.PersonOutline)).forEach { (id, title, icon) ->
             val scale by animateFloatAsState(if (selectedTabId == id) 1.12f else 1f, spring(dampingRatio = .65f), label = "navScale$id")
-            NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = IndigoPrimary, selectedTextColor = IndigoPrimary,
-                indicatorColor = IndigoCardBg, unselectedIconColor = TextMuted, unselectedTextColor = TextMuted), selected = selectedTabId == id, onClick = { onTabSelected(id) },
+            NavigationBarItem(colors = NavigationBarItemDefaults.colors(selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary,
+                indicatorColor = MaterialTheme.colorScheme.primaryContainer, unselectedIconColor = TextMuted, unselectedTextColor = TextMuted), selected = selectedTabId == id, onClick = { onTabSelected(id) },
                 icon = { Icon(icon, contentDescription = null, modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale }) }, label = { Text(title) })
         }
     }

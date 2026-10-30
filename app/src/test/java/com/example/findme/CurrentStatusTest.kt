@@ -61,4 +61,23 @@ class CurrentStatusTest {
         assertNull(StatusRepository.parseLocalTimeOrNull("invalid"))
     }
 
+    @Test fun accountStatusOverridesAnActivityUntilItExpires() {
+        val state = StatusRepository.calculateStatus("Persona", listOf(longActivity), listOf(travel), 4,
+            thursday, manualStatusFirst = true)
+        assertTrue(state is UserCurrentStatus.Override)
+        assertEquals("En camino a casa", (state as UserCurrentStatus.Override).customLocation)
+        assertEquals(listOf(longActivity), state.todaySchedules)
+        val expired = travel.copy(expiresAt = thursday.toInstant().toString())
+        assertTrue(StatusRepository.calculateStatus("Persona", listOf(longActivity), listOf(expired), 4,
+            thursday, manualStatusFirst = true) is UserCurrentStatus.InClass)
+    }
+
+    @Test fun accountStatusCanShowTravelAfterClassAndReturnToScheduleWhenRemoved() {
+        val afterClass = thursday.withHour(18).withMinute(10)
+        assertTrue(StatusRepository.calculateStatus("Persona", listOf(longActivity), listOf(travel), 4,
+            afterClass, manualStatusFirst = true) is UserCurrentStatus.Override)
+        assertTrue(StatusRepository.calculateStatus("Persona", listOf(longActivity), emptyList(), 4,
+            thursday, manualStatusFirst = true) is UserCurrentStatus.InClass)
+    }
+
 }

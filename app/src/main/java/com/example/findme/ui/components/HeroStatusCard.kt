@@ -33,7 +33,7 @@ fun formatDurationMinutes(minutes: Long): String {
 @Composable
 fun HeroStatusCard(status: UserCurrentStatus, modifier: Modifier = Modifier) {
     val accent = when (status) {
-        is UserCurrentStatus.InClass -> IndigoPrimary
+        is UserCurrentStatus.InClass -> MaterialTheme.colorScheme.primary
         is UserCurrentStatus.Override -> Color(0xFF67D8E8)
         else -> StatusGreenText
     }
@@ -78,7 +78,7 @@ fun HeroStatusCard(status: UserCurrentStatus, modifier: Modifier = Modifier) {
                 Text(when (status) {
                     is UserCurrentStatus.InClass -> listOf(status.currentSchedule.location,
                         "Termina en ${formatDurationMinutes(status.remainingMinutes)}").filter { it.isNotBlank() }.joinToString(" · ")
-                    is UserCurrentStatus.Override -> status.customMessage ?: "Estado compartido por la persona vinculada"
+                    is UserCurrentStatus.Override -> status.customMessage ?: "Compartido por ${status.displayName}"
                     is UserCurrentStatus.Loading -> "Preparando la información de hoy"
                     is UserCurrentStatus.Error -> status.message
                     else -> "Según el horario de hoy. La ubicación no está confirmada."
