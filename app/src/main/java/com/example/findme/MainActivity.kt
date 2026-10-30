@@ -37,8 +37,11 @@ import com.example.findme.ui.screen.pairing.PairingScreen
 import com.example.findme.ui.screen.pairing.PairingViewModel
 import com.example.findme.ui.theme.FindmeTheme
 import com.example.findme.util.ApkUpdateInstaller
+import com.example.findme.domain.model.ConfirmationLink
+import androidx.compose.material3.AlertDialog
 
 class MainActivity : ComponentActivity() {
+    private var confirmationLink by mutableStateOf<ConfirmationLink?>(null)
     private val updateViewModel: UpdateViewModel by viewModels()
     private val mainViewModel: MainViewModel by viewModels()
     private val pairingViewModel: PairingViewModel by viewModels()
@@ -73,6 +76,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        receiveConfirmation(intent)
         com.example.findme.util.NotificationHelper.createNotificationChannel(this)
         enableEdgeToEdge()
         setContent {
@@ -97,6 +101,18 @@ class MainActivity : ComponentActivity() {
                 }
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     var legacy by rememberSaveable { mutableStateOf(false) }
+                    confirmationLink?.let { link ->
+                        AlertDialog(onDismissRequest = { confirmationLink = null },
+                            title = { Text(if (link == ConfirmationLink.Failed) "Revisa tu confirmación" else "Continúa en FindMe") },
+                            text = { Text(if (link == ConfirmationLink.Failed)
+                                "El enlace no pudo completarse o ya venció. Solicita otro correo de confirmación."
+                                else "El enlace se abrió en FindMe. Inicia sesión con el usuario y la contraseña que elegiste.") },
+                            confirmButton = { TextButton(onClick = {
+                                legacy = false
+                                accountViewModel.finishRegistration()
+                                confirmationLink = null
+                            }) { Text("Continuar") } })
+                    }
                     BackHandler(enabled = legacy) { legacy = false }
                     if (!legacy) {
                         AccountScreen(accountViewModel, onLegacy = { legacy = true })
@@ -114,6 +130,21 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        receiveConfirmation(intent)
+        setIntent(intent)
+    }
+
+    private fun receiveConfirmation(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        ConfirmationLink.parse(intent.dataString)?.let {
+            confirmationLink = it
+            // Do not retain callback fragments or tokens in the activity's Intent.
+            intent.data = null
         }
     }
 }

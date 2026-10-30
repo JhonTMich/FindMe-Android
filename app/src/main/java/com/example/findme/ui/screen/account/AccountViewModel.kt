@@ -21,6 +21,7 @@ data class AccountState(
     val error: String? = null,
     val notice: String? = null,
     val confirmationEmail: String? = null,
+    val loginRevision: Int = 0,
     val profile: AccountProfile? = null,
     val schedules: List<ScheduleDto> = emptyList(),
     val statuses: List<StatusOverrideDto> = emptyList(),
@@ -110,7 +111,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         _state.update { it.copy(confirmationEmail = email.trim(), notice = "Solicitud enviada. Revisa tu correo y la carpeta de spam.") }
     }
     override fun finishRegistration() {
-        _state.update { it.copy(confirmationEmail = null, error = null, notice = null) }
+        _state.update { it.copy(confirmationEmail = null, error = null, notice = null, loginRevision = it.loginRevision + 1) }
     }
     override fun saveProfile(name: String, username: String) = perform {
         val profile = repository.saveProfile(name, username)

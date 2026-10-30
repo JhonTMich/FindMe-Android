@@ -22,6 +22,7 @@ test('registration forwards only self-chosen data to native Auth and requires co
   const mock = server();
   const result = await createSignupHandler(config, mock.request)(req());
   assert.equal(result.status, 200);
+  assert.equal(new URL(mock.calls.at(-1).url).searchParams.get('redirect_to'), 'findme://auth/confirmed');
   assert.deepEqual(await result.json(), { needs_confirmation: true });
   assert.equal(result.headers.get('cache-control'), 'no-store');
   assert.deepEqual(JSON.parse(mock.calls.at(-1).options.body), {
@@ -32,24 +33,24 @@ test('missing, disabled, expired and consumed authorizations never reach Auth si
   for (const entry of [null, { enabled: false }, { enabled: true, expires_at: '2000-01-01' }, { enabled: true, used_at: '2026-01-01' }]) {
     const mock = server({ entry });
     assert.equal((await createSignupHandler(config, mock.request)(req())).status, 403);
-    assert.equal(mock.calls.some((c) => c.url.endsWith('/signup')), false);
+    assert.equal(mock.calls.some((c) => c.url.includes('/signup?')), false);
   }
 });
 test('occupied username leaves authorization and Auth untouched', async () => {
   const mock = server({ taken: true });
   assert.equal((await createSignupHandler(config, mock.request)(req())).status, 409);
-  assert.equal(mock.calls.some((c) => c.url.endsWith('/signup')), false);
+  assert.equal(mock.calls.some((c) => c.url.includes('/signup?')), false);
 });
 test('resend accepts consumed authorization and sends no password', async () => {
   const mock = server({ entry: { enabled: true, used_at: '2026-01-01' } });
   assert.equal((await createSignupHandler(config, mock.request)(req({ action: 'resend', email: input.email }))).status, 200);
-  assert.ok(mock.calls.at(-1).url.endsWith('/resend'));
+  assert.ok(mock.calls.at(-1).url.includes('/resend?'));
   assert.deepEqual(JSON.parse(mock.calls.at(-1).options.body), { type: 'signup', email: input.email });
 });
 test('registration refuses a project with email confirmation disabled', async () => {
   const mock = server({ autoConfirm: true });
   assert.equal((await createSignupHandler(config, mock.request)(req())).status, 503);
-  assert.equal(mock.calls.some((c) => c.url.endsWith('/signup')), false);
+  assert.equal(mock.calls.some((c) => c.url.includes('/signup?')), false);
 });
 test('invalid input and oversized requests do not reach privileged services', async () => {
   const handler = createSignupHandler(config, () => { throw new Error('Should not call service'); });

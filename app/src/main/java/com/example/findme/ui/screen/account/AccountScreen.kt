@@ -156,7 +156,7 @@ private fun SectionHeading(icon: ImageVector, title: String, subtitle: String? =
 
 @Composable
 private fun LoginForm(state: AccountState, actions: AccountActions, onLegacy: () -> Unit) {
-    var mode by rememberSaveable { mutableStateOf("login") }
+    var mode by rememberSaveable(state.loginRevision) { mutableStateOf("login") }
     var username by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }
     var email by rememberSaveable { mutableStateOf("") }

@@ -58,7 +58,8 @@ export function createSignupHandler({ url, serviceKey, anonKey }, request = fetc
       if (!settingsResponse.ok) return unavailable();
       const settings = await settingsResponse.json();
       if (settings.mailer_autoconfirm !== false || settings.disable_signup === true) return unavailable();
-      const result = await request(`${url}/auth/v1/${resend ? 'resend' : 'signup'}`, {
+      const redirect = encodeURIComponent('findme://auth/confirmed');
+      const result = await request(`${url}/auth/v1/${resend ? 'resend' : 'signup'}?redirect_to=${redirect}`, {
         method: 'POST', headers: { apikey: anonKey, 'Content-Type': 'application/json' },
         body: JSON.stringify(resend ? { type: 'signup', email } : {
           email, password: body.password, data: { display_name: name, username, timezone: body.timezone },
