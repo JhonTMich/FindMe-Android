@@ -19,11 +19,15 @@ Rama: `feature/cuentas-conexiones`.
 
 ## Preparar Supabase
 
-El esquema propuesto está en `supabase/account-model.sql`. **No se ha aplicado al proyecto remoto.**
-No es una migración generada por la CLI: la CLI no está instalada en este entorno. Una vez validado y aprobado, aplicar en desarrollo y generar la migración con la CLI antes de publicar.
+El esquema está en `supabase/account-model.sql`. **Aplicado al proyecto personal existente el 29 de octubre de 2026**, mediante la migración remota `crear_cuentas_horarios_y_conexiones`.
+El archivo local no es una migración generada por la CLI: la CLI no está instalada en este entorno. No volver a ejecutarlo en este proyecto; antes de publicarlo se debe incorporar el historial remoto al flujo de migraciones de la CLI.
 
-1. Crear un entorno de desarrollo de Supabase o aprobar la creación de estas tablas en el proyecto existente.
-2. Ejecutar una sola vez el archivo SQL completo. Usa una transacción y falla si las tablas ya existen, evitando sobrescribir datos.
+Comprobaciones remotas después del despliegue: siete tablas nuevas con RLS y políticas; ninguna permite SELECT al rol `anon`; consultar perfiles por la API sin sesión devuelve HTTP 401. Los asesores de seguridad solo señalaron problemas en las tablas anteriores. Se conservaron un perfil, 11 actividades y 26 estados anteriores. No se crearon cuentas ni se reasignó el horario de Michael.
+
+Auth permite registro por correo y exige confirmación. Falta probar entrega de correos y el registro desde Android. Para pruebas controladas sin configurar SMTP, se pueden crear dos usuarios confirmados desde el panel de Authentication y usar sus credenciales en la app; esto prueba el inicio de sesión, pero no el registro por correo.
+
+1. Para entornos nuevos, elegir un proyecto de desarrollo de Supabase.
+2. En un proyecto nuevo, ejecutar una sola vez el archivo SQL completo. Usa una transacción y falla si las tablas ya existen, evitando sobrescribir datos. En el proyecto personal ya está aplicado.
 3. Habilitar el proveedor Email de Auth. Para confirmaciones de cuentas reales, configurar SMTP y las URLs permitidas; alternativamente elegir otro proveedor antes del lanzamiento. El correo integrado de Supabase tiene restricciones de destinatarios y frecuencia.
 4. Probar dos cuentas y una tercera sin vínculo: registro, confirmación, inicio, edición de horario, invitación, acceso mutuo, mensaje y revocación.
 5. Ejecutar los asesores de seguridad y comprobar las políticas como `authenticated` y `anon`.
