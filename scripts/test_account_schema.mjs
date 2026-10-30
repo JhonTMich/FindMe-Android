@@ -22,7 +22,7 @@ async function asUser(id) {
 async function count(table) { return Number((await db.query(`select count(*) n from public.${table}`)).rows[0].n); }
 try {
   await db.exec(`
-    create role anon; create role authenticated;
+    create role anon; create role authenticated; create role service_role bypassrls;
     create schema auth;
     create table auth.users(id uuid primary key);
     create function auth.uid() returns uuid language sql stable as
@@ -42,6 +42,19 @@ try {
   await denied(`select public.accept_connection_invitation('${'1'.repeat(32)}')`, 'Cannot accept own invitation');
   await db.exec('reset role');
   await db.exec(await readFile(new URL('../supabase/upgrades/short-invitations.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/upgrades/username-login.sql', import.meta.url), 'utf8'));
+  await asUser(a);
+  await db.exec(`update public.account_profiles set username='jhontmich' where id='${a}'`);
+  await denied(`update public.account_profiles set username='Bad Name' where id='${a}'`, 'Username syntax is enforced');
+  await asUser(b);
+  await denied(`update public.account_profiles set username='jhontmich' where id='${b}'`, 'Duplicate usernames rejected');
+  await denied(`select public.consume_username_login_attempt('${'a'.repeat(64)}')`, 'Clients cannot bypass login limiter');
+  await denied(`select * from private.username_login_limits`, 'Counters are private');
+  await db.exec('reset role; set role service_role');
+  for (let i = 0; i < 8; i++) await check((await db.query(`select public.consume_username_login_attempt('${'a'.repeat(64)}') allowed`)).rows[0].allowed, 'Allows eight attempts');
+  await check(!(await db.query(`select public.consume_username_login_attempt('${'a'.repeat(64)}') allowed`)).rows[0].allowed, 'Ninth attempt is blocked');
+  await db.exec(`update private.username_login_limits set expires_at=now()-interval '1 minute'`);
+  await check((await db.query(`select public.consume_username_login_attempt('${'a'.repeat(64)}') allowed`)).rows[0].allowed, 'Limit expires');
   await asUser(b);
   await check(await count('connection_invitations') === 0, 'Other invitations are private');
   await check(await count('personal_schedule') === 0, 'Unconnected schedule hidden');
