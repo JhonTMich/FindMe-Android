@@ -40,6 +40,8 @@ try {
   await denied(`insert into public.person_connections(person_a,person_b) values ('${a}','${b}')`, 'Direct link creation forbidden');
   await db.exec(`insert into public.connection_invitations values ('${a}','${'1'.repeat(32)}',now()+interval '1 hour');`);
   await denied(`select public.accept_connection_invitation('${'1'.repeat(32)}')`, 'Cannot accept own invitation');
+  await db.exec('reset role');
+  await db.exec(await readFile(new URL('../supabase/upgrades/short-invitations.sql', import.meta.url), 'utf8'));
   await asUser(b);
   await check(await count('connection_invitations') === 0, 'Other invitations are private');
   await check(await count('personal_schedule') === 0, 'Unconnected schedule hidden');
@@ -69,6 +71,12 @@ try {
   await db.exec(`insert into public.connection_invitations values ('${a}','${'2'.repeat(32)}',now()-interval '1 hour')`);
   await asUser(b);
   await denied(`select public.accept_connection_invitation('${'2'.repeat(32)}')`, 'Expired invitation rejected');
+  await asUser(a);
+  await db.exec(`update public.connection_invitations set code='ABCDEFGH', expires_at=now()+interval '1 hour'`);
+  await asUser(b);
+  await db.exec(`select public.accept_connection_invitation(' abcd-efgh ')`);
+  await check(await count('person_connections') === 1, 'Short code accepts lowercase, spaces and separator');
+  await denied(`select public.accept_connection_invitation('ABCD-EFGH')`, 'Short code is also single use');
   await db.exec(`reset role; set role anon; select set_config('request.jwt.claim.sub','',false)`);
   for (const table of ['account_profiles','personal_schedule','personal_status','person_connections','connection_invitations','quick_messages','connection_signals']) {
     await denied(`select * from public.${table}`, `Anonymous access denied: ${table}`);

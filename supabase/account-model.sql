@@ -20,7 +20,7 @@ create table public.person_connections (
 create index connections_person_b on public.person_connections(person_b);
 create table public.connection_invitations (
     owner_id uuid primary key references public.account_profiles(id) on delete cascade,
-    code text not null unique check (code ~ '^[0-9a-f]{32}$'),
+    code text not null unique check (code ~ '^[A-HJ-NP-Z2-9]{8}$' or code ~ '^[0-9a-f]{32}$'),
     expires_at timestamptz not null,
     check (expires_at <= now() + interval '25 hours')
 );
@@ -138,13 +138,15 @@ grant insert(id, sender_id, recipient_id, message) on public.connection_signals 
 create function private.accept_connection_invitation(invitation_code text) returns uuid
 language plpgsql security definer set search_path = '' as $$
 declare caller uuid := auth.uid(); invitation public.connection_invitations; result uuid;
+    normalized_code text := upper(regexp_replace(invitation_code, '[[:space:]-]', '', 'g'));
 begin
     if caller is null then raise exception 'Authentication required'; end if;
     if not exists (select 1 from public.account_profiles where id = caller) then
         raise exception 'Create your profile first';
     end if;
     select * into invitation from public.connection_invitations
-        where code = lower(trim(invitation_code)) and expires_at > now() for update;
+        where code = case when length(normalized_code) = 32 then lower(normalized_code) else normalized_code end
+        and expires_at > now() for update;
     if not found then raise exception 'Invitation invalid or expired'; end if;
     if invitation.owner_id = caller then raise exception 'Cannot connect to yourself'; end if;
     insert into public.person_connections(person_a, person_b)

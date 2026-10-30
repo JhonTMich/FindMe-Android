@@ -272,7 +272,8 @@ object StatusRepository {
         schedules: List<ScheduleDto>,
         overrides: List<StatusOverrideDto>,
         selectedDayOfWeek: Int,
-        nowInLima: ZonedDateTime = ZonedDateTime.now(SYSTEM_ZONE)
+        nowInLima: ZonedDateTime = ZonedDateTime.now(SYSTEM_ZONE),
+        manualStatusFirst: Boolean = false
     ): UserCurrentStatus {
         val todayLimaDay = nowInLima.dayOfWeek.value
         val currentTime = nowInLima.toLocalTime()
@@ -299,6 +300,12 @@ object StatusRepository {
             if (start != null && end != null) {
                 !currentTime.isBefore(start) && currentTime.isBefore(end)
             } else false
+        }
+
+        // Account users can explicitly share a change of plans, even during a scheduled activity.
+        if (manualStatusFirst && activeOverride != null) {
+            return UserCurrentStatus.Override(displayName, activeOverride.customLocation, activeOverride.customMessage,
+                activeOverride.expiresAt, selectedDayOfWeek = selectedDayOfWeek, todaySchedules = daySchedules)
         }
 
         // An activity is active from its start time (inclusive) until its end (exclusive).

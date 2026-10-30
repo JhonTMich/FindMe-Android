@@ -12,6 +12,7 @@ import kotlinx.serialization.json.contentOrNull
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
+import com.example.findme.domain.model.InvitationCode
 
 /** The new account model is isolated from the legacy family-code tables. */
 class AccountRepository {
@@ -78,15 +79,15 @@ class AccountRepository {
     }
 
     suspend fun createInvitation(): ConnectionInvitation {
-        val invitation = ConnectionInvitation(userId(), UUID.randomUUID().toString().replace("-", ""),
+        val invitation = ConnectionInvitation(userId(), InvitationCode.generate(),
             Instant.now().plusSeconds(86400).toString())
         client.postgrest["connection_invitations"].upsert(invitation)
         return invitation
     }
 
     suspend fun acceptInvitation(code: String) {
-        require(code.trim().length == 32) { "Introduce el código completo de invitación." }
-        client.postgrest.rpc("accept_connection_invitation", buildJsonObject { put("invitation_code", code.trim().lowercase()) })
+        require(InvitationCode.isValid(code)) { "Introduce el código de invitación completo, por ejemplo ABCD-EFGH." }
+        client.postgrest.rpc("accept_connection_invitation", buildJsonObject { put("invitation_code", InvitationCode.normalize(code)) })
     }
 
     suspend fun disconnect(id: String) {

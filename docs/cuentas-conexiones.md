@@ -8,12 +8,12 @@ Rama: `feature/cuentas-conexiones`.
 - Restauración de la sesión; la contraseña no se guarda en el estado de la pantalla.
 - Perfil propio con zona horaria del dispositivo al crearlo.
 - Crear, editar y eliminar actividades semanales, con categoría, modalidad y lugar opcional.
-- Estados temporales configurables. Por ahora mantienen la regla existente: una actividad en curso tiene prioridad.
-- Invitación aleatoria de 128 bits, de un solo uso y duración de 24 horas. Generar otra reemplaza la anterior.
+- Estados manuales configurables con prioridad sobre el horario: por ejemplo, «En camino a casa» puede reemplazar una clase todavía programada. Al vencer o quitar el estado vuelve el cálculo por horario, tanto en la app como en el widget. El flujo anterior conserva su regla de prioridad.
+- Invitación aleatoria de ocho caracteres sin letras o dígitos ambiguos, presentada como `ABCD-EFGH`, de un solo uso y duración de 24 horas. Generar otra reemplaza la anterior. Se mantienen compatibles las invitaciones antiguas.
 - Conexiones mutuas entre cuentas, sin categorías de pareja/familiar ni roles de administrador.
 - Aceptar una invitación autoriza explícitamente a ambos a consultar horarios y estados. Ninguno puede modificar los datos del otro.
 - Desvinculación con confirmación. Retira el acceso a datos futuros; no puede borrar información que alguien ya haya visto.
-- Botones de mensajes rápidos con etiqueta y texto propios. Envían mensajes persistidos que se consultan en Personas al actualizar.
+- Mensajes rápidos configurables dentro de «Mis mensajes y widget», separados de los estados. Un campo define el mensaje; la etiqueta del botón se deriva automáticamente. Envían mensajes persistidos que se consultan en Personas al actualizar.
 - Widget `FindMe · Mi gente` con tu estado, el de una persona conectada, hora de consulta y un botón de mensaje configurable desde Personas. La selección se comparte entre las instancias del widget en ese dispositivo y se comprueba contra la cuenta activa.
 - Acceso separado a la versión anterior desde la pantalla de inicio de sesión.
 
@@ -25,6 +25,10 @@ El archivo local no es una migración generada por la CLI: la CLI no está insta
 Comprobaciones remotas después del despliegue: siete tablas nuevas con RLS y políticas; ninguna permite SELECT al rol `anon`; consultar perfiles por la API sin sesión devuelve HTTP 401. Los asesores de seguridad solo señalaron problemas en las tablas anteriores. Se conservaron un perfil, 11 actividades y 26 estados anteriores. No se crearon cuentas ni se reasignó el horario de Michael.
 
 Auth permite registro por correo y exige confirmación. Falta probar entrega de correos y el registro desde Android. Para pruebas controladas sin configurar SMTP, se pueden crear dos usuarios confirmados desde el panel de Authentication y usar sus credenciales en la app; esto prueba el inicio de sesión, pero no el registro por correo.
+
+El 30 de octubre se aplicó la migración `acortar_codigos_de_invitacion` (`supabase/upgrades/short-invitations.sql`), que amplía la validación para códigos de ocho caracteres y acepta códigos escritos en minúsculas, con espacios o guiones. No modifica conexiones ni elimina invitaciones existentes.
+
+La interfaz de cuentas recupera el estilo de la app anterior: tarjetas oscuras, acentos índigo, cabecera, iconos, panorama semanal y actividades en tarjetas. Los formularios de estado, actividad, conexión y mensajes se abren en paneles inferiores para mantener las pantallas centradas en consultar el día.
 
 1. Para entornos nuevos, elegir un proyecto de desarrollo de Supabase.
 2. En un proyecto nuevo, ejecutar una sola vez el archivo SQL completo. Usa una transacción y falla si las tablas ya existen, evitando sobrescribir datos. En el proyecto personal ya está aplicado.
@@ -48,7 +52,7 @@ El perfil de Michael no se asigna automáticamente a quien se registre con ese n
 - Sincronización Realtime filtrada, caché por cuenta y estado de última actualización. En esta entrega la pantalla se actualiza manualmente; solo el cálculo del paso del tiempo se repite cada 15 segundos.
 - Recuperación de contraseña y enlaces de autenticación en Android.
 - Edición del perfil, apodos por conexión, permisos independientes para horario/estado y silenciamiento.
-- Excepciones que reemplazan actividades, actividades nocturnas y reglas de solapamiento.
+- Cancelaciones específicas de actividades, actividades nocturnas y reglas de solapamiento.
 
 No publicar esta rama como reemplazo de 1.2.2 hasta desplegar y probar el esquema, resolver la transición de las tablas anteriores y verificar los flujos en un dispositivo.
 
@@ -59,4 +63,6 @@ npm.cmd install --prefix build/schema-check --no-save --ignore-scripts @electric
 node scripts/test_account_schema.mjs
 ```
 
-Ejecuta PostgreSQL embebido, sin conexión con Supabase, y crea un sustituto mínimo de `auth.users` y `auth.uid()` para probar RLS con tres usuarios y acceso anónimo. Comprueba 30 casos: aislamiento, edición ajena, consumo/vencimiento de invitaciones, mensajes y revocación. No sustituye las pruebas del proveedor de Auth ni de Realtime en el entorno de desarrollo.
+Ejecuta PostgreSQL embebido, sin conexión con Supabase, y crea un sustituto mínimo de `auth.users` y `auth.uid()` para probar RLS con tres usuarios y acceso anónimo. Comprueba 32 casos: aislamiento, edición ajena, consumo/vencimiento de invitaciones, actualización a códigos cortos, mensajes y revocación. No sustituye las pruebas del proveedor de Auth ni de Realtime en el entorno de desarrollo.
+
+`AccountUiTest` comprueba en Android el estado manual durante una actividad, la edición del horario, el envío de mensajes y el flujo de códigos cortos, con capturas de las pantallas y formularios.

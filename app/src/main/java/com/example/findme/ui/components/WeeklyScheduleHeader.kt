@@ -29,7 +29,7 @@ import java.util.Locale
 
 @Composable
 fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int,
-    onDaySelected: (Int) -> Unit) {
+    onDaySelected: (Int) -> Unit, showDayTitle: Boolean = true) {
     var chartVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { chartVisible = true }
     val today = LocalDate.now()
@@ -45,9 +45,10 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("PANORAMA SEMANAL", style = MaterialTheme.typography.labelSmall, letterSpacing = 1.sp, color = TextSecondary)
-                        Text("${allSchedules.size} actividades", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text("${allSchedules.size} ${if (allSchedules.size == 1) "actividad" else "actividades"}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
-                    StatusPill("${allSchedules.map { it.dayOfWeek }.distinct().size} días", Color(0xFF67D8E8))
+                    val activeDays = allSchedules.map { it.dayOfWeek }.distinct().size
+                    StatusPill("$activeDays ${if (activeDays == 1) "día" else "días"}", Color(0xFF67D8E8))
                 }
                 val maximum = (1..7).maxOf { day -> allSchedules.count { it.dayOfWeek == day } }.coerceAtLeast(1)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
@@ -87,9 +88,10 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
                 }
             }
         }
-        Text("${allSchedules.count { it.dayOfWeek == selectedDayOfWeek }} actividades programadas",
+        val selectedCount = allSchedules.count { it.dayOfWeek == selectedDayOfWeek }
+        Text("$selectedCount ${if (selectedCount == 1) "actividad programada" else "actividades programadas"}",
             style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-        Text(DayOfWeek.of(selectedDayOfWeek).getDisplayName(java.time.format.TextStyle.FULL, Locale.forLanguageTag("es"))
+        if (showDayTitle) Text(DayOfWeek.of(selectedDayOfWeek).getDisplayName(java.time.format.TextStyle.FULL, Locale.forLanguageTag("es"))
             .replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.titleLarge)
     }
 }

@@ -33,7 +33,7 @@ data class AccountState(
     val invitation: ConnectionInvitation? = null
 )
 
-class AccountViewModel(application: Application) : AndroidViewModel(application) {
+class AccountViewModel(application: Application) : AndroidViewModel(application), AccountActions {
     private val repository = AccountRepository()
     private val _state = MutableStateFlow(AccountState())
     val state = _state.asStateFlow()
@@ -59,6 +59,9 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             try { action() }
             catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: IllegalArgumentException) {
+                _state.update { it.copy(error = error.message ?: "Revisa los datos ingresados.") }
+            }
             catch (error: Exception) {
                 android.util.Log.w("AccountViewModel", "Account operation failed", error)
                 _state.update { it.copy(error = "No se pudo completar la operación. Comprueba tu conexión, tus datos y la configuración de cuentas del servidor.") }
@@ -66,7 +69,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun login(email: String, password: String, name: String, register: Boolean) = perform {
+    override fun login(email: String, password: String, name: String, register: Boolean) = perform {
         require(email.contains('@') && password.isNotBlank())
         if (register) repository.register(name, email, password) else repository.signIn(email, password)
         if (repository.auth.currentUserOrNull() == null) {
@@ -83,6 +86,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         val messages = repository.quickMessages()
         val signals = repository.receivedSignals()
         val selected = _state.value.selectedPerson?.let { old -> profiles.find { it.id == old.id && it.id != profile.id } }
+            ?: profiles.firstOrNull { it.id != profile.id }
         val personSchedules = selected?.let { repository.schedules(it.id) }.orEmpty()
         val personStatuses = selected?.let { repository.overrides(it.id) }.orEmpty()
         _state.update { it.copy(signedIn = true, profile = profile, schedules = schedules, statuses = statuses,
@@ -90,13 +94,13 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             selectedPerson = selected, personSchedules = personSchedules, personStatuses = personStatuses) }
     }
 
-    fun refresh() = perform { load() }
-    fun logout() = perform {
+    override fun refresh() = perform { load() }
+    override fun logout() = perform {
         repository.auth.signOut()
         _state.value = AccountState(initializing = false)
         com.example.findme.widget.ConnectionWidget().updateAll(getApplication())
     }
-    fun saveSchedule(existingId: String?, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
+    override fun saveSchedule(existingId: String?, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
         val error = validateSchedule(day, start, end, title)
         if (error != null) { _state.update { it.copy(error = error) }; return }
         perform {
@@ -106,30 +110,41 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             _state.update { it.copy(notice = "Actividad guardada.") }
         }
     }
-    fun deleteSchedule(id: String) = perform { repository.deleteSchedule(id); load() }
-    fun setStatus(text: String, minutes: Long) = perform { repository.setStatus(text, minutes); load() }
-    fun clearStatus() = perform { repository.clearStatus(); load() }
-    fun invite() = perform {
+    override fun deleteSchedule(id: String) = perform { repository.deleteSchedule(id); load() }
+    override fun setStatus(text: String, minutes: Long) = perform {
+        repository.setStatus(text, minutes); load()
+        _state.update { it.copy(notice = "Estado actualizado.") }
+        com.example.findme.widget.ConnectionWidget().updateAll(getApplication())
+    }
+    override fun clearStatus() = perform {
+        repository.clearStatus(); load()
+        _state.update { it.copy(notice = "Se muestra tu horario de nuevo.") }
+        com.example.findme.widget.ConnectionWidget().updateAll(getApplication())
+    }
+    override fun invite() = perform {
         val invitation = repository.createInvitation()
         _state.update { it.copy(invitation = invitation) }
     }
-    fun accept(code: String) = perform { repository.acceptInvitation(code); load(); _state.update { it.copy(notice = "Conexión establecida.") } }
-    fun disconnect(id: String) = perform { repository.disconnect(id); load() }
-    fun selectPerson(profile: AccountProfile) = perform {
+    override fun accept(code: String) = perform { repository.acceptInvitation(code); load(); _state.update { it.copy(notice = "Conexión establecida.") } }
+    override fun disconnect(id: String) = perform { repository.disconnect(id); load() }
+    override fun selectPerson(profile: AccountProfile) = perform {
         val schedules = repository.schedules(profile.id)
         val statuses = repository.overrides(profile.id)
         _state.update { it.copy(selectedPerson = profile, personSchedules = schedules, personStatuses = statuses) }
     }
-    fun saveMessage(label: String, message: String) = perform { repository.saveQuickMessage(label, message); load() }
-    fun deleteMessage(id: String) = perform { repository.deleteQuickMessage(id); load() }
-    fun configureWidget(message: QuickMessage) {
+    override fun saveMessage(label: String, message: String) = perform {
+        repository.saveQuickMessage(label, message); load()
+        _state.update { it.copy(notice = "Mensaje rápido creado.") }
+    }
+    override fun deleteMessage(id: String) = perform { repository.deleteQuickMessage(id); load() }
+    override fun configureWidget(message: QuickMessage) {
         val person = _state.value.selectedPerson ?: return
         perform {
             com.example.findme.widget.ConnectionWidgetSettings.save(getApplication(), repository.userId(), person.id, message.id)
             _state.update { it.copy(notice = "Widget configurado para ${person.displayName}. Añade FindMe · Mi gente desde la pantalla de inicio de Android.") }
         }
     }
-    fun send(message: QuickMessage) {
+    override fun send(message: QuickMessage) {
         val recipient = _state.value.selectedPerson ?: return
         perform {
             repository.sendSignal(recipient.id, message.message)
