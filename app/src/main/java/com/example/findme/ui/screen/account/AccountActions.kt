@@ -6,8 +6,9 @@ import com.example.findme.data.model.QuickMessage
 /** UI actions kept separate so the account screens can be previewed without a live session. */
 interface AccountActions {
     fun refresh() {}
-    fun login(email: String, password: String, name: String, register: Boolean) {}
+    fun login(username: String, password: String) {}
     fun logout() {}
+    fun saveProfile(name: String, username: String) {}
     fun saveSchedule(existingId: String?, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {}
     fun deleteSchedule(id: String) {}
     fun setStatus(text: String, minutes: Long) {}

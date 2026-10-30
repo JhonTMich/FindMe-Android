@@ -62,6 +62,9 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             catch (error: IllegalArgumentException) {
                 _state.update { it.copy(error = error.message ?: "Revisa los datos ingresados.") }
             }
+            catch (error: io.github.jan.supabase.postgrest.exception.PostgrestRestException) {
+                _state.update { it.copy(error = if (error.code == "23505") "Ese nombre de usuario ya está ocupado. Elige otro." else "No se pudieron guardar los datos. Inténtalo de nuevo.") }
+            }
             catch (error: Exception) {
                 android.util.Log.w("AccountViewModel", "Account operation failed", error)
                 _state.update { it.copy(error = "No se pudo completar la operación. Comprueba tu conexión, tus datos y la configuración de cuentas del servidor.") }
@@ -69,9 +72,9 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    override fun login(email: String, password: String, name: String, register: Boolean) = perform {
-        require(email.contains('@') && password.isNotBlank())
-        if (register) repository.register(name, email, password) else repository.signIn(email, password)
+    override fun login(username: String, password: String) = perform {
+        require(com.example.findme.domain.model.Username.isValid(username) && password.isNotBlank()) { "Introduce un usuario válido y tu contraseña." }
+        repository.signIn(username, password)
         if (repository.auth.currentUserOrNull() == null) {
             _state.update { it.copy(notice = "Revisa tu correo para confirmar la cuenta y después inicia sesión.") }
         } else load()
@@ -95,6 +98,13 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
     }
 
     override fun refresh() = perform { load() }
+    override fun saveProfile(name: String, username: String) = perform {
+        val profile = repository.saveProfile(name, username)
+        _state.update { old -> old.copy(profile = profile,
+            profiles = old.profiles.filterNot { it.id == profile.id } + profile,
+            notice = "Perfil guardado.") }
+        com.example.findme.widget.ConnectionWidget().updateAll(getApplication())
+    }
     override fun logout() = perform {
         repository.auth.signOut()
         _state.value = AccountState(initializing = false)

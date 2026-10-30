@@ -3,7 +3,6 @@ package com.example.findme.data.repository
 import com.example.findme.data.model.*
 import com.example.findme.data.network.SupabaseClientProvider
 import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -12,6 +11,7 @@ import kotlinx.serialization.json.contentOrNull
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
+import com.example.findme.domain.model.Username
 import com.example.findme.domain.model.InvitationCode
 
 /** The new account model is isolated from the legacy family-code tables. */
@@ -20,21 +20,8 @@ class AccountRepository {
     val auth get() = client.auth
     fun userId(): String = requireNotNull(auth.currentUserOrNull()?.id) { "Inicia sesión para continuar." }
 
-    suspend fun signIn(email: String, password: String) {
-        auth.signInWith(Email) { this.email = email.trim(); this.password = password }
-    }
-
-    suspend fun register(name: String, email: String, password: String) {
-        require(name.trim().length in 1..80) { "Introduce un nombre de hasta 80 caracteres." }
-        require(password.length >= 8) { "La contraseña debe tener al menos 8 caracteres." }
-        auth.signUpWith(Email) {
-            this.email = email.trim()
-            this.password = password
-            data = buildJsonObject {
-                put("display_name", name.trim())
-                put("timezone", ZoneId.systemDefault().id)
-            }
-        }
+    suspend fun signIn(username: String, password: String) {
+        auth.importSession(UsernameLogin.signIn(username, password))
     }
 
     suspend fun ensureProfile(): AccountProfile {
@@ -51,6 +38,20 @@ class AccountRepository {
     }
 
     suspend fun profiles() = client.postgrest["account_profiles"].select().decodeList<AccountProfile>()
+    suspend fun saveProfile(name: String, username: String): AccountProfile {
+        val trimmed = name.trim()
+        require(trimmed.length in 1..80 && !trimmed.equals("Mi cuenta", ignoreCase = true)) {
+            "Introduce tu nombre, de 1 a 80 caracteres."
+        }
+        require(Username.isValid(username)) { "Usa entre 3 y 24 letras sin tildes, números o guion bajo para tu usuario." }
+        return client.postgrest["account_profiles"].update(buildJsonObject {
+            put("display_name", trimmed)
+            put("username", Username.normalize(username))
+        }) {
+            filter { eq("id", userId()) }
+            select()
+        }.decodeSingle<AccountProfile>()
+    }
     suspend fun connections() = client.postgrest["person_connections"].select().decodeList<PersonConnection>()
     suspend fun schedules(id: String) = client.postgrest["personal_schedule"].select { filter { eq("user_id", id) } }.decodeList<ScheduleDto>()
     suspend fun overrides(id: String) = client.postgrest["personal_status"].select { filter { eq("user_id", id) } }.decodeList<StatusOverrideDto>()

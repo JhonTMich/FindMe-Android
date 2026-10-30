@@ -16,8 +16,8 @@ import java.time.ZonedDateTime
 class AccountUiTest {
     @get:Rule val compose = createComposeRule()
     private val now = ZonedDateTime.now(java.time.ZoneId.of("America/Lima"))
-    private val own = AccountProfile("own", "Michael")
-    private val other = AccountProfile("other", "Ana")
+    private val own = AccountProfile("own", "Michael", username = "jhontmich")
+    private val other = AccountProfile("other", "Ana", username = "ana")
     private val schedule = ScheduleDto("activity", "own", now.dayOfWeek.value, "00:00", "23:59", "Proyecto de investigación", "Campus · Aula 201")
     private val quick = QuickMessage("quick", "own", "¿Todo bien?", "¿Todo bien?")
     private val state = AccountState(initializing = false, signedIn = true, profile = own,
@@ -110,4 +110,42 @@ class AccountUiTest {
         compose.onNodeWithText("Conectar y compartir").performClick()
         assertEquals("abcd-efgh", accepted)
     }
+    @Test fun unnamedAccountMustCompleteProfileBeforeOpeningSchedules() {
+        var saved = ""
+        compose.setContent { FindmeTheme {
+            AccountContent(state.copy(profile = own.copy(displayName = "Mi cuenta", username = null)), object : AccountActions {
+                override fun saveProfile(name: String, username: String) { saved = name }
+            })
+        } }
+        compose.onNodeWithText("Completa tu perfil").assertIsDisplayed()
+        compose.onNodeWithText("Horario").assertDoesNotExist()
+        compose.onNodeWithText("Guardar y continuar").assertIsNotEnabled()
+        compose.onNodeWithText("Nombre visible").performTextInput("  Ana  ")
+        compose.onNodeWithText("Guardar y continuar").assertIsNotEnabled()
+        compose.onNodeWithText("Nombre de usuario").performTextInput("ana_123")
+        compose.onNodeWithText("Guardar y continuar").performScrollTo().performClick()
+        assertEquals("Ana", saved)
+        screenshot("account-complete-profile")
+    }
+
+    @Test fun ownNameCanBeEditedFromAccount() {
+        var saved = ""
+        show(object : AccountActions { override fun saveProfile(name: String, username: String) { saved = name } })
+        compose.onNodeWithText("Cuenta").performClick()
+        compose.onNodeWithText("Guardar perfil").assertIsNotEnabled()
+        compose.onNodeWithText("Nombre visible").performTextReplacement("Miguel")
+        compose.onNodeWithText("Guardar perfil").performScrollTo().performClick()
+        assertEquals("Miguel", saved)
+        screenshot("account-edit-profile")
+    }
+
+    @Test fun loginDoesNotOfferPublicSignup() {
+        compose.setContent { FindmeTheme { AccountContent(AccountState(initializing = false), object : AccountActions {}) } }
+        compose.onNodeWithText("Inicia sesión").assertIsDisplayed()
+        compose.onNodeWithText("Nombre de usuario").assertIsDisplayed()
+        compose.onNodeWithText("Correo electrónico").assertDoesNotExist()
+        compose.onNodeWithText("Crear cuenta").assertDoesNotExist()
+        compose.onNodeWithText("¿Primera vez? Crea tu cuenta").assertDoesNotExist()
+    }
+
 }

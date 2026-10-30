@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.findme.data.model.*
 import com.example.findme.data.repository.StatusRepository
+import com.example.findme.domain.model.Username
 import com.example.findme.domain.model.InvitationCode
 import com.example.findme.domain.model.UserCurrentStatus
 import com.example.findme.ui.components.*
@@ -77,7 +78,7 @@ fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () ->
             }
             Column(Modifier.weight(1f)) {
                 Text("FindMe", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text(state.profile?.let { "Hola, ${it.displayName}" } ?: "Siempre cerca de tu gente", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text(state.profile?.takeUnless { it.needsName }?.let { "Hola, ${it.displayName}" } ?: "Siempre cerca de tu gente", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
             if (state.signedIn) {
                 IconButton(onClick = actions::refresh, enabled = !state.busy) {
@@ -87,7 +88,7 @@ fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () ->
             }
         }
     }, bottomBar = {
-        if (state.signedIn) NavigationBar(containerColor = DarkSurface) {
+        if (state.signedIn && state.profile?.needsProfile == false) NavigationBar(containerColor = DarkSurface) {
             listOf(Triple("Mi día", "Hoy", Icons.Default.Today), Triple("Horario", "Horario", Icons.Default.CalendarMonth),
                 Triple("Personas", "Personas", Icons.Default.PeopleOutline), Triple("Cuenta", "Cuenta", Icons.Default.PersonOutline)).forEach { (id, title, icon) ->
                 NavigationBarItem(selected = tab == id, onClick = { tab = id }, icon = { Icon(icon, null) }, label = { Text(title) },
@@ -106,6 +107,13 @@ fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () ->
                     }
                 } }
                 if (!state.signedIn) LoginForm(state.busy, actions::login, onLegacy)
+                else if (state.profile == null) {
+                    Panel {
+                        Text("Cargando tu perfil…", color = TextSecondary)
+                        OutlinedButton(onClick = actions::logout, enabled = !state.busy) { Text("Cerrar sesión") }
+                    }
+                }
+                else if (state.profile.needsProfile) CompleteProfile(state, actions)
                 else when (activeTab) {
                     "Mi día" -> MyDay(state, actions)
                     "Horario" -> ScheduleManager(state, actions)
@@ -146,28 +154,49 @@ private fun SectionHeading(icon: ImageVector, title: String, subtitle: String? =
 }
 
 @Composable
-private fun LoginForm(busy: Boolean, submit: (String, String, String, Boolean) -> Unit, onLegacy: () -> Unit) {
-    var register by rememberSaveable { mutableStateOf(false) }
-    var name by rememberSaveable { mutableStateOf("") }
-    var email by rememberSaveable { mutableStateOf("") }
+private fun LoginForm(busy: Boolean, submit: (String, String) -> Unit, onLegacy: () -> Unit) {
+    var username by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    PageHeading("Tu día, compartido", if (register) "Tu gente, más cerca." else "Qué bueno verte.",
+    PageHeading("Tu día, compartido", "Qué bueno verte.",
         "Organiza tus actividades y mantente conectado con quienes tú elijas.")
     Panel {
-        SectionHeading(Icons.Default.PersonOutline, if (register) "Crea tu cuenta" else "Inicia sesión")
-        if (register) Field(name, { name = it.take(80) }, "Nombre visible")
-        Field(email, { email = it }, "Correo electrónico", keyboard = KeyboardOptions(keyboardType = KeyboardType.Email))
+        SectionHeading(Icons.Default.PersonOutline, "Inicia sesión")
+        Field(username, { username = it.take(24) }, "Nombre de usuario", keyboard = KeyboardOptions(autoCorrectEnabled = false))
         OutlinedTextField(password, { password = it }, label = { Text("Contraseña") }, singleLine = true,
             visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
-        if (register) Text("Al menos 8 caracteres. Confirma tu correo para empezar.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
-        Button(onClick = { submit(email, password, name, register) }, modifier = Modifier.fillMaxWidth(), enabled = !busy && email.isNotBlank() && password.isNotBlank() && (!register || name.isNotBlank())) {
-            Text(if (register) "Crear cuenta" else "Entrar")
+        Button(onClick = { submit(username, password) }, modifier = Modifier.fillMaxWidth(), enabled = !busy && Username.isValid(username) && password.isNotBlank()) {
+            Text("Entrar")
         }
-        TextButton(onClick = { register = !register; password = "" }, enabled = !busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(if (register) "Ya tengo cuenta" else "¿Primera vez? Crea tu cuenta", color = IndigoPrimary)
-        }
+        Text("El acceso es por invitación. Para obtener una cuenta, contacta al responsable de FindMe.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
     }
     TextButton(onClick = onLegacy, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("Consultar vínculo anterior", color = TextMuted) }
+}
+
+@Composable
+private fun CompleteProfile(state: AccountState, actions: AccountActions) {
+    PageHeading("Un gusto conocerte", "Completa tu perfil", "Elige el nombre que verá tu gente cuando conecten contigo.")
+    Panel {
+        SectionHeading(Icons.Default.PersonOutline, "¿Cómo te llamas?")
+        ProfileNameForm(state, actions, completing = true)
+        TextButton(onClick = actions::logout, enabled = !state.busy) { Text("Cerrar sesión") }
+    }
+}
+
+@Composable
+private fun ProfileNameForm(state: AccountState, actions: AccountActions, completing: Boolean = false) {
+    val profile = state.profile ?: return
+    var name by rememberSaveable(profile.id, profile.displayName) { mutableStateOf(if (profile.needsName) "" else profile.displayName) }
+    var username by rememberSaveable(profile.id, profile.username) { mutableStateOf(profile.username.orEmpty()) }
+    val normalized = Username.normalize(username)
+    val trimmed = name.trim()
+    val valid = trimmed.length in 1..80 && !trimmed.equals("Mi cuenta", ignoreCase = true) && Username.isValid(username)
+    Field(name, { name = it.take(80) }, "Nombre visible", keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
+    Field(username, { username = it.take(24) }, "Nombre de usuario", keyboard = KeyboardOptions(autoCorrectEnabled = false))
+    Text("Para entrar: de 3 a 24 letras sin tildes, números o guion bajo. No distingue mayúsculas.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+    Button(onClick = { actions.saveProfile(trimmed, normalized) }, modifier = Modifier.fillMaxWidth(),
+        enabled = !state.busy && valid && (completing || trimmed != profile.displayName || normalized != profile.username)) {
+        Text(if (state.busy) "Guardando…" else if (completing) "Guardar y continuar" else "Guardar perfil")
+    }
 }
 
 @Composable
@@ -445,6 +474,7 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions) {
     PageHeading("A tu manera", "Mi cuenta", "Tu información y las personas con quienes compartes.")
     Panel {
         SectionHeading(Icons.Default.PersonOutline, state.profile?.displayName.orEmpty(), state.profile?.timezone)
+        ProfileNameForm(state, actions)
         HorizontalDivider(color = DarkCardBorder)
         Text("Tu horario y tus estados solo se comparten con las personas que conectes. Puedes retirar la conexión desde Personas.", color = TextSecondary)
         OutlinedButton(onClick = actions::logout, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Cerrar sesión") }

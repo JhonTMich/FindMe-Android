@@ -7,8 +7,14 @@ import kotlinx.serialization.Serializable
 data class AccountProfile(
     val id: String,
     @SerialName("display_name") val displayName: String,
-    val timezone: String = "America/Lima"
-)
+    val timezone: String = "America/Lima",
+    val username: String? = null
+) {
+    val needsProfile: Boolean get() = needsName || username.isNullOrBlank()
+
+    // Compatibility with profiles created before the name onboarding existed.
+    val needsName: Boolean get() = displayName.isBlank() || displayName.trim().equals("Mi cuenta", ignoreCase = true)
+}
 
 @Serializable
 data class PersonConnection(
