@@ -13,8 +13,9 @@ Rama: `feature/cuentas-conexiones`.
 - Conexiones mutuas entre cuentas, sin categorías de pareja/familiar ni roles de administrador.
 - Aceptar una invitación autoriza explícitamente a ambos a consultar horarios y estados. Ninguno puede modificar los datos del otro.
 - Desvinculación con confirmación. Retira el acceso a datos futuros; no puede borrar información que alguien ya haya visto.
-- Mensajes rápidos configurables dentro de «Mis mensajes y widget», separados de los estados. Un campo define el mensaje; la etiqueta del botón se deriva automáticamente. Envían mensajes persistidos que se consultan en Personas al actualizar.
+- Mensajes rápidos configurables dentro de «Mis mensajes y widget», separados de los estados. Un campo define el mensaje; la etiqueta del botón se deriva automáticamente. Envían mensajes persistidos que aparecen automáticamente con la app abierta y caducan a las 24 horas.
 - Widget `FindMe · Mi gente` con tu estado, el de una persona conectada, hora de consulta y un botón de mensaje configurable desde Personas. La selección se comparte entre las instancias del widget en ese dispositivo y se comprueba contra la cuenta activa.
+- Perfil y ajustes: avisos de actividades, estados y mensajes por cuenta; acceso a permisos de Android; búsqueda de actualizaciones; acentos índigo, menta y rosa guardados en el dispositivo.
 - Acceso separado a la versión anterior desde la pantalla de inicio de sesión.
 
 ## Preparar Supabase
@@ -49,7 +50,7 @@ Las tablas antiguas todavía tienen RLS desactivado; ya no contienen los datos a
 
 - Configuración independiente de cada instancia de widget, varios botones y opciones de apariencia. Los dos widgets anteriores siguen siendo del modelo familiar anterior.
 - Notificaciones push mediante FCM y una función de servidor, con tokens privados, control de envíos repetidos y preferencias del destinatario. Guardar un mensaje en Supabase todavía no envía una notificación Android.
-- Sincronización Realtime filtrada, caché por cuenta y estado de última actualización. En esta entrega la pantalla se actualiza manualmente; solo el cálculo del paso del tiempo se repite cada 15 segundos.
+- Caché persistente por cuenta para consultar sin conexión. La sincronización en primer plano ya usa Realtime y muestra la hora de la última consulta correcta; la caché actual del modelo de cuentas es solo en memoria.
 - Recuperación de contraseña en Android. El retorno desde confirmación de registro ya abre la app, pero no inicia sesión automáticamente.
 - Apodos por conexión, permisos independientes para horario/estado y silenciamiento.
 - Cancelaciones específicas de actividades, actividades nocturnas y reglas de solapamiento.
@@ -112,7 +113,7 @@ Cada cuenta nueva empieza sin conexiones. Compartir horarios requiere una invita
 
 ### Configuración de correo y retorno a Android
 
-El propietario configuró Gmail SMTP desde el panel de Supabase, con contraseña de aplicación y verificación en dos pasos. Ninguna contraseña SMTP se recibió en el chat ni se guardó en el repositorio. La entrega real y la apertura del enlace en el teléfono deben confirmarse con un registro del propio usuario.
+El propietario configuró Gmail SMTP desde el panel de Supabase, con contraseña de aplicación y verificación en dos pasos. Ninguna contraseña SMTP se recibió en el chat ni se guardó en el repositorio. El propietario confirmó la recepción del correo y el retorno a FindMe con un registro real.
 
 En **Authentication → Email → SMTP Settings**, configurar un proveedor SMTP y un remitente autorizado por ese proveedor. Mantener **Confirm Email** activado y **Allow new users to sign up** activado. En **URL Configuration**, definir `findme://auth/confirmed` como **Site URL** y añadir exactamente la misma dirección a **Redirect URLs**. El propietario confirmó que guardó ambas opciones. Instalar la nueva compilación antes de pedir el correo: las versiones anteriores no reconocen ese enlace.
 
@@ -138,4 +139,30 @@ Comprobaciones: 19 casos del esquema de registro, 13 pruebas de las funciones de
 
 La función `authorized-signup` fija `redirect_to=findme://auth/confirmed` tanto para registro como para reenvío. Android reconoce únicamente ese esquema, host y ruta. El enlace muestra el acceso o un aviso de enlace fallido; no importa tokens del Intent ni cambia la cuenta activa. La persona entra con usuario y contraseña, que vuelven a validarse con Auth. No se muestran detalles remotos sin validar ni se retienen fragmentos en el Intent de la actividad.
 
-Se verificaron apertura en frío, recepción en la actividad ya abierta y aviso de enlace vencido en emulador, además de pruebas JVM del parser, compilación y lint. La entrega SMTP y el enlace en el teléfono están sujetos a la prueba real del propietario; la aplicación no puede comprobar el buzón del destinatario.
+Se verificaron apertura en frío, recepción en la actividad ya abierta y aviso de enlace vencido en emulador, además de pruebas JVM del parser, compilación y lint. El propietario confirmó después que el correo llega y su enlace abre FindMe en el teléfono.
+
+
+## Perfil, avisos y mensajes en vivo — 30 de octubre de 2026
+
+El Perfil del modelo de cuentas recupera notificaciones, permisos de Android y actualizaciones, además de nombre y usuario. Los avisos de actividades, estados y mensajes se guardan por cuenta en DataStore. El acento de color (índigo, menta o rosa) se guarda por dispositivo y cambia los controles y componentes compartidos con una transición breve; los colores semánticos de las categorías de actividad se conservan. Cerrar sesión en el flujo anterior ya no borra estos ajustes.
+
+Mientras la pantalla de cuentas está visible, `AccountLiveUpdates` escucha seis tablas de la publicación `supabase_realtime`: perfiles, conexiones, horario, estado, mensajes rápidos y mensajes enviados. Los datos siempre se vuelven a consultar mediante RLS; los eventos no se utilizan para omitir permisos. Los eventos se agrupan para evitar consultas repetidas por ráfagas. Hay una consulta de respaldo por minuto y una consulta al terminar la suscripción para cubrir los cambios ocurridos entre la carga inicial y la conexión.
+
+La observación se cancela al salir de la pantalla de cuentas, pasar la app a segundo plano o cambiar de sesión; los canales se retiran al cancelar. Un reloj local revisa cambios de actividad, estado y caducidad cada 15 segundos sin consultar la base de datos. Los primeros datos de un contacto no generan avisos retrospectivos. Los mensajes nuevos producen avisos locales si la preferencia y el permiso de Android lo permiten; desactivar y activar los avisos no reproduce los mensajes anteriores. Pulsar un aviso de mensaje abre Personas.
+
+**No hay notificaciones push con la app cerrada.** Cuando se vuelva a abrir, se consultan los mensajes que sigan vigentes. Implementar FCM continúa siendo una entrega pendiente.
+
+### Única restricción nueva: conservar mensajes enviados durante 24 horas
+
+Por elección del propietario, no se añadieron límites diarios ni pausas entre envíos. Se conserva la validación de texto que ya existía. La retención corresponde a `connection_signals`; no elimina los textos configurados como botones en `quick_messages` ni horarios, estados o cuentas.
+
+Migraciones remotas aplicadas:
+
+- `20261030165333_mensajes_en_vivo_y_retencion_diaria.sql`: índice por fecha, política RLS que oculta mensajes de 24 horas o más y publicación de las tablas para Realtime.
+- `20261030165335_programar_limpieza_mensajes.sql`: instala `pg_cron` y programa `findme-purge-messages` cada cinco minutos. El trabajo elimina mensajes vencidos aun si nadie abre la app y conserva solo siete días de su propio historial de ejecución.
+
+Los mensajes dejan de ser accesibles por API al cumplir 24 horas. El borrado físico puede tardar hasta cinco minutos adicionales hasta el siguiente ciclo. La lista de Personas consulta los últimos 20 mensajes vigentes para limitar el tamaño de cada lectura; ese tamaño de página no es un límite de envío. Los mensajes pueden vencer aunque no se hayan leído.
+
+Verificación del servidor: `node scripts/test_message_retention.mjs` comprueba caducidad, borrado físico, permisos, revocación y ausencia de límites nuevos de envío (9 comprobaciones). Se verificaron las seis tablas publicadas, el trabajo activo y una ejecución programada satisfactoria. La recepción Realtime entre dos teléfonos con cuentas reales debe verificarse con el propietario; no se crearon usuarios ficticios para probarla.
+
+Verificación Android de esta entrega: 40 pruebas JVM; 11 pruebas de interfaz de cuentas y una prueba de persistencia por cuenta en emulador, con comprobaciones finales enfocadas del selector de color. Compilación y lint correctos. Se revisó una captura de la vista con el acento menta.
