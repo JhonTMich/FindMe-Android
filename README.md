@@ -33,15 +33,36 @@ La primera vez Android puede pedir autorizar a FindMe para instalar aplicaciones
 
 Las instalaciones de la versión 1.2 todavía contienen el flujo anterior. Para habilitar este nuevo actualizador hay que instalar esta corrección una primera vez; las versiones siguientes podrán descargarse desde la app.
 
-Para distribuir una nueva versión:
+## Publicar desde la terminal
 
-1. Incrementar `versionCode` y `versionName` en `app/build.gradle.kts`.
-2. Compilar y firmar el APK con la misma clave de las versiones anteriores.
-3. Publicar un release estable y público con una etiqueta numérica como `v1.2` y adjuntar el APK.
+Después de fusionar los cambios en `main`, basta con crear y subir un tag nuevo. No necesitas compilar, descargar ni adjuntar el APK manualmente:
 
-El APK de la primera publicación 1.2 se firma con el certificado local de desarrollo ya usado en los APK de prueba, para conservar la compatibilidad de actualización. La clave privada no se incorpora al repositorio. Para una distribución de producción se debe definir y custodiar una clave de firma apropiada.
+```powershell
+git fetch origin
+git tag v1.2.3 origin/main
+git push origin v1.2.3
+```
 
-La etiqueta debe corresponder al `versionName` del APK. Se comparan componentes numéricos: `1.10.0` es posterior a `1.9.0`; `1.0` y `1.0.0` son equivalentes. Los borradores y prereleases no se anuncian. Sin releases públicos o con el repositorio privado, la comprobación sin credenciales no puede obtener una actualización. No se incluyen tokens de GitHub en el APK.
+Usa un número superior al último release publicado. Los tags admiten versiones estables como `v1.2.3` o `v1.3`; no se aceptan sufijos de prerelease. El tag debe señalar un commit que ya esté integrado en `main` y que contenga el workflow.
+
+El workflow `.github/workflows/release.yml` comprueba el tag, instala Java 25 y el SDK `platforms;android-37.0`, ejecuta las pruebas unitarias y lint, compila el APK de release y lo firma. Después publica un release estable marcado como Latest con `FindMe-VERSION.apk` y `SHA256SUMS.txt`. El release lleva únicamente un mensaje breve, sin notas de parche generadas.
+
+La versión del APK sale del tag mediante las propiedades Gradle `releaseVersionName` y `releaseVersionCode`. Por ejemplo, `v1.2.3` produce `versionName = 1.2.3` y `versionCode = 1002003`. Se calcula `major * 1000000 + minor * 1000 + patch` para que las actualizaciones mantengan un código creciente y reproducible. Minor y patch admiten valores hasta 999. Los valores de `defaultConfig` se conservan como respaldo para compilaciones locales sin esas propiedades.
+
+Los cuatro secretos de firma de este repositorio ya están configurados en GitHub Actions:
+
+| Secreto | Contenido |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | Archivo de firma codificado en Base64 |
+| `ANDROID_KEYSTORE_PASSWORD` | Contraseña del archivo |
+| `ANDROID_KEY_ALIAS` | Alias de la clave |
+| `ANDROID_KEY_PASSWORD` | Contraseña de la clave |
+
+Se utiliza el mismo certificado local de desarrollo de los APK publicados hasta ahora para conservar la compatibilidad de actualización. La clave privada no se incorpora al repositorio ni a los artefactos. Para una distribución de producción se debe definir y custodiar una estrategia de firma apropiada.
+
+Los PR solo ejecutan comprobaciones y compilación sin acceso a los secretos de firma. La firma y publicación están reservadas a tags integrados en `main`. Se puede consultar el progreso en [Actions](https://github.com/JhonTMich/FindMe-Android/actions/workflows/release.yml).
+
+Si falla una ejecución por una incidencia temporal, puedes volver a ejecutarla desde Actions. Los borradores incompletos se completan antes de publicarse; un release ya publicado no se sobrescribe y requiere un tag nuevo.
 
 Referencia: [API de releases de GitHub](https://docs.github.com/en/rest/releases/releases#get-the-latest-release).
 
