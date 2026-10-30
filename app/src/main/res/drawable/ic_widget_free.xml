@@ -1,0 +1,53 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Subtle glow background shape -->
+    <path
+        android:fillColor="#3D10B981"
+        android:pathData="M25,25 C65,5 115,20 110,65 C105,100 55,115 20,95 C-5,75 5,35 25,25 Z" />
+    <!-- Home Roof & House Silhouette -->
+    <path
+        android:fillColor="#064E3B"
+        android:pathData="M55,30 L95,30 L95,65 L55,65 Z" />
+    <path
+        android:fillColor="#047857"
+        android:pathData="M50,30 L75,10 L100,30 Z" />
+    <!-- Window & Warm Light -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M65,40 L85,40 L85,55 L65,55 Z" />
+    <path
+        android:strokeColor="#064E3B"
+        android:strokeWidth="2"
+        android:pathData="M75,40 L75,55 M65,47.5 L85,47.5" />
+    <!-- Person relaxing on couch -->
+    <!-- Armchair/Couch -->
+    <path
+        android:fillColor="#10B981"
+        android:pathData="M15,70 L55,70 A5,5 0 0,1 60,75 L60,95 L10,95 L10,75 A5,5 0 0,1 15,70 Z" />
+    <path
+        android:fillColor="#059669"
+        android:pathData="M10,80 L60,80 L60,95 L10,95 Z" />
+    <!-- Person Sitting Head/Hair -->
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M32,58 A10,10 0 1,0 32,38 A10,10 0 1,0 32,58 Z" />
+    <path
+        android:fillColor="#064E3B"
+        android:pathData="M22,46 C22,36 42,36 42,46 C42,50 38,54 35,58 C32,56 28,56 25,58 C22,54 22,50 22,46 Z" />
+    <!-- Coffee Cup & Steam Sparkles -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M75,80 L87,80 L85,92 L77,92 Z" />
+    <path
+        android:strokeColor="#FBBF24"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M78,74 C78,71 81,71 81,68 M83,75 C83,72 86,72 86,69" />
+    <!-- Floor -->
+    <path
+        android:fillColor="#064E3B"
+        android:pathData="M5,95 L115,95 L115,102 L5,102 Z" />
+</vector>

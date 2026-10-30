@@ -47,30 +47,6 @@
             </intent-filter>
         </activity>
 
-        <receiver
-            android:name=".widget.UserStatusWidgetReceiver"
-            android:exported="true"
-            android:label="Ubicación Familiar Widget">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/user_status_widget_info" />
-        </receiver>
-
-        <receiver
-            android:name=".widget.FindMeControlWidgetReceiver"
-            android:exported="true"
-            android:label="FindMe Control Widget">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/find_me_control_widget_info" />
-        </receiver>
-
         <receiver android:name=".widget.ConnectionWidgetReceiver"
             android:exported="true" android:label="FindMe · Mi gente">
             <intent-filter>

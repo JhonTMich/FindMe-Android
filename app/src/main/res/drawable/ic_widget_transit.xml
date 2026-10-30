@@ -1,0 +1,43 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Glow background shape -->
+    <path
+        android:fillColor="#3DF59E0B"
+        android:pathData="M25,25 C65,5 115,20 110,65 C105,100 55,115 20,95 C-5,75 5,35 25,25 Z" />
+    <!-- Map Path line -->
+    <path
+        android:strokeColor="#FBBF24"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:pathData="M20,85 C40,85 45,55 70,55 C90,55 95,30 105,25" />
+    <!-- Dotted Map line extension -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M20,85 L10,85" />
+    <!-- Map Pin Marker -->
+    <path
+        android:fillColor="#EF4444"
+        android:pathData="M70,20 C60,20 52,28 52,38 C52,50 70,68 70,68 C70,68 88,50 88,38 C88,28 80,20 70,20 Z" />
+    <!-- Inner Pin Dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M70,33 A5,5 0 1,0 70,43 A5,5 0 1,0 70,33 Z" />
+    <!-- Walking Person Silhouette -->
+    <path
+        android:fillColor="#FBBF24"
+        android:pathData="M35,45 A6,6 0 1,0 35,33 A6,6 0 1,0 35,45 Z" />
+    <path
+        android:strokeColor="#FBBF24"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M35,45 L35,65 M35,52 L27,62 M35,52 L43,60 M35,65 L27,82 M35,65 L43,80" />
+    <!-- Ground Line -->
+    <path
+        android:fillColor="#78350F"
+        android:pathData="M5,95 L115,95 L115,100 L5,100 Z" />
+</vector>

@@ -15,8 +15,7 @@ import com.example.findme.data.repository.StatusRepository
 import com.example.findme.domain.model.UserCurrentStatus
 import com.example.findme.util.NotificationHelper
 import com.example.findme.util.ScheduleNotifier
-import com.example.findme.widget.FindMeControlWidget
-import com.example.findme.widget.UserStatusWidget
+import com.example.findme.widget.ConnectionWidget
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -233,8 +232,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun updateWidgets() {
         try {
-            UserStatusWidget().updateAll(getApplication())
-            FindMeControlWidget().updateAll(getApplication())
+            ConnectionWidget().updateAll(getApplication())
         } catch (_: Exception) {}
     }
 

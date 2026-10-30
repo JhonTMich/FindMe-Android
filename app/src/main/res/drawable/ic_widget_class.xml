@@ -1,0 +1,52 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Subtle glow background shape -->
+    <path
+        android:fillColor="#3D9C27B0"
+        android:pathData="M30,20 C60,5 110,15 105,65 C100,105 50,115 25,90 C5,70 5,30 30,20 Z" />
+    <!-- Blackboard -->
+    <path
+        android:fillColor="#E0424268"
+        android:pathData="M55,25 L105,25 A5,5 0 0,1 110,30 L110,65 A5,5 0 0,1 105,70 L55,70 A5,5 0 0,1 50,65 L50,30 A5,5 0 0,1 55,25 Z" />
+    <!-- Chalkboard border -->
+    <path
+        android:strokeColor="#80FFFFFF"
+        android:strokeWidth="2"
+        android:pathData="M55,27 L105,27 A3,3 0 0,1 108,30 L108,63 A3,3 0 0,1 105,66 L55,66 A3,3 0 0,1 52,63 L52,30 A3,3 0 0,1 55,27 Z" />
+    <!-- Chalk formulas: a² + b² and integral -->
+    <path
+        android:strokeColor="#D0FFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M60,40 L65,35 L70,40 M68,37 L78,37 M82,40 L87,35 L92,40" />
+    <path
+        android:strokeColor="#B0F3A4B5"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M60,55 C65,50 62,60 67,55 M75,52 L85,58 M75,58 L85,52" />
+    <!-- Student sitting with book -->
+    <!-- Head/Hair -->
+    <path
+        android:fillColor="#F3A4B5"
+        android:pathData="M35,65 A12,12 0 1,0 35,41 A12,12 0 1,0 35,65 Z" />
+    <path
+        android:fillColor="#3F2B3E"
+        android:pathData="M23,50 C23,38 47,38 47,50 C47,55 42,60 40,65 C35,62 30,62 25,65 C23,60 23,55 23,50 Z" />
+    <!-- Body Hoodie -->
+    <path
+        android:fillColor="#B84B70"
+        android:pathData="M20,95 L50,95 L46,70 C42,65 28,65 24,70 Z" />
+    <!-- Desk & Books -->
+    <path
+        android:fillColor="#3A2A45"
+        android:pathData="M10,95 L110,95 L110,102 L10,102 Z" />
+    <path
+        android:fillColor="#9C27B0"
+        android:pathData="M65,85 L95,85 L95,95 L65,95 Z" />
+    <path
+        android:fillColor="#E91E63"
+        android:pathData="M68,78 L92,78 L92,85 L68,85 Z" />
+</vector>
