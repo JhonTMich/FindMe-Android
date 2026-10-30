@@ -39,9 +39,14 @@ import com.example.findme.ui.theme.FindmeTheme
 import com.example.findme.util.ApkUpdateInstaller
 import com.example.findme.domain.model.ConfirmationLink
 import androidx.compose.material3.AlertDialog
+import com.example.findme.data.local.AccountSettingsRepository
+import com.example.findme.data.local.AppAccent
+import com.example.findme.util.NotificationHelper
 
 class MainActivity : ComponentActivity() {
     private var confirmationLink by mutableStateOf<ConfirmationLink?>(null)
+    private var openPeople by mutableStateOf(false)
+    private val appSettings by lazy { AccountSettingsRepository(applicationContext) }
     private val updateViewModel: UpdateViewModel by viewModels()
     private val mainViewModel: MainViewModel by viewModels()
     private val pairingViewModel: PairingViewModel by viewModels()
@@ -80,7 +85,9 @@ class MainActivity : ComponentActivity() {
         com.example.findme.util.NotificationHelper.createNotificationChannel(this)
         enableEdgeToEdge()
         setContent {
-            FindmeTheme {
+            val accent by appSettings.accent.collectAsStateWithLifecycle(initialValue = AppAccent.Indigo)
+            val accountState by accountViewModel.state.collectAsStateWithLifecycle()
+            FindmeTheme(accent = accent) {
                 val updateState by updateViewModel.state.collectAsStateWithLifecycle()
                 // Defer the installer until this activity is visible; consume each request once.
                 LifecycleResumeEffect(updateState.requestInstall) {
@@ -113,9 +120,12 @@ class MainActivity : ComponentActivity() {
                                 confirmationLink = null
                             }) { Text("Continuar") } })
                     }
+                    LaunchedEffect(openPeople, accountState.initializing) {
+                        if (openPeople && !accountState.initializing) { legacy = false; accountViewModel.openPeople(); openPeople = false }
+                    }
                     BackHandler(enabled = legacy) { legacy = false }
                     if (!legacy) {
-                        AccountScreen(accountViewModel, onLegacy = { legacy = true })
+                        AccountScreen(accountViewModel, onLegacy = { legacy = true }, updates = updateState, onCheckUpdates = updateViewModel::check, onInstallUpdate = updateViewModel::update)
                     } else {
                         Column {
                             TextButton(onClick = { legacy = false }, modifier = Modifier.statusBarsPadding()) { Text("Volver a cuentas") }
@@ -140,6 +150,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun receiveConfirmation(intent: Intent?) {
+        if (intent?.action == NotificationHelper.OPEN_PEOPLE) { openPeople = true; intent.action = null; return }
         if (intent?.action != Intent.ACTION_VIEW) return
         ConfirmationLink.parse(intent.dataString)?.let {
             confirmationLink = it

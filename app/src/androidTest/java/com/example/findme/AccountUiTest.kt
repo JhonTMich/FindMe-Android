@@ -2,6 +2,7 @@ package com.example.findme
 
 import android.content.ContentValues
 import android.provider.MediaStore
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
@@ -30,12 +31,12 @@ class AccountUiTest {
     private fun show(actions: AccountActions = object : AccountActions {}) {
         compose.setContent { FindmeTheme { AccountContent(state, actions) } }
     }
-    private fun screenshot(name: String) {
+    private fun screenshot(name: String, composeOnly: Boolean = false) {
         compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         // Capture the whole window, including modal sheets, and retain images after test cleanup.
-        val bitmap = requireNotNull(instrumentation.uiAutomation.takeScreenshot())
+        val bitmap = if (composeOnly) compose.onRoot().captureToImage().asAndroidBitmap() else requireNotNull(instrumentation.uiAutomation.takeScreenshot())
         val uri = requireNotNull(context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
@@ -131,7 +132,7 @@ class AccountUiTest {
     @Test fun ownNameCanBeEditedFromAccount() {
         var saved = ""
         show(object : AccountActions { override fun saveProfile(name: String, username: String) { saved = name } })
-        compose.onNodeWithText("Cuenta").performClick()
+        compose.onNodeWithText("Perfil").performClick()
         compose.onNodeWithText("Guardar perfil").assertIsNotEnabled()
         compose.onNodeWithText("Nombre visible").performTextReplacement("Miguel")
         compose.onNodeWithText("Guardar perfil").performScrollTo().performClick()
@@ -189,6 +190,47 @@ class AccountUiTest {
         assertTrue(resent)
         compose.onNodeWithText("Ya confirmé, iniciar sesión").performScrollTo().performClick()
         assertTrue(finished)
+    }
+
+    @Test fun profileRestoresSettingsAndChangesAccent() {
+        val current = androidx.compose.runtime.mutableStateOf(state)
+        compose.setContent {
+            FindmeTheme(accent = current.value.settings.accent) {
+                AccountContent(current.value, object : AccountActions {
+                    override fun setAlert(alert: com.example.findme.data.local.AccountAlert, enabled: Boolean) {
+                        assertEquals(com.example.findme.data.local.AccountAlert.Messages, alert)
+                        current.value = current.value.copy(settings = current.value.settings.copy(messages = enabled))
+                    }
+                    override fun setAccent(accent: com.example.findme.data.local.AppAccent) {
+                        current.value = current.value.copy(settings = current.value.settings.copy(accent = accent))
+                    }
+                })
+            }
+        }
+        compose.onNodeWithText("Perfil").performClick()
+        compose.onNodeWithText("Mensajes recibidos").performScrollTo().assertIsOn().performClick()
+        compose.onNodeWithText("Mensajes recibidos").assertIsOff()
+        screenshot("account-profile-notifications-compose", composeOnly = true)
+        compose.onNodeWithText("Menta").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithText("Menta").assertIsSelected()
+        assertEquals(com.example.findme.data.local.AppAccent.Mint, current.value.settings.accent)
+        screenshot("account-profile-mint-compose", composeOnly = true)
+        compose.onNodeWithText("Buscar actualizaciones").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun incomingMessageAppearsWithoutPressingRefresh() {
+        val current = androidx.compose.runtime.mutableStateOf(state)
+        compose.setContent { FindmeTheme { AccountContent(current.value, object : AccountActions {}) } }
+        compose.onNodeWithText("Personas").performClick()
+        compose.onNodeWithText("Te han escrito").assertDoesNotExist()
+        compose.runOnIdle {
+            current.value = current.value.copy(signals = listOf(ConnectionSignal(
+                "local-message", other.id, own.id, "Mensaje de prueba local", java.time.Instant.now().toString()
+            )))
+        }
+        compose.onNodeWithText("Te han escrito").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Mensaje de prueba local").assertIsDisplayed()
+        compose.onNodeWithText("Mensajes recientes · Últimas 24 horas").assertIsDisplayed()
     }
 
 }

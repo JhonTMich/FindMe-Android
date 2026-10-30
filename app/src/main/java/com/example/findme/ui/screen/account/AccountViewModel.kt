@@ -12,9 +12,28 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import com.example.findme.data.local.*
+import com.example.findme.data.repository.AccountLiveUpdates
+import com.example.findme.data.repository.StatusRepository
+import com.example.findme.domain.model.UserCurrentStatus
+import com.example.findme.util.NotificationHelper
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.UUID
 
 data class AccountState(
+    val settings: AccountSettings = AccountSettings(),
+    val lastSync: Instant? = null,
+    val syncIssue: Boolean = false,
+    val peopleRevision: Int = 0,
     val initializing: Boolean = true,
     val signedIn: Boolean = false,
     val busy: Boolean = false,
@@ -37,6 +56,13 @@ data class AccountState(
 
 class AccountViewModel(application: Application) : AndroidViewModel(application), AccountActions {
     private val repository = AccountRepository()
+    private val preferences = AccountSettingsRepository(application)
+    private val snapshotMutex = Mutex()
+    private var baselineOwner: String? = null
+    private val messageNotifications = com.example.findme.domain.model.MessageNotificationTracker()
+    private var knownStatuses = mutableMapOf<String, String>()
+    private var allSchedules: List<ScheduleDto> = emptyList()
+    private var allStatuses: List<StatusOverrideDto> = emptyList()
     private val _state = MutableStateFlow(AccountState())
     val state = _state.asStateFlow()
 
@@ -50,6 +76,17 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 else if (_state.value.profile?.id != user.id) {
                     _state.update { old -> old.copy(initializing = false, signedIn = true) }
                     refresh()
+                }
+            }
+        }
+    }
+
+    init {
+        viewModelScope.launch {
+            repository.auth.sessionStatus.collectLatest {
+                val id = repository.auth.currentUserOrNull()?.id ?: return@collectLatest
+                preferences.settings(id).collect { settings ->
+                    if (repository.auth.currentUserOrNull()?.id == id) _state.update { old -> old.copy(settings = settings) }
                 }
             }
         }
@@ -82,22 +119,95 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         } else load()
     }
 
-    private suspend fun load() {
+    private suspend fun load() = snapshotMutex.withLock {
+        val id = repository.userId()
         val profile = repository.ensureProfile()
-        val schedules = repository.schedules(profile.id)
-        val statuses = repository.overrides(profile.id)
         val connections = repository.connections()
         val profiles = repository.profiles()
         val messages = repository.quickMessages()
         val signals = repository.receivedSignals()
+        val schedules = repository.accessibleSchedules()
+        val statuses = repository.accessibleStatuses()
+        if (repository.auth.currentUserOrNull()?.id != id) return@withLock
+        if (baselineOwner != id) {
+            baselineOwner = id; knownStatuses.clear()
+        }
         val selected = _state.value.selectedPerson?.let { old -> profiles.find { it.id == old.id && it.id != profile.id } }
             ?: profiles.firstOrNull { it.id != profile.id }
-        val personSchedules = selected?.let { repository.schedules(it.id) }.orEmpty()
-        val personStatuses = selected?.let { repository.overrides(it.id) }.orEmpty()
-        _state.update { it.copy(signedIn = true, profile = profile, schedules = schedules, statuses = statuses,
+        val newSignals = messageNotifications.update(id, signals, _state.value.settings.messages)
+        allSchedules = schedules
+        allStatuses = statuses
+        _state.update { it.copy(signedIn = true, profile = profile,
+            schedules = schedules.filter { it.userId == id }, statuses = statuses.filter { it.userId == id },
             connections = connections, profiles = profiles, messages = messages, signals = signals,
-            selectedPerson = selected, personSchedules = personSchedules, personStatuses = personStatuses) }
+            selectedPerson = selected, personSchedules = schedules.filter { it.userId == selected?.id },
+            personStatuses = statuses.filter { it.userId == selected?.id }, lastSync = Instant.now(), syncIssue = false) }
+        if (_state.value.settings.messages) newSignals.forEach { signal ->
+            val sender = profiles.find { it.id == signal.senderId }?.displayName ?: "Tu gente"
+            NotificationHelper.showMessageNotification(getApplication(), signal.id, sender, signal.message)
+        }
+        updateStatusNotifications()
     }
+
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    suspend fun observeWhileVisible() = coroutineScope {
+        launch {
+            while (isActive) {
+                delay(15_000)
+                val cutoff = Instant.now().minusSeconds(86400)
+                _state.update { old -> old.copy(signals = old.signals.filter {
+                    runCatching { Instant.parse(it.createdAt) > cutoff }.getOrDefault(false)
+                }) }
+                updateStatusNotifications()
+            }
+        }
+        repository.auth.sessionStatus.collectLatest {
+            val id = repository.auth.currentUserOrNull()?.id ?: return@collectLatest
+            AccountLiveUpdates.observe(id).sample(500).collect {
+                try { load() }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { _state.update { old -> old.copy(syncIssue = true) } }
+            }
+        }
+    }
+
+    private fun updateStatusNotifications() {
+        val state = _state.value
+        val own = state.profile?.id ?: return
+        if (repository.auth.currentUserOrNull()?.id != own) return
+        val activeIds = state.profiles.map { it.id }.toSet()
+        knownStatuses.keys.retainAll(activeIds)
+        state.profiles.filter { it.id != own }.forEach { person ->
+            val zone = runCatching { ZoneId.of(person.timezone) }.getOrDefault(ZoneId.systemDefault())
+            val now = ZonedDateTime.now(zone)
+            val status = StatusRepository.calculateStatus(person.displayName,
+                allSchedules.filter { it.userId == person.id }, allStatuses.filter { it.userId == person.id },
+                now.dayOfWeek.value, now, manualStatusFirst = true)
+            val key = when (status) {
+                is UserCurrentStatus.InClass -> "activity:${status.currentSchedule.id}"
+                is UserCurrentStatus.Override -> "status:${status.customLocation}:${status.customMessage}"
+                else -> "schedule"
+            }
+            val previous = knownStatuses.put(person.id, key)
+            if (previous != null && previous != key) {
+                when {
+                    status is UserCurrentStatus.Override && state.settings.statuses ->
+                        NotificationHelper.showStatusNotification(getApplication(), person.displayName, status.customLocation)
+                    status is UserCurrentStatus.InClass && state.settings.activities ->
+                        NotificationHelper.showStatusNotification(getApplication(), person.displayName, "Actividad en curso: ${status.currentSchedule.title}")
+                    previous.startsWith("status:") && state.settings.statuses ->
+                        NotificationHelper.showStatusNotification(getApplication(), person.displayName, "Vuelve a mostrar su horario.")
+                }
+            }
+        }
+    }
+
+    fun openPeople() { _state.update { it.copy(peopleRevision = it.peopleRevision + 1) } }
+    override fun setAlert(alert: AccountAlert, enabled: Boolean) {
+        val id = repository.auth.currentUserOrNull()?.id ?: return
+        viewModelScope.launch { preferences.setAlert(id, alert, enabled) }
+    }
+    override fun setAccent(accent: AppAccent) { viewModelScope.launch { preferences.setAccent(accent) } }
 
     override fun refresh() = perform { load() }
     override fun register(name: String, email: String, username: String, password: String, confirmation: String) = perform {
@@ -173,7 +283,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         val recipient = _state.value.selectedPerson ?: return
         perform {
             repository.sendSignal(recipient.id, message.message)
-            _state.update { it.copy(notice = "Mensaje guardado para ${recipient.displayName}. Puede verlo al actualizar Personas.") }
+            _state.update { it.copy(notice = "Mensaje enviado a ${recipient.displayName}. Se conserva durante 24 horas.") }
         }
     }
 }

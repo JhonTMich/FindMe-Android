@@ -33,7 +33,7 @@ fun formatDurationMinutes(minutes: Long): String {
 @Composable
 fun HeroStatusCard(status: UserCurrentStatus, modifier: Modifier = Modifier) {
     val accent = when (status) {
-        is UserCurrentStatus.InClass -> IndigoPrimary
+        is UserCurrentStatus.InClass -> MaterialTheme.colorScheme.primary
         is UserCurrentStatus.Override -> Color(0xFF67D8E8)
         else -> StatusGreenText
     }

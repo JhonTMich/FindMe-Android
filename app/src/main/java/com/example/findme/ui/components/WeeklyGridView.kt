@@ -1,5 +1,6 @@
 package com.example.findme.ui.components
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,7 +36,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.findme.ui.theme.DarkCardBg
 import com.example.findme.ui.theme.DarkCardBorder
-import com.example.findme.ui.theme.IndigoPrimary
 import com.example.findme.ui.theme.TextMuted
 import com.example.findme.ui.theme.TextPrimary
 import com.example.findme.ui.theme.TextSecondary
@@ -241,7 +241,7 @@ private fun GridHeaderCell(
     isSelected: Boolean
 ) {
     val bg = if (isSelected) Color(0xFF262A58) else Color(0xFF131A2B)
-    val border = if (isSelected) IndigoPrimary else Color(0xFF1E283D)
+    val border = if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFF1E283D)
 
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -330,7 +330,7 @@ private fun GridSlotCell(
         )
         GridSlotType.ACTIVE -> Quadruple(
             Color(0xFF3C3888),
-            IndigoPrimary,
+            MaterialTheme.colorScheme.primary,
             Color.White,
             Color(0xFFC7D2FE)
         )

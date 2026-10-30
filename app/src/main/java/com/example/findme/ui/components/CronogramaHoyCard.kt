@@ -1,5 +1,6 @@
 package com.example.findme.ui.components
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -26,7 +27,6 @@ import androidx.compose.ui.unit.sp
 import com.example.findme.data.model.ScheduleDto
 import com.example.findme.ui.theme.DarkCardBg
 import com.example.findme.ui.theme.DarkCardBorder
-import com.example.findme.ui.theme.IndigoPrimary
 import com.example.findme.ui.theme.TextMuted
 import com.example.findme.ui.theme.TextPrimary
 import java.time.LocalDate
@@ -134,7 +134,7 @@ fun CronogramaHoyCard(
                         .fillMaxWidth(percentage / 100f)
                         .height(8.dp)
                         .clip(CircleShape)
-                        .background(IndigoPrimary)
+                        .background(MaterialTheme.colorScheme.primary)
                 )
             }
         }

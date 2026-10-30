@@ -1,5 +1,6 @@
 package com.example.findme.ui.components
 
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,7 +39,6 @@ import androidx.compose.ui.unit.sp
 import com.example.findme.data.model.ScheduleDto
 import com.example.findme.ui.theme.DarkCardBg
 import com.example.findme.ui.theme.DarkCardBorder
-import com.example.findme.ui.theme.IndigoPrimary
 import com.example.findme.ui.theme.TextMuted
 import com.example.findme.ui.theme.TextPrimary
 import com.example.findme.ui.theme.TextSecondary
@@ -238,7 +238,7 @@ fun ActiveActivityCard(
                 // Check-in Button
                 Button(
                     onClick = onCheckIn,
-                    colors = ButtonDefaults.buttonColors(containerColor = IndigoPrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(50),
                     modifier = Modifier
                         .weight(2f)

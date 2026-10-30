@@ -55,6 +55,8 @@ class AccountRepository {
     suspend fun connections() = client.postgrest["person_connections"].select().decodeList<PersonConnection>()
     suspend fun schedules(id: String) = client.postgrest["personal_schedule"].select { filter { eq("user_id", id) } }.decodeList<ScheduleDto>()
     suspend fun overrides(id: String) = client.postgrest["personal_status"].select { filter { eq("user_id", id) } }.decodeList<StatusOverrideDto>()
+    suspend fun accessibleSchedules() = client.postgrest["personal_schedule"].select().decodeList<ScheduleDto>()
+    suspend fun accessibleStatuses() = client.postgrest["personal_status"].select().decodeList<StatusOverrideDto>()
 
     suspend fun saveSchedule(schedule: ScheduleDto) {
         require(schedule.userId == userId())
@@ -112,7 +114,7 @@ class AccountRepository {
         })
     }
     suspend fun receivedSignals() = client.postgrest["connection_signals"].select {
-        filter { eq("recipient_id", userId()) }
+        filter { eq("recipient_id", userId()); gt("created_at", Instant.now().minusSeconds(86400).toString()) }
         order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
         limit(20)
     }.decodeList<ConnectionSignal>()

@@ -4,8 +4,18 @@ package com.example.findme.ui.screen.account
 
 import android.content.ClipData
 import android.content.Intent
+import android.provider.Settings
+import androidx.core.app.NotificationManagerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import com.example.findme.BuildConfig
+import com.example.findme.data.local.AccountAlert
+import com.example.findme.data.local.AppAccent
+import com.example.findme.ui.screen.UpdateState
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -57,18 +67,25 @@ private val cyan = Color(0xFF67D8E8)
 private fun AccountProfile.zone() = runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneId.systemDefault())
 
 @Composable
-fun AccountScreen(viewModel: AccountViewModel, onLegacy: () -> Unit) {
+fun AccountScreen(viewModel: AccountViewModel, onLegacy: () -> Unit, updates: UpdateState = UpdateState(),
+    onCheckUpdates: () -> Unit = {}, onInstallUpdate: () -> Unit = {}) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    AccountContent(state, viewModel, onLegacy)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner, viewModel) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.observeWhileVisible() }
+    }
+    AccountContent(state, viewModel, onLegacy, updates, onCheckUpdates, onInstallUpdate)
 }
 
 @Composable
-fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () -> Unit = {}) {
+fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () -> Unit = {},
+    updates: UpdateState = UpdateState(), onCheckUpdates: () -> Unit = {}, onInstallUpdate: () -> Unit = {}) {
     if (state.initializing) {
-        Box(Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = IndigoPrimary) }
+        Box(Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
         return
     }
     var tab by rememberSaveable(state.signedIn) { mutableStateOf("Mi día") }
+    LaunchedEffect(state.peopleRevision, state.signedIn) { if (state.peopleRevision > 0 && state.signedIn) tab = "Personas" }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.notice) { state.notice?.let { snackbar.showSnackbar(it) } }
     Scaffold(containerColor = DarkBackground, snackbarHost = { SnackbarHost(snackbar) }, topBar = {
@@ -83,7 +100,7 @@ fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () ->
             }
             if (state.signedIn) {
                 IconButton(onClick = actions::refresh, enabled = !state.busy) {
-                    if (state.busy) CircularProgressIndicator(Modifier.size(22.dp), color = IndigoPrimary, strokeWidth = 2.dp)
+                    if (state.busy) CircularProgressIndicator(Modifier.size(22.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
                     else Icon(Icons.Default.Refresh, "Actualizar", tint = TextSecondary)
                 }
             }
@@ -91,10 +108,10 @@ fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () ->
     }, bottomBar = {
         if (state.signedIn && state.profile?.needsProfile == false) NavigationBar(containerColor = DarkSurface) {
             listOf(Triple("Mi día", "Hoy", Icons.Default.Today), Triple("Horario", "Horario", Icons.Default.CalendarMonth),
-                Triple("Personas", "Personas", Icons.Default.PeopleOutline), Triple("Cuenta", "Cuenta", Icons.Default.PersonOutline)).forEach { (id, title, icon) ->
+                Triple("Personas", "Personas", Icons.Default.PeopleOutline), Triple("Cuenta", "Perfil", Icons.Default.PersonOutline)).forEach { (id, title, icon) ->
                 NavigationBarItem(selected = tab == id, onClick = { tab = id }, icon = { Icon(icon, null) }, label = { Text(title) },
-                    colors = NavigationBarItemDefaults.colors(selectedIconColor = IndigoPrimary, selectedTextColor = IndigoPrimary,
-                        indicatorColor = IndigoCardBg, unselectedIconColor = TextMuted, unselectedTextColor = TextMuted))
+                    colors = NavigationBarItemDefaults.colors(selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary,
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer, unselectedIconColor = TextMuted, unselectedTextColor = TextMuted))
             }
         }
     }) { padding ->
@@ -119,7 +136,7 @@ fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () ->
                     "Mi día" -> MyDay(state, actions)
                     "Horario" -> ScheduleManager(state, actions)
                     "Personas" -> People(state, actions)
-                    else -> AccountProfilePanel(state, actions)
+                    else -> AccountProfilePanel(state, actions, updates, onCheckUpdates, onInstallUpdate)
                 }
             }
         }
@@ -129,7 +146,7 @@ fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () ->
 @Composable
 private fun PageHeading(eyebrow: String, title: String, subtitle: String) {
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(eyebrow.uppercase(), color = IndigoPrimary, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.5.sp)
+        Text(eyebrow.uppercase(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.5.sp)
         Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text(subtitle, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
     }
@@ -146,7 +163,7 @@ private fun Panel(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun SectionHeading(icon: ImageVector, title: String, subtitle: String? = null) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        AccentIcon(icon, IndigoPrimary)
+        AccentIcon(icon, MaterialTheme.colorScheme.primary)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             subtitle?.let { Text(it, color = TextSecondary, style = MaterialTheme.typography.bodySmall) }
@@ -213,7 +230,7 @@ private fun LoginForm(state: AccountState, actions: AccountActions, onLegacy: ()
             Text(when { state.busy -> "Un momento…"; registering -> "Registrarme"; resending -> "Enviar confirmación"; else -> "Entrar" })
         }
         TextButton(onClick = { mode = if (mode == "login") "register" else "login"; password = ""; confirmation = "" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(if (mode == "login") "Crear cuenta" else "Ya tengo cuenta", color = IndigoPrimary)
+            Text(if (mode == "login") "Crear cuenta" else "Ya tengo cuenta", color = MaterialTheme.colorScheme.primary)
         }
         if (!resending) TextButton(onClick = { mode = "resend"; password = ""; confirmation = "" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("No recibí mi confirmación", color = TextMuted)
@@ -312,7 +329,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(days[day - 1], style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         FilledTonalButton(onClick = { editing = null; showEditor = true }, enabled = !state.busy,
-            colors = ButtonDefaults.filledTonalButtonColors(containerColor = IndigoCardBg, contentColor = IndigoPrimary)) {
+            colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.primary)) {
             Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Añadir")
         }
     }
@@ -336,7 +353,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
             HorizontalDivider(color = DarkCardBorder)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = { editing = schedule; showEditor = true }, enabled = !state.busy) {
-                    Icon(Icons.Default.Edit, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Editar", color = IndigoPrimary)
+                    Icon(Icons.Default.Edit, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Editar", color = MaterialTheme.colorScheme.primary)
                 }
                 IconButton(onClick = { pendingDelete = schedule }, enabled = !state.busy) { Icon(Icons.Default.DeleteOutline, "Eliminar ${schedule.title}", tint = TextMuted) }
             }
@@ -398,8 +415,11 @@ private fun People(state: AccountState, actions: AccountActions) {
     var manageMessages by rememberSaveable { mutableStateOf(false) }
     var disconnect by remember { mutableStateOf<PersonConnection?>(null) }
     PageHeading("A tu lado", "Tu gente", "Un vistazo a su día. Un mensaje para estar cerca.")
+    state.lastSync?.let { updated ->
+        Text("Actualizado ${updated.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))}", color = TextMuted, style = MaterialTheme.typography.labelSmall)
+    }
     FilledTonalButton(onClick = { connect = true }, modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.filledTonalButtonColors(containerColor = IndigoCardBg, contentColor = IndigoPrimary)) {
+        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.primary)) {
         Icon(Icons.Default.PersonAddAlt, null, Modifier.size(19.dp)); Spacer(Modifier.width(8.dp)); Text("Conectar con alguien")
     }
     if (state.connections.isEmpty()) EmptyPanel(Icons.Default.PeopleOutline, "Lo cotidiano se comparte", "Conecta con una persona para ver sus estados y horarios. Tú decides con quién.")
@@ -408,8 +428,22 @@ private fun People(state: AccountState, actions: AccountActions) {
             state.connections.forEach { connection ->
                 state.profiles.find { it.id == connection.otherPerson(state.profile?.id.orEmpty()) }?.let { person ->
                     FilterChip(selected = state.selectedPerson?.id == person.id, onClick = { actions.selectPerson(person) }, enabled = !state.busy,
-                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = IndigoCardBg, selectedLabelColor = IndigoPrimary),
+                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.primary),
                         leadingIcon = { Icon(Icons.Default.PersonOutline, null, Modifier.size(18.dp)) }, label = { Text(person.displayName) })
+                }
+            }
+        }
+    }
+    if (state.syncIssue) Text("No se pudo sincronizar. Comprueba tu conexión; volveremos a intentarlo automáticamente.", color = TextSecondary)
+    if (state.signals.isNotEmpty()) Panel {
+        SectionHeading(Icons.Default.MarkChatUnread, "Te han escrito", "Mensajes recientes · Últimas 24 horas")
+        state.signals.forEach { signal ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(state.profiles.find { it.id == signal.senderId }?.displayName ?: "Persona conectada", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+                Text(signal.message, style = MaterialTheme.typography.bodyMedium)
+                signal.createdAt?.let { timestamp ->
+                    val time = runCatching { java.time.Instant.parse(timestamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm · d MMM", Locale.forLanguageTag("es"))) }.getOrNull()
+                    time?.let { Text(it, color = TextMuted, style = MaterialTheme.typography.labelSmall) }
                 }
             }
         }
@@ -420,15 +454,15 @@ private fun People(state: AccountState, actions: AccountActions) {
             SectionHeading(Icons.Default.ChatBubbleOutline, "Un mensaje para ${person.displayName}", "Envía un mensaje sin cambiar tu estado.")
             if (state.messages.isEmpty()) Text("Guarda algo que suelas decir para enviarlo con un toque, también desde tu widget.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             state.messages.forEach { quick ->
-                OutlinedButton(onClick = { actions.send(quick) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, IndigoCardBorder.copy(alpha = .5f))) {
+                OutlinedButton(onClick = { actions.send(quick) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))) {
                     Text(quick.label, Modifier.weight(1f), color = TextPrimary, textAlign = TextAlign.Start)
-                    Icon(Icons.AutoMirrored.Filled.Send, "Enviar a ${person.displayName}", tint = IndigoPrimary, modifier = Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Filled.Send, "Enviar a ${person.displayName}", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 }
             }
             TextButton(onClick = { manageMessages = true }) {
-                Icon(Icons.Default.Tune, null, Modifier.size(17.dp)); Spacer(Modifier.width(8.dp)); Text("Mis mensajes y widget", color = IndigoPrimary)
+                Icon(Icons.Default.Tune, null, Modifier.size(17.dp)); Spacer(Modifier.width(8.dp)); Text("Mis mensajes y widget", color = MaterialTheme.colorScheme.primary)
             }
-            Text("Los mensajes aparecen en FindMe cuando la otra persona actualiza.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+            Text("Se actualizan automáticamente con FindMe abierta. Se borran después de 24 horas.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
         }
         SectionHeading(Icons.Default.CalendarMonth, "Su semana", "Actividades de ${person.displayName}")
         var personDay by rememberSaveable(person.id) { mutableStateOf(ZonedDateTime.now(person.zone()).dayOfWeek.value) }
@@ -438,15 +472,6 @@ private fun People(state: AccountState, actions: AccountActions) {
         schedules.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule, false, last = index == schedules.lastIndex) }
         state.connections.find { it.otherPerson(state.profile?.id.orEmpty()) == person.id }?.let { connection ->
             TextButton(onClick = { disconnect = connection }, enabled = !state.busy) { Text("Administrar conexión con ${person.displayName}", color = TextMuted) }
-        }
-    }
-    if (state.signals.isNotEmpty()) Panel {
-        SectionHeading(Icons.Default.MarkChatUnread, "Te han escrito")
-        state.signals.take(5).forEach { signal ->
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(state.profiles.find { it.id == signal.senderId }?.displayName ?: "Persona conectada", color = IndigoPrimary, style = MaterialTheme.typography.labelMedium)
-                Text(signal.message, style = MaterialTheme.typography.bodyMedium)
-            }
         }
     }
     if (connect) ConnectionSheet(state, actions) { connect = false }
@@ -469,9 +494,9 @@ private fun ConnectionSheet(state: AccountState, actions: AccountActions, dismis
         if (mode == "Compartir código") {
             state.invitation?.let { invitation ->
                 val display = InvitationCode.display(invitation.code)
-                Surface(color = IndigoCardBg, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, IndigoCardBorder.copy(alpha = .5f))) {
+                Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))) {
                     Column(Modifier.fillMaxWidth().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Icon(Icons.Default.Key, null, tint = IndigoPrimary)
+                        Icon(Icons.Default.Key, null, tint = MaterialTheme.colorScheme.primary)
                         Text(display, color = TextPrimary, fontSize = 27.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
                         Text("Válido 24 horas · Un solo uso", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                     }
@@ -520,14 +545,68 @@ private fun MessageSheet(state: AccountState, actions: AccountActions, dismiss: 
 }
 
 @Composable
-private fun AccountProfilePanel(state: AccountState, actions: AccountActions) {
-    PageHeading("A tu manera", "Mi cuenta", "Tu información y las personas con quienes compartes.")
+private fun AccountProfilePanel(state: AccountState, actions: AccountActions, updates: UpdateState,
+    onCheckUpdates: () -> Unit, onInstallUpdate: () -> Unit) {
+    val context = LocalContext.current
+    var notificationsAllowed by remember { mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled()) }
+    androidx.lifecycle.compose.LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        notificationsAllowed = NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+    PageHeading("A tu manera", "Perfil y ajustes", "Tu cuenta, tus avisos y tu estilo.")
     Panel {
         SectionHeading(Icons.Default.PersonOutline, state.profile?.displayName.orEmpty(), state.profile?.timezone)
         ProfileNameForm(state, actions)
+    }
+    Panel {
+        SectionHeading(Icons.Default.NotificationsNone, "Notificaciones", "Elige qué avisos recibir de tu gente.")
+        AccountSettingsSwitch("Inicio de actividades", "Cuando una persona conectada comienza una actividad.", state.settings.activities) { actions.setAlert(AccountAlert.Activities, it) }
         HorizontalDivider(color = DarkCardBorder)
+        AccountSettingsSwitch("Cambios de estado", "Cuando tu gente comparte o cambia su estado.", state.settings.statuses) { actions.setAlert(AccountAlert.Statuses, it) }
+        HorizontalDivider(color = DarkCardBorder)
+        AccountSettingsSwitch("Mensajes recibidos", "Avisar cuando llega un mensaje nuevo.", state.settings.messages) { actions.setAlert(AccountAlert.Messages, it) }
+        Text("Los avisos y las actualizaciones funcionan mientras FindMe está abierta. Recibirlos con la app cerrada todavía no está disponible.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+        if (!notificationsAllowed) Text("Android tiene bloqueadas las notificaciones de FindMe.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }) {
+            Text("Abrir ajustes de Android")
+        }
+    }
+    Panel {
+        SectionHeading(Icons.Default.Palette, "Apariencia", "Elige el color de FindMe en este dispositivo.")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AppAccent.entries.forEach { accent ->
+                FilterChip(selected = state.settings.accent == accent, onClick = { actions.setAccent(accent) },
+                    label = { Text(accent.label) }, modifier = Modifier.weight(1f),
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.primary))
+            }
+        }
+    }
+    Panel {
+        SectionHeading(Icons.Default.ChatBubbleOutline, "Mensajes ocasionales", "Un aviso para estar cerca.")
+        Text("Los mensajes enviados se conservan durante 24 horas y después se eliminan automáticamente. Tus botones de mensajes rápidos permanecen guardados.", color = TextSecondary)
+    }
+    Panel {
+        SectionHeading(Icons.Default.SystemUpdate, "Actualizaciones", "FindMe ${BuildConfig.VERSION_NAME}")
+        Text(updates.message, color = TextSecondary)
+        OutlinedButton(onClick = onCheckUpdates, enabled = !updates.checking && !updates.downloading) { Text(if (updates.checking) "Comprobando…" else "Buscar actualizaciones") }
+        if (updates.release != null && !updates.downloading) TextButton(onClick = onInstallUpdate) { Text("Actualizar ahora") }
+    }
+    Panel {
+        SectionHeading(Icons.Default.PrivacyTip, "Tu privacidad")
         Text("Tu horario y tus estados solo se comparten con las personas que conectes. Puedes retirar la conexión desde Personas.", color = TextSecondary)
         OutlinedButton(onClick = actions::logout, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Cerrar sesión") }
+    }
+}
+
+@Composable
+private fun AccountSettingsSwitch(title: String, description: String, checked: Boolean, change: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).toggleable(checked, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = change),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(description, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+        }
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
@@ -555,14 +634,14 @@ private fun Sheet(dismiss: () -> Unit, title: String, description: String, conte
 private fun Field(value: String, change: (String) -> Unit, label: String, placeholder: String? = null, keyboard: KeyboardOptions = KeyboardOptions.Default) {
     OutlinedTextField(value, change, label = { Text(label) }, placeholder = { placeholder?.let { Text(it, color = TextMuted) } },
         keyboardOptions = keyboard, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = IndigoPrimary, unfocusedBorderColor = DarkCardBorder, focusedLabelColor = IndigoPrimary))
+        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = DarkCardBorder, focusedLabelColor = MaterialTheme.colorScheme.primary))
 }
 
 @Composable
 private fun <T> Choices(values: List<T>, selected: T, change: (T) -> Unit, label: (T) -> String) {
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         values.forEach { value -> FilterChip(selected = selected == value, onClick = { change(value) }, label = { Text(label(value)) },
-            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = IndigoCardBg, selectedLabelColor = IndigoPrimary), shape = RoundedCornerShape(12.dp)) }
+            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.primary), shape = RoundedCornerShape(12.dp)) }
     }
 }
 

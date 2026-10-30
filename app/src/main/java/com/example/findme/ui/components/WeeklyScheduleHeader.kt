@@ -55,9 +55,9 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
                     (1..7).forEach { day ->
                         val count = allSchedules.count { it.dayOfWeek == day }
                         val height by animateFloatAsState(if (chartVisible) count.toFloat() / maximum else 0f, tween(700), label = "weekBar$day")
-                        val color by animateColorAsState(if (selectedDayOfWeek == day) IndigoPrimary else Color(0xFF4A607C), tween(250), label = "weekBarColor$day")
+                        val color by animateColorAsState(if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else Color(0xFF4A607C), tween(250), label = "weekBarColor$day")
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("$count", style = MaterialTheme.typography.labelSmall, color = if (selectedDayOfWeek == day) IndigoPrimary else TextMuted)
+                            Text("$count", style = MaterialTheme.typography.labelSmall, color = if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else TextMuted)
                             Box(Modifier.height(62.dp).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
                                 Box(Modifier.fillMaxWidth().height((5 + 57 * height).dp).clip(RoundedCornerShape(5.dp))
                                     .background(Brush.verticalGradient(listOf(color, color.copy(alpha = .3f)))))
@@ -71,7 +71,7 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             (1..7).forEach { day ->
                 val date = monday.plusDays((day - 1).toLong())
-                val dayColor by animateColorAsState(if (selectedDayOfWeek == day) IndigoCardBg else DarkCardBg, tween(250), label = "dayColor$day")
+                val dayColor by animateColorAsState(if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primaryContainer else DarkCardBg, tween(250), label = "dayColor$day")
                 Surface(onClick = { onDaySelected(day) }, modifier = Modifier.weight(1f),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
                     color = dayColor,
