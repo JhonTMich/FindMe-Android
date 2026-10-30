@@ -55,7 +55,7 @@ Las tablas antiguas todavía tienen RLS desactivado; ya no contienen los datos a
 - Apodos por conexión, permisos independientes para horario/estado y silenciamiento.
 - Cancelaciones específicas de actividades, actividades nocturnas y reglas de solapamiento.
 
-No publicar esta rama como reemplazo de 1.2.2 hasta desplegar y probar el esquema, resolver la transición de las tablas anteriores y verificar los flujos en un dispositivo.
+La entrega se prepara como versión 1.3 por solicitud del propietario. El esquema nuevo, las funciones de acceso, el registro con confirmación y la limpieza de mensajes ya están desplegados. Los flujos de interfaz y preferencias se verificaron en emulador; el propietario confirmó el registro y el retorno del correo en su teléfono. Siguen pendientes las notificaciones push con la app cerrada, la caché persistente del modelo de cuentas y la retirada definitiva de las tablas antiguas vacías.
 
 ## Verificación local del esquema
 
