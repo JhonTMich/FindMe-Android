@@ -13,8 +13,8 @@ android {
         applicationId = "com.example.findme"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.2.2"
+        versionCode = providers.gradleProperty("releaseVersionCode").orNull?.toInt() ?: 4
+        versionName = providers.gradleProperty("releaseVersionName").orNull ?: "1.2.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
