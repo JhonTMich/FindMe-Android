@@ -41,16 +41,16 @@ Las tablas nuevas son `account_profiles`, `personal_schedule`, `personal_status`
 
 ## Datos anteriores
 
-`profiles`, `schedule` y `status_override` se conservan intactas. La revisión remota encontró RLS desactivado en las tres: el esquema nuevo **no corrige esa exposición**. Habilitar RLS en ellas sin políticas rompería la app 1.2.2 y el panel actual. Se debe acordar su retirada o políticas compatibles antes de lanzar el modelo de cuentas.
+Las tablas `profiles`, `schedule` y `status_override` del modelo anterior siguen existiendo, pero sus registros se eliminaron por solicitud del propietario durante el reinicio de pruebas del 30 de octubre. Las cuentas anteriores de Auth y sus perfiles, horarios, conexiones, mensajes y sesiones también se eliminaron. Se conservó únicamente la cuenta recién registrada. No se borraron tablas, políticas ni funciones del modelo nuevo.
 
-El perfil de Michael no se asigna automáticamente a quien se registre con ese nombre. El 30 de octubre, con autorización explícita del propietario, se copiaron sus 11 actividades a la cuenta identificada y se conservó una actividad que ya tenía: 12 en total. La copia no elimina ni cambia el horario anterior. No se reclama un horario mediante el nombre visible ni mediante el código familiar antiguo.
+Las tablas antiguas todavía tienen RLS desactivado; ya no contienen los datos anteriores. Antes de volver a usarlas o publicar la transición, deben retirarse o recibir políticas compatibles. No se reasignan datos por nombre visible ni mediante el código familiar antiguo.
 
 ## Siguientes entregas
 
 - Configuración independiente de cada instancia de widget, varios botones y opciones de apariencia. Los dos widgets anteriores siguen siendo del modelo familiar anterior.
 - Notificaciones push mediante FCM y una función de servidor, con tokens privados, control de envíos repetidos y preferencias del destinatario. Guardar un mensaje en Supabase todavía no envía una notificación Android.
 - Sincronización Realtime filtrada, caché por cuenta y estado de última actualización. En esta entrega la pantalla se actualiza manualmente; solo el cálculo del paso del tiempo se repite cada 15 segundos.
-- Recuperación de contraseña y enlaces de autenticación en Android.
+- Recuperación de contraseña en Android. El retorno desde confirmación de registro ya abre la app, pero no inicia sesión automáticamente.
 - Apodos por conexión, permisos independientes para horario/estado y silenciamiento.
 - Cancelaciones específicas de actividades, actividades nocturnas y reglas de solapamiento.
 
@@ -75,7 +75,7 @@ La Edge Function `username-login` está desplegada. Sus fuentes están en `supab
 
 Los límites persistidos permiten ocho intentos por usuario en cinco minutos y 60 intentos globales por minuto. Los contadores están en un esquema privado, con RLS, sin políticas para clientes y con acceso exclusivamente de servicio; el aviso informativo del asesor sobre esa ausencia de políticas es intencional. Los errores del limitador cierran el acceso en lugar de omitir el límite. Esto no reemplaza la protección contra ataques a la API nativa de Auth.
 
-Se prepararon los usuarios `JhonTMich` (Michael) y `Sanely` (Sandra) en las dos cuentas existentes, sin cambiar contraseñas. Los identificadores se guardan en minúsculas y aceptan cualquier combinación de mayúsculas al entrar. Las nuevas cuentas se registran desde Android y su perfil se crea automáticamente. El alta manual del panel sin una autorización y sin los datos del perfil ya no es el flujo admitido. Las sesiones restauradas de cuentas antiguas muestran Completa tu perfil cuando falta ese dato.
+Los identificadores de acceso se guardan en minúsculas y aceptan cualquier combinación de mayúsculas al entrar. Las nuevas cuentas se registran desde Android y su perfil se crea automáticamente. Las sesiones restauradas de cuentas antiguas muestran Completa tu perfil cuando falta algún dato. Las cuentas previas a la prueba de registro se eliminaron en el reinicio posterior descrito arriba.
 
 Verificación: `node --test scripts/test_username_login.mjs` (5 pruebas); `node scripts/test_account_schema.mjs` (46 comprobaciones); 33 pruebas JVM, lint, compilación y 7 pruebas de interfaz en emulador. Una llamada real con usuario existente y contraseña incorrecta devuelve 401 sin revelar el correo. El acceso con las contraseñas reales queda para la prueba del propietario; no se solicitaron ni modificaron. Los problemas previamente documentados de RLS de las tablas antiguas siguen pendientes.
 
@@ -110,11 +110,11 @@ La lista tiene RLS y no permite lectura ni modificación desde clientes anónimo
 
 Cada cuenta nueva empieza sin conexiones. Compartir horarios requiere una invitación de Personas aceptada por la otra cuenta.
 
-### Configuración de correo pendiente
+### Configuración de correo y retorno a Android
 
-El propietario confirmó que todavía no tiene SMTP propio. **La autorización y el formulario están implementados, pero no se puede dar por probado el registro real de usuarios externos hasta configurar y probar la entrega.**
+El propietario configuró Gmail SMTP desde el panel de Supabase, con contraseña de aplicación y verificación en dos pasos. Ninguna contraseña SMTP se recibió en el chat ni se guardó en el repositorio. La entrega real y la apertura del enlace en el teléfono deben confirmarse con un registro del propio usuario.
 
-En **Authentication → Email → SMTP Settings**, configurar un proveedor SMTP y un remitente autorizado por ese proveedor. Mantener **Confirm Email** activado y **Allow new users to sign up** activado. En **URL Configuration**, definir una Site URL válida para la página posterior a la confirmación. El enlace confirma el correo en el navegador; por ahora la persona regresa manualmente a FindMe, sin enlaces profundos de Android.
+En **Authentication → Email → SMTP Settings**, configurar un proveedor SMTP y un remitente autorizado por ese proveedor. Mantener **Confirm Email** activado y **Allow new users to sign up** activado. En **URL Configuration**, definir `findme://auth/confirmed` como **Site URL** y añadir exactamente la misma dirección a **Redirect URLs**. El propietario confirmó que guardó ambas opciones. Instalar la nueva compilación antes de pedir el correo: las versiones anteriores no reconocen ese enlace.
 
 El SMTP integrado de Supabase solo entrega a miembros del equipo del proyecto; esa restricción es independiente de `signup_allowed_emails`. Añadir un correo a la tabla no cambia los destinatarios admitidos por ese servicio. Documentación: https://supabase.com/docs/guides/auth/auth-smtp
 
@@ -133,4 +133,9 @@ node scripts/test_registration_schema.mjs
 node --test scripts/test_authorized_signup.mjs scripts/test_username_login.mjs
 ```
 
-Comprobaciones: 19 casos del esquema de registro, 13 pruebas de las funciones de acceso y registro, 35 pruebas JVM y 9 pruebas de interfaz, incluyendo formulario y confirmación. Compilación y lint correctos. En el proyecto remoto se verificaron el rechazo de registro no autorizado por la función (403), el rechazo por Auth directo y la lectura anónima de la lista (401). Permanecen las dos cuentas existentes; no se crearon usuarios ficticios. Los asesores no señalaron problemas nuevos del registro; las incidencias de las tablas antiguas siguen documentadas arriba.
+Comprobaciones: 19 casos del esquema de registro, 13 pruebas de las funciones de acceso y registro, 35 pruebas JVM y 9 pruebas de interfaz, incluyendo formulario y confirmación. Compilación y lint correctos. En el proyecto remoto se verificaron el rechazo de registro no autorizado por la función (403), el rechazo por Auth directo y la lectura anónima de la lista (401). Durante esas pruebas se conservaron las cuentas existentes y no se crearon usuarios ficticios; posteriormente el propietario solicitó el reinicio de datos descrito arriba. Los asesores no señalaron problemas nuevos del registro; las incidencias de las tablas antiguas siguen documentadas arriba.
+
+
+La función `authorized-signup` fija `redirect_to=findme://auth/confirmed` tanto para registro como para reenvío. Android reconoce únicamente ese esquema, host y ruta. El enlace muestra el acceso o un aviso de enlace fallido; no importa tokens del Intent ni cambia la cuenta activa. La persona entra con usuario y contraseña, que vuelven a validarse con Auth. No se muestran detalles remotos sin validar ni se retienen fragmentos en el Intent de la actividad.
+
+Se verificaron apertura en frío, recepción en la actividad ya abierta y aviso de enlace vencido en emulador, además de pruebas JVM del parser, compilación y lint. La entrega SMTP y el enlace en el teléfono están sujetos a la prueba real del propietario; la aplicación no puede comprobar el buzón del destinatario.
