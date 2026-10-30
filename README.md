@@ -1,5 +1,7 @@
 # FindMe para Android
 
+En desarrollo: [cuentas, horarios propios y conexiones configurables](docs/cuentas-conexiones.md). La rama `feature/cuentas-conexiones` incorpora el primer flujo Android; requiere preparar el nuevo esquema de Supabase antes de utilizarlo.
+
 Aplicación Kotlin con Jetpack Compose para consultar la actividad de una persona vinculada mediante un código. Esta versión concentra la interfaz en la persona que monitorea.
 
 Versión actual: **1.2.1** (`versionCode = 3`).

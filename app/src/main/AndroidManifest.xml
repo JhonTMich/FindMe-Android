@@ -64,6 +64,14 @@
                 android:resource="@xml/find_me_control_widget_info" />
         </receiver>
 
+        <receiver android:name=".widget.ConnectionWidgetReceiver"
+            android:exported="true" android:label="FindMe · Mi gente">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider"
+                android:resource="@xml/connection_widget_info" />
+        </receiver>
     </application>
 
 </manifest>
