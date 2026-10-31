@@ -33,7 +33,6 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
-import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
 import androidx.glance.layout.padding
 import androidx.glance.layout.width
@@ -43,6 +42,7 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.example.findme.MainActivity
 import com.example.findme.R
+import com.example.findme.data.local.UserPreferencesRepository
 import com.example.findme.data.local.dataStore
 import com.example.findme.data.model.AccountProfile
 import com.example.findme.data.model.ActivityCategory
@@ -50,19 +50,27 @@ import com.example.findme.data.repository.AccountRepository
 import com.example.findme.data.repository.StatusRepository
 import com.example.findme.domain.model.UserCurrentStatus
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
 data class ConnectionWidgetSelection(val personId: String, val messageId: String = "")
 
 object ConnectionWidgetSettings {
-    suspend fun save(context: Context, ownerId: String, personId: String, messageId: String = "") {
+    suspend fun save(
+        context: Context,
+        ownerId: String,
+        personId: String,
+        personName: String = "",
+        messageId: String = ""
+    ) {
         context.dataStore.edit {
             it[stringPreferencesKey("connection_widget_owner")] = ownerId
             it[stringPreferencesKey("connection_widget_person")] = personId
+            if (personName.isNotBlank()) {
+                it[stringPreferencesKey("connection_widget_person_name")] = personName
+            }
             it[stringPreferencesKey("connection_widget_message")] = messageId
         }
         ConnectionWidget().updateAll(context)
@@ -72,6 +80,12 @@ object ConnectionWidgetSettings {
         val prefs = context.dataStore.data.first()
         if (prefs[stringPreferencesKey("connection_widget_owner")] != ownerId) return null
         return prefs[stringPreferencesKey("connection_widget_person")]
+    }
+
+    suspend fun readPersonName(context: Context, ownerId: String): String? {
+        val prefs = context.dataStore.data.first()
+        if (prefs[stringPreferencesKey("connection_widget_owner")] != ownerId) return null
+        return prefs[stringPreferencesKey("connection_widget_person_name")]
     }
 
     suspend fun read(context: Context, ownerId: String): ConnectionWidgetSelection? {
@@ -113,55 +127,102 @@ class ConnectionWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val snapshot = try {
-            withTimeout(15_000) {
-                val repo = AccountRepository()
-                repo.auth.awaitInitialization()
-                val ownerId = repo.userId()
-                val profiles = repo.profiles()
+            // 1. Resolve logged in user session locally first (instant & offline resilient)
+            val userSession = UserPreferencesRepository(context).getUserSession()
+            val repo = AccountRepository()
+
+            val ownerId = try {
+                runCatching { repo.auth.awaitInitialization() }
+                repo.userId()
+            } catch (_: Exception) {
+                userSession?.userId
+            }
+
+            if (ownerId == null) {
+                // No user logged in on device
+                ConnectionWidgetSnapshot(
+                    myState = buildFallbackCardState("Tú", "Inicia sesión en FindMe"),
+                    otherState = buildFallbackCardState("Amigo", "Abre la app para conectar"),
+                    hasMultipleConnected = false,
+                    isUnlinked = true
+                )
+            } else {
+                val ownerDisplayName = userSession?.displayName ?: "Tú"
+
+                // 2. Fetch remote profiles with reasonable timeout or use local cache
+                val profiles = withTimeoutOrNull(6_000) {
+                    runCatching { repo.profiles() }.getOrNull()
+                } ?: emptyList()
 
                 val myProfile = profiles.firstOrNull { it.id == ownerId }
-                    ?: AccountProfile(ownerId, "Tú", ZoneId.systemDefault().id)
+                    ?: AccountProfile(ownerId, ownerDisplayName, ZoneId.systemDefault().id)
 
                 val otherProfiles = profiles.filter { it.id != ownerId }
+
+                var selectedPersonId = ConnectionWidgetSettings.readPersonId(context, ownerId)
 
                 // AUTOMATIC ASSIGNMENT:
                 // If saved person ID exists in current connections, use it.
                 // Otherwise, automatically assign the single connected person (or 1st connected person).
-                var selectedPersonId = ConnectionWidgetSettings.readPersonId(context, ownerId)
-
-                if (selectedPersonId == null || otherProfiles.none { it.id == selectedPersonId }) {
+                if (selectedPersonId == null || (otherProfiles.isNotEmpty() && otherProfiles.none { it.id == selectedPersonId })) {
                     if (otherProfiles.isNotEmpty()) {
-                        selectedPersonId = otherProfiles.first().id
-                        ConnectionWidgetSettings.save(context, ownerId, selectedPersonId)
+                        val firstOther = otherProfiles.first()
+                        selectedPersonId = firstOther.id
+                        ConnectionWidgetSettings.save(
+                            context = context,
+                            ownerId = ownerId,
+                            personId = firstOther.id,
+                            personName = firstOther.displayName
+                        )
                     }
                 }
 
                 val selectedProfile = otherProfiles.firstOrNull { it.id == selectedPersonId }
+                    ?: if (selectedPersonId != null) {
+                        val cachedName = ConnectionWidgetSettings.readPersonName(context, ownerId) ?: "Amigo"
+                        AccountProfile(selectedPersonId, cachedName, ZoneId.systemDefault().id)
+                    } else null
 
-                val myState = buildPersonCardState(repo, myProfile, defaultName = "Tú")
-                val otherState = selectedProfile?.let { buildPersonCardState(repo, it, defaultName = it.displayName) }
+                // Save person name cache if available
+                if (selectedProfile != null && selectedProfile.displayName.isNotBlank()) {
+                    ConnectionWidgetSettings.save(
+                        context = context,
+                        ownerId = ownerId,
+                        personId = selectedProfile.id,
+                        personName = selectedProfile.displayName
+                    )
+                }
+
+                val myState = buildPersonCardState(
+                    context = context,
+                    repo = repo,
+                    profile = myProfile,
+                    defaultName = ownerDisplayName
+                )
+
+                val otherState = selectedProfile?.let {
+                    buildPersonCardState(
+                        context = context,
+                        repo = repo,
+                        profile = it,
+                        defaultName = it.displayName
+                    )
+                }
 
                 ConnectionWidgetSnapshot(
                     myState = myState,
                     otherState = otherState,
                     hasMultipleConnected = otherProfiles.size > 1,
-                    isUnlinked = otherProfiles.isEmpty()
+                    isUnlinked = otherProfiles.isEmpty() && selectedProfile == null
                 )
             }
-        } catch (_: TimeoutCancellationException) {
-            ConnectionWidgetSnapshot(
-                myState = buildFallbackCardState("Tú", "Sin conexión reciente"),
-                otherState = buildFallbackCardState("Conexión", "Pulsa para reintentar"),
-                hasMultipleConnected = false
-            )
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {
             ConnectionWidgetSnapshot(
-                myState = buildFallbackCardState("Tú", "Abre FindMe"),
-                otherState = buildFallbackCardState("Amigo", "Inicia sesión en FindMe"),
-                hasMultipleConnected = false,
-                isUnlinked = true
+                myState = buildFallbackCardState("Tú", "Actualizado en FindMe"),
+                otherState = buildFallbackCardState("Conexión", "Pulsa para ver"),
+                hasMultipleConnected = false
             )
         }
 
@@ -218,24 +279,39 @@ class ConnectionWidget : GlanceAppWidget() {
     }
 
     private suspend fun buildPersonCardState(
+        context: Context,
         repo: AccountRepository,
         profile: AccountProfile,
         defaultName: String
     ): PersonCardState {
-        val now = ZonedDateTime.now(runCatching { ZoneId.of(profile.timezone) }.getOrDefault(ZoneId.systemDefault()))
-        val schedules = try { repo.schedules(profile.id) } catch (_: Exception) { emptyList() }
-        val overrides = try { repo.overrides(profile.id) } catch (_: Exception) { emptyList() }
-
-        val status = StatusRepository.calculateStatus(
-            displayName = profile.displayName.ifBlank { defaultName },
-            schedules = schedules,
-            overrides = overrides,
-            selectedDayOfWeek = now.dayOfWeek.value,
-            nowInLima = now,
-            manualStatusFirst = true
-        )
-
         val displayName = profile.displayName.ifBlank { defaultName }.take(14)
+        val now = ZonedDateTime.now(runCatching { ZoneId.of(profile.timezone) }.getOrDefault(ZoneId.systemDefault()))
+
+        // Uses local Room DB fallback when fetching schedules and overrides
+        val status = try {
+            val schedules = try { repo.schedules(profile.id) } catch (_: Exception) {
+                StatusRepository.fetchSchedules(profile.id, context)
+            }
+            val overrides = try { repo.overrides(profile.id) } catch (_: Exception) {
+                StatusRepository.fetchOverrides(profile.id)
+            }
+
+            StatusRepository.calculateStatus(
+                displayName = displayName,
+                schedules = schedules,
+                overrides = overrides,
+                selectedDayOfWeek = now.dayOfWeek.value,
+                nowInLima = now,
+                manualStatusFirst = true
+            )
+        } catch (_: Exception) {
+            StatusRepository.getDirectCurrentStatus(
+                userId = profile.id,
+                displayName = displayName,
+                selectedDayOfWeek = now.dayOfWeek.value,
+                context = context
+            )
+        }
 
         return when (status) {
             is UserCurrentStatus.InClass -> {
@@ -252,9 +328,9 @@ class ConnectionWidget : GlanceAppWidget() {
                 }
 
                 val (cardBg, illustration) = when (category) {
-                    ActivityCategory.WORK -> Color(0xFF132238) to R.drawable.ic_widget_work
-                    ActivityCategory.FREE -> Color(0xFF0F2E28) to R.drawable.ic_widget_free
-                    ActivityCategory.UNIVERSITY -> Color(0xFF2A1B36) to R.drawable.ic_widget_class
+                    ActivityCategory.WORK -> Color(0xFF132238) to R.drawable.status_work
+                    ActivityCategory.FREE -> Color(0xFF0F2E28) to R.drawable.status_free
+                    ActivityCategory.UNIVERSITY -> Color(0xFF2A1B36) to R.drawable.status_class
                 }
 
                 PersonCardState(
@@ -282,7 +358,7 @@ class ConnectionWidget : GlanceAppWidget() {
                     categoryTitle = location,
                     cardBgColor = Color(0xFF331E12),
                     innerCardBgColor = Color(0x33FFFFFF),
-                    illustrationResId = R.drawable.ic_widget_transit
+                    illustrationResId = R.drawable.status_work
                 )
             }
             else -> {
@@ -296,7 +372,7 @@ class ConnectionWidget : GlanceAppWidget() {
                     categoryTitle = "Tiempo Libre",
                     cardBgColor = Color(0xFF0F2E28),
                     innerCardBgColor = Color(0x33FFFFFF),
-                    illustrationResId = R.drawable.ic_widget_free
+                    illustrationResId = R.drawable.status_free
                 )
             }
         }
@@ -312,7 +388,7 @@ class ConnectionWidget : GlanceAppWidget() {
             categoryTitle = msg,
             cardBgColor = Color(0xFF1E293B),
             innerCardBgColor = Color(0x22FFFFFF),
-            illustrationResId = R.drawable.ic_widget_free
+            illustrationResId = R.drawable.status_free
         )
     }
 }
@@ -479,18 +555,29 @@ class CycleConnectedPersonAction : ActionCallback {
         parameters: ActionParameters
     ) {
         try {
+            val userSession = UserPreferencesRepository(context).getUserSession()
             val repo = AccountRepository()
-            repo.auth.awaitInitialization()
-            val ownerId = repo.userId()
-            val otherProfiles = repo.profiles().filter { it.id != ownerId }
+            val ownerId = try {
+                runCatching { repo.auth.awaitInitialization() }
+                repo.userId()
+            } catch (_: Exception) {
+                userSession?.userId
+            } ?: return
+
+            val otherProfiles = runCatching { repo.profiles().filter { it.id != ownerId } }.getOrDefault(emptyList())
 
             if (otherProfiles.isNotEmpty()) {
                 val currentPersonId = ConnectionWidgetSettings.readPersonId(context, ownerId)
                 val currentIndex = otherProfiles.indexOfFirst { it.id == currentPersonId }
                 val nextIndex = if (currentIndex < 0) 0 else (currentIndex + 1) % otherProfiles.size
-                val nextPersonId = otherProfiles[nextIndex].id
+                val nextPerson = otherProfiles[nextIndex]
 
-                ConnectionWidgetSettings.save(context, ownerId, nextPersonId)
+                ConnectionWidgetSettings.save(
+                    context = context,
+                    ownerId = ownerId,
+                    personId = nextPerson.id,
+                    personName = nextPerson.displayName
+                )
             }
         } catch (_: Exception) {
             // Ignore error
