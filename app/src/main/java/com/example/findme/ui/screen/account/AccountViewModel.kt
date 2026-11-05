@@ -29,7 +29,6 @@ import com.example.findme.util.NotificationHelper
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.util.UUID
 
 data class AccountState(
     val settings: AccountSettings = AccountSettings(),
@@ -45,6 +44,7 @@ data class AccountState(
     val loginRevision: Int = 0,
     val profile: AccountProfile? = null,
     val schedules: List<ScheduleDto> = emptyList(),
+    val savedScheduleId: String? = null,
     val statuses: List<StatusOverrideDto> = emptyList(),
     val connections: List<PersonConnection> = emptyList(),
     val profiles: List<AccountProfile> = emptyList(),
@@ -96,7 +96,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
 
     private fun perform(action: suspend () -> Unit) {
         if (_state.value.busy) return
-        _state.update { it.copy(busy = true, error = null, notice = null) }
+        _state.update { it.copy(busy = true, error = null, notice = null, savedScheduleId = null) }
         viewModelScope.launch {
             try { action() }
             catch (cancelled: CancellationException) { throw cancelled }
@@ -242,15 +242,26 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         _state.value = AccountState(initializing = false)
         com.example.findme.widget.ConnectionWidget().updateAll(getApplication())
     }
-    override fun saveSchedule(existingId: String?, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
-        val error = validateSchedule(day, start, end, title)
-            ?: findScheduleConflict(_state.value.schedules, existingId, day, start, end, category, modality)?.conflictMessage()
-        if (error != null) { _state.update { it.copy(error = error) }; return }
+    override fun saveSchedule(id: String, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
         perform {
-            repository.saveSchedule(ScheduleDto(existingId ?: UUID.randomUUID().toString(), repository.userId(), day,
-                start.trim(), end.trim(), title.trim(), location.trim(), category, modality))
-            load()
-            _state.update { it.copy(notice = "Actividad guardada.") }
+            snapshotMutex.withLock {
+                val error = validateSchedule(day, start, end, title)
+                    ?: findScheduleConflict(_state.value.schedules, id, day, start, end, category, modality)?.conflictMessage()
+                if (error != null) throw IllegalArgumentException(error)
+
+                val ownerId = repository.userId()
+                val activity = ScheduleDto(id, ownerId, day, start.trim(), end.trim(), title.trim(),
+                    location.trim(), category, modality)
+                repository.saveSchedule(activity)
+                if (repository.auth.currentUserOrNull()?.id != ownerId) return@withLock
+
+                allSchedules = allSchedules.filterNot { it.id == id } + activity
+                _state.update { old -> old.copy(
+                    schedules = old.schedules.filterNot { it.id == id } + activity,
+                    savedScheduleId = id,
+                    notice = "Actividad guardada."
+                ) }
+            }
         }
     }
     override fun deleteSchedule(id: String) = perform { repository.deleteSchedule(id); load() }

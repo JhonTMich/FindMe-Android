@@ -16,7 +16,7 @@ interface AccountActions {
     fun saveProfile(name: String, username: String) {}
     fun setAlert(alert: AccountAlert, enabled: Boolean) {}
     fun setAccent(accent: AppAccent) {}
-    fun saveSchedule(existingId: String?, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {}
+    fun saveSchedule(id: String, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {}
     fun deleteSchedule(id: String) {}
     fun setStatus(text: String, minutes: Long) {}
     fun clearStatus() {}

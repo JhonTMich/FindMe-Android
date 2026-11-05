@@ -64,6 +64,7 @@ import java.time.LocalTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import java.util.UUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -371,6 +372,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
 
 @Composable
 private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: AccountState, actions: AccountActions, dismiss: () -> Unit) {
+    val scheduleId = rememberSaveable { existing?.id ?: UUID.randomUUID().toString() }
     var title by rememberSaveable { mutableStateOf(existing?.title.orEmpty()) }
     var location by rememberSaveable { mutableStateOf(existing?.location.orEmpty()) }
     var start by rememberSaveable { mutableStateOf(existing?.startTime ?: "09:00") }
@@ -381,11 +383,13 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
     var submitted by remember { mutableStateOf(false) }
     val invalid = validateSchedule(day, start, end, title)
     val conflict = if (invalid == null) {
-        findScheduleConflict(state.schedules, existing?.id, day, start, end, category, modality)
+        findScheduleConflict(state.schedules, scheduleId, day, start, end, category, modality)
     } else null
     val startTime = StatusRepository.parseLocalTimeOrNull(start)
     val endTime = StatusRepository.parseLocalTimeOrNull(end)
-    LaunchedEffect(state.busy, state.notice) { if (submitted && !state.busy && state.notice == "Actividad guardada.") dismiss() }
+    LaunchedEffect(state.busy, state.savedScheduleId) {
+        if (submitted && !state.busy && state.savedScheduleId == scheduleId) dismiss()
+    }
     Sheet(dismiss, if (existing == null) "Nueva actividad" else "Editar actividad", gesturesEnabled = false) {
         Field(title, { title = it.take(120) }, "Título", placeholder = "Ej. Clase de inglés")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -411,7 +415,7 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
             TextButton(onClick = dismiss) { Text("Cancelar") }
             Button(onClick = {
                 submitted = true
-                if (invalid == null) actions.saveSchedule(existing?.id, day, start, end, title, location, category, modality)
+                if (invalid == null) actions.saveSchedule(scheduleId, day, start, end, title, location, category, modality)
             }, enabled = !state.busy && conflict == null, modifier = Modifier.weight(1f)) { Text("Guardar actividad") }
         }
     }

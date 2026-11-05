@@ -2,6 +2,8 @@ package com.example.findme
 
 import android.content.ContentValues
 import android.provider.MediaStore
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -70,7 +72,7 @@ class AccountUiTest {
         var savedTitle = ""
         var savedModality = ""
         show(object : AccountActions {
-            override fun saveSchedule(existingId: String?, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
+            override fun saveSchedule(id: String, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
                 savedTitle = title
                 savedModality = modality
                 assertEquals("university", category)
@@ -119,6 +121,40 @@ class AccountUiTest {
         assertEquals("virtual", savedModality)
         compose.onNodeWithText("Cancelar").performScrollTo().performClick()
         heading.assertDoesNotExist()
+    }
+
+    @Test fun scheduleEditorIgnoresItsOwnSavedRowAndReusesIdOnRetry() {
+        val snapshot = mutableStateOf(state.copy(schedules = emptyList()))
+        val attempts = mutableListOf<String>()
+        val actions = object : AccountActions {
+            override fun saveSchedule(id: String, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
+                attempts += id
+                val row = ScheduleDto(id, own.id, day, start, end, title, location, category, modality)
+                snapshot.value = if (attempts.size == 1) {
+                    snapshot.value.copy(busy = true, schedules = listOf(row))
+                } else {
+                    snapshot.value.copy(busy = false, error = null, savedScheduleId = id,
+                        notice = "Actividad guardada.", schedules = listOf(row))
+                }
+            }
+        }
+        compose.setContent { FindmeTheme { AccountContent(snapshot.value, actions) } }
+        compose.onNodeWithText("Horario").performClick()
+        compose.onNodeWithText("Añadir").performScrollTo().performClick()
+        compose.onNodeWithText("Título").performTextReplacement("Clase nueva")
+        val save = compose.onNodeWithText("Guardar actividad")
+        save.performSemanticsAction(SemanticsActions.OnClick)
+        save.assertIsNotEnabled()
+        compose.onNodeWithText("Coincide con «Clase nueva»", substring = true).assertDoesNotExist()
+
+        compose.runOnIdle {
+            snapshot.value = snapshot.value.copy(busy = false, error = "No se pudo confirmar el guardado.")
+        }
+        save.assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithText("Nueva actividad").assertDoesNotExist()
+        compose.onNodeWithText("Clase nueva").assertExists()
+        assertEquals(2, attempts.size)
+        assertEquals(attempts.first(), attempts.last())
     }
 
     @Test fun peopleExplainsMessagesAndKeepsConfigurationOutOfMainFlow() {
