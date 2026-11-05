@@ -182,7 +182,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             val now = ZonedDateTime.now(zone)
             val status = StatusRepository.calculateStatus(person.displayName,
                 allSchedules.filter { it.userId == person.id }, allStatuses.filter { it.userId == person.id },
-                now.dayOfWeek.value, now, manualStatusFirst = true)
+                now.dayOfWeek.value, now)
             val key = when (status) {
                 is UserCurrentStatus.InClass -> "activity:${status.currentSchedule.id}"
                 is UserCurrentStatus.Override -> "status:${status.customLocation}:${status.customMessage}"

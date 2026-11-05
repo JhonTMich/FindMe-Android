@@ -1,10 +1,8 @@
 # FindMe para Android
 
-En desarrollo: [cuentas, horarios propios y conexiones configurables](docs/cuentas-conexiones.md). La rama `feature/cuentas-conexiones` incorpora el primer flujo Android; requiere preparar el nuevo esquema de Supabase antes de utilizarlo.
+Aplicación Kotlin con Jetpack Compose para organizar horarios y compartir actividades y estados entre personas conectadas. El registro requiere un correo autorizado. [Configuración de cuentas y conexiones](docs/cuentas-conexiones.md).
 
-Aplicación Kotlin con Jetpack Compose para consultar la actividad de una persona vinculada mediante un código. Esta versión concentra la interfaz en la persona que monitorea.
-
-Versión actual: **1.2.1** (`versionCode = 3`).
+Versión actual: **1.3** (`versionCode = 1003000`).
 
 ## Flujo de trabajo
 
@@ -12,20 +10,16 @@ Versión actual: **1.2.1** (`versionCode = 3`).
 
 ## Estructura
 
-- `MainActivity`: vinculación, permisos y aviso de actualización.
-- `MainViewModel`: estado actual, horario semanal, sincronización y preferencias.
-- `StatusRepository`: consulta de perfiles y estados en Supabase; cálculo de la actividad en curso.
-- `ScheduleRepository`: descarga de `schedule` y caché local Room. Una descarga correcta reemplaza el horario de la persona en una transacción; una descarga fallida conserva la caché.
-- `UserPreferencesRepository`: vínculo y preferencias de notificaciones con DataStore.
-- `ScheduleNotifier` / `ClassStartWorker`: avisos de inicio mediante WorkManager.
+- `MainActivity`: entrada al flujo de cuentas, confirmación de correo, permisos y actualizaciones.
+- `AccountViewModel` y `AccountRepository`: cuentas, horarios, conexiones, estados y mensajes en Supabase.
+- `StatusRepository`: cálculo de la actividad en curso y vigencia del estado manual.
+- `AccountSettingsRepository`: preferencias de avisos y tema con DataStore.
 
 ## Interfaz
 
-**Hoy** utiliza la fecha, hora y zona horaria del dispositivo. Es independiente del día seleccionado en **Horario**, que permite consultar los siete días de la semana. Los días vacíos no generan actividades de ejemplo. Una actividad programada no confirma la ubicación física de la persona.
+**Hoy** muestra las actividades del día según la zona horaria del perfil. **Horario** permite consultar los siete días de la semana. Un estado manual vigente tiene prioridad sobre la actividad programada y, al vencer, la app vuelve a mostrar el horario.
 
-El estado principal prioriza la actividad cuyo intervalo contiene la hora actual (inicio incluido, fin excluido). Por ejemplo, el jueves a las 17:00 una actividad de 09:00 a 18:00 aparece en curso aunque exista un aviso manual de viaje. Los avisos manuales vigentes se muestran cuando no hay una actividad en curso. El cálculo se repite cada 15 segundos independientemente de los eventos de Realtime; las horas con fracciones de segundo también son válidas.
-
-**Perfil** incluye datos del vínculo, ajustes independientes para avisos de inicio y cambios de estado, acceso a permisos de Android, actualizaciones y desvinculación con confirmación. Las preferencias afectan este dispositivo.
+**Personas** permite compartir horarios mediante conexiones mutuas. **Perfil** incluye ajustes de avisos, tema, permisos de Android y actualizaciones.
 
 ## Actualizaciones desde GitHub
 

@@ -8,7 +8,7 @@ Rama: `feature/cuentas-conexiones`.
 - Restauración de la sesión; la contraseña no se guarda en el estado de la pantalla.
 - Perfil propio con zona horaria del dispositivo al crearlo. Las cuentas sin nombre o usuario completan su perfil al ingresar; ambos se pueden editar en Cuenta. El usuario es único, ignora mayúsculas y admite de 3 a 24 letras ASCII, números o guion bajo.
 - Crear, editar y eliminar actividades semanales, con categoría, modalidad y lugar opcional.
-- Estados manuales configurables con prioridad sobre el horario: por ejemplo, «En camino a casa» puede reemplazar una clase todavía programada. Al vencer o quitar el estado vuelve el cálculo por horario, tanto en la app como en el widget. El flujo anterior conserva su regla de prioridad.
+- Estados manuales configurables con prioridad sobre el horario: por ejemplo, «En camino a casa» puede reemplazar una clase todavía programada. Al vencer o quitar el estado vuelve el cálculo por horario, tanto en la app como en el widget.
 - Invitación aleatoria de ocho caracteres sin letras o dígitos ambiguos, presentada como `ABCD-EFGH`, de un solo uso y duración de 24 horas. Generar otra reemplaza la anterior. Se mantienen compatibles las invitaciones antiguas.
 - Conexiones mutuas entre cuentas, sin categorías de pareja/familiar ni roles de administrador.
 - Aceptar una invitación autoriza explícitamente a ambos a consultar horarios y estados. Ninguno puede modificar los datos del otro.
@@ -16,7 +16,6 @@ Rama: `feature/cuentas-conexiones`.
 - Mensajes rápidos configurables dentro de «Mis mensajes y widget», separados de los estados. Un campo define el mensaje; la etiqueta del botón se deriva automáticamente. Envían mensajes persistidos que aparecen automáticamente con la app abierta y caducan a las 24 horas.
 - Widget `FindMe · Mi gente` con tu estado, el de una persona conectada, hora de consulta y un botón de mensaje configurable desde Personas. La selección se comparte entre las instancias del widget en ese dispositivo y se comprueba contra la cuenta activa.
 - Perfil y ajustes: avisos de actividades, estados y mensajes por cuenta; acceso a permisos de Android; búsqueda de actualizaciones; acentos índigo, menta y rosa guardados en el dispositivo.
-- Acceso separado a la versión anterior desde la pantalla de inicio de sesión.
 
 ## Preparar Supabase
 
@@ -42,20 +41,18 @@ Las tablas nuevas son `account_profiles`, `personal_schedule`, `personal_status`
 
 ## Datos anteriores
 
-Las tablas `profiles`, `schedule` y `status_override` del modelo anterior siguen existiendo, pero sus registros se eliminaron por solicitud del propietario durante el reinicio de pruebas del 30 de octubre. Las cuentas anteriores de Auth y sus perfiles, horarios, conexiones, mensajes y sesiones también se eliminaron. Se conservó únicamente la cuenta recién registrada. No se borraron tablas, políticas ni funciones del modelo nuevo.
-
-Las tablas antiguas todavía tienen RLS desactivado; ya no contienen los datos anteriores. Antes de volver a usarlas o publicar la transición, deben retirarse o recibir políticas compatibles. No se reasignan datos por nombre visible ni mediante el código familiar antiguo.
+La migración `20261105202001_retirar_vinculo_anterior.sql` elimina `profiles`, `schedule` y `status_override` solo si están vacías. Estas tablas pertenecían al vínculo por código familiar y quedaron sin datos en el reinicio del 30 de octubre. El modo actual usa cuentas autenticadas y conexiones mutuas.
 
 ## Siguientes entregas
 
-- Configuración independiente de cada instancia de widget, varios botones y opciones de apariencia. Los dos widgets anteriores siguen siendo del modelo familiar anterior.
+- Configuración independiente de cada instancia de widget, varios botones y opciones de apariencia.
 - Notificaciones push mediante FCM y una función de servidor, con tokens privados, control de envíos repetidos y preferencias del destinatario. Guardar un mensaje en Supabase todavía no envía una notificación Android.
 - Caché persistente por cuenta para consultar sin conexión. La sincronización en primer plano ya usa Realtime y muestra la hora de la última consulta correcta; la caché actual del modelo de cuentas es solo en memoria.
 - Recuperación de contraseña en Android. El retorno desde confirmación de registro ya abre la app, pero no inicia sesión automáticamente.
 - Apodos por conexión, permisos independientes para horario/estado y silenciamiento.
 - Cancelaciones específicas de actividades, actividades nocturnas y reglas de solapamiento.
 
-La entrega se prepara como versión 1.3 por solicitud del propietario. El esquema nuevo, las funciones de acceso, el registro con confirmación y la limpieza de mensajes ya están desplegados. Los flujos de interfaz y preferencias se verificaron en emulador; el propietario confirmó el registro y el retorno del correo en su teléfono. Siguen pendientes las notificaciones push con la app cerrada, la caché persistente del modelo de cuentas y la retirada definitiva de las tablas antiguas vacías.
+La entrega se prepara como versión 1.3 por solicitud del propietario. El esquema nuevo, las funciones de acceso, el registro con confirmación y la limpieza de mensajes ya están desplegados. Los flujos de interfaz y preferencias se verificaron en emulador; el propietario confirmó el registro y el retorno del correo en su teléfono. Siguen pendientes las notificaciones push con la app cerrada, la caché persistente del modelo de cuentas.
 
 ## Verificación local del esquema
 
@@ -144,7 +141,7 @@ Se verificaron apertura en frío, recepción en la actividad ya abierta y aviso 
 
 ## Perfil, avisos y mensajes en vivo — 30 de octubre de 2026
 
-El Perfil del modelo de cuentas recupera notificaciones, permisos de Android y actualizaciones, además de nombre y usuario. Los avisos de actividades, estados y mensajes se guardan por cuenta en DataStore. El acento de color (índigo, menta o rosa) se guarda por dispositivo y cambia los controles y componentes compartidos con una transición breve; los colores semánticos de las categorías de actividad se conservan. Cerrar sesión en el flujo anterior ya no borra estos ajustes.
+El Perfil del modelo de cuentas recupera notificaciones, permisos de Android y actualizaciones, además de nombre y usuario. Los avisos de actividades, estados y mensajes se guardan por cuenta en DataStore. El acento de color (índigo, menta o rosa) se guarda por dispositivo y cambia los controles y componentes compartidos con una transición breve; los colores semánticos de las categorías de actividad se conservan.
 
 Mientras la pantalla de cuentas está visible, `AccountLiveUpdates` escucha seis tablas de la publicación `supabase_realtime`: perfiles, conexiones, horario, estado, mensajes rápidos y mensajes enviados. Los datos siempre se vuelven a consultar mediante RLS; los eventos no se utilizan para omitir permisos. Los eventos se agrupan para evitar consultas repetidas por ráfagas. Hay una consulta de respaldo por minuto y una consulta al terminar la suscripción para cubrir los cambios ocurridos entre la carga inicial y la conexión.
 

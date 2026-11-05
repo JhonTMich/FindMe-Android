@@ -67,18 +67,18 @@ private val cyan = Color(0xFF67D8E8)
 private fun AccountProfile.zone() = runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneId.systemDefault())
 
 @Composable
-fun AccountScreen(viewModel: AccountViewModel, onLegacy: () -> Unit, updates: UpdateState = UpdateState(),
+fun AccountScreen(viewModel: AccountViewModel, updates: UpdateState = UpdateState(),
     onCheckUpdates: () -> Unit = {}, onInstallUpdate: () -> Unit = {}) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, viewModel) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.observeWhileVisible() }
     }
-    AccountContent(state, viewModel, onLegacy, updates, onCheckUpdates, onInstallUpdate)
+    AccountContent(state, viewModel, updates, onCheckUpdates, onInstallUpdate)
 }
 
 @Composable
-fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () -> Unit = {},
+fun AccountContent(state: AccountState, actions: AccountActions,
     updates: UpdateState = UpdateState(), onCheckUpdates: () -> Unit = {}, onInstallUpdate: () -> Unit = {}) {
     if (state.initializing) {
         Box(Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
@@ -124,7 +124,7 @@ fun AccountContent(state: AccountState, actions: AccountActions, onLegacy: () ->
                         Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 } }
-                if (!state.signedIn) LoginForm(state, actions, onLegacy)
+                if (!state.signedIn) LoginForm(state, actions)
                 else if (state.profile == null) {
                     Panel {
                         Text("Cargando tu perfil…", color = TextSecondary)
@@ -172,7 +172,7 @@ private fun SectionHeading(icon: ImageVector, title: String, subtitle: String? =
 }
 
 @Composable
-private fun LoginForm(state: AccountState, actions: AccountActions, onLegacy: () -> Unit) {
+private fun LoginForm(state: AccountState, actions: AccountActions) {
     var mode by rememberSaveable(state.loginRevision) { mutableStateOf("login") }
     var username by rememberSaveable { mutableStateOf("") }
     var name by rememberSaveable { mutableStateOf("") }
@@ -236,7 +236,6 @@ private fun LoginForm(state: AccountState, actions: AccountActions, onLegacy: ()
             Text("No recibí mi confirmación", color = TextMuted)
         }
     }
-    TextButton(onClick = onLegacy, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Consultar vínculo anterior", color = TextMuted) }
 }
 
 @Composable
@@ -271,7 +270,7 @@ private fun sharedStatus(profile: AccountProfile, schedules: List<ScheduleDto>, 
     val zone = profile.zone()
     var now by remember(zone) { mutableStateOf(ZonedDateTime.now(zone)) }
     LaunchedEffect(zone) { while (true) { now = ZonedDateTime.now(zone); delay(15_000) } }
-    return StatusRepository.calculateStatus(profile.displayName, schedules, overrides, now.dayOfWeek.value, now, manualStatusFirst = true)
+    return StatusRepository.calculateStatus(profile.displayName, schedules, overrides, now.dayOfWeek.value, now)
 }
 
 @Composable

@@ -32,21 +32,20 @@ class CurrentStatusTest {
     private val travel = StatusOverrideDto(isActive = true, customLocation = "En camino a casa",
         expiresAt = "2026-10-29T23:30:00Z")
 
-    @Test fun thursdayAtFiveShowsActivityDespiteManualTravelAnnouncement() {
-        val state = StatusRepository.calculateStatus("Persona", listOf(longActivity), listOf(travel), 4, thursday)
+    @Test fun thursdayAtFiveShowsActivityInProgress() {
+        val state = StatusRepository.calculateStatus("Persona", listOf(longActivity), emptyList(), 4, thursday)
         assertTrue(state is UserCurrentStatus.InClass)
         state as UserCurrentStatus.InClass
         assertEquals("thursday", state.currentSchedule.id)
         assertEquals(60L, state.remainingMinutes)
         assertEquals(8f / 9f, state.progress, .0001f)
     }
-    @Test fun activityHasPriorityFromNineUntilJustBeforeSix() {
+    @Test fun activityIsInProgressFromNineUntilJustBeforeSix() {
         for (time in listOf(thursday.withHour(9), thursday.withHour(17).withMinute(59).withSecond(59))) {
-            assertTrue(StatusRepository.calculateStatus("Persona", listOf(longActivity), listOf(travel), 4, time) is UserCurrentStatus.InClass)
+            assertTrue(StatusRepository.calculateStatus("Persona", listOf(longActivity), emptyList(), 4, time) is UserCurrentStatus.InClass)
         }
-        val ended = StatusRepository.calculateStatus("Persona", listOf(longActivity), listOf(travel), 4, thursday.withHour(18))
-        assertTrue(ended is UserCurrentStatus.Override)
-        assertEquals("En camino a casa", (ended as UserCurrentStatus.Override).customLocation)
+        val ended = StatusRepository.calculateStatus("Persona", listOf(longActivity), emptyList(), 4, thursday.withHour(18))
+        assertTrue(ended is UserCurrentStatus.FreeTime)
     }
     @Test fun expiredTravelAnnouncementIsNotShownAfterActivity() {
         val state = StatusRepository.calculateStatus("Persona", listOf(longActivity), listOf(travel), 4, thursday.withHour(19))
@@ -54,7 +53,7 @@ class CurrentStatusTest {
     }
     @Test fun postgresFractionalSecondsAreReadAsLocalTimes() {
         val withFractions = longActivity.copy(startTime = "09:00:00.000000", endTime = "18:00:00.000000")
-        assertTrue(StatusRepository.calculateStatus("Persona", listOf(withFractions), listOf(travel), 4, thursday) is UserCurrentStatus.InClass)
+        assertTrue(StatusRepository.calculateStatus("Persona", listOf(withFractions), emptyList(), 4, thursday) is UserCurrentStatus.InClass)
         assertEquals(java.time.LocalTime.of(9, 0), StatusRepository.parseLocalTimeOrNull("9:00"))
         assertEquals(java.time.LocalTime.of(9, 0, 1, 123456000), StatusRepository.parseLocalTimeOrNull("09:00:01.123456"))
         assertNull(StatusRepository.parseLocalTimeOrNull("25:00:00"))
@@ -63,21 +62,21 @@ class CurrentStatusTest {
 
     @Test fun accountStatusOverridesAnActivityUntilItExpires() {
         val state = StatusRepository.calculateStatus("Persona", listOf(longActivity), listOf(travel), 4,
-            thursday, manualStatusFirst = true)
+            thursday)
         assertTrue(state is UserCurrentStatus.Override)
         assertEquals("En camino a casa", (state as UserCurrentStatus.Override).customLocation)
         assertEquals(listOf(longActivity), state.todaySchedules)
         val expired = travel.copy(expiresAt = thursday.toInstant().toString())
         assertTrue(StatusRepository.calculateStatus("Persona", listOf(longActivity), listOf(expired), 4,
-            thursday, manualStatusFirst = true) is UserCurrentStatus.InClass)
+            thursday) is UserCurrentStatus.InClass)
     }
 
     @Test fun accountStatusCanShowTravelAfterClassAndReturnToScheduleWhenRemoved() {
         val afterClass = thursday.withHour(18).withMinute(10)
         assertTrue(StatusRepository.calculateStatus("Persona", listOf(longActivity), listOf(travel), 4,
-            afterClass, manualStatusFirst = true) is UserCurrentStatus.Override)
+            afterClass) is UserCurrentStatus.Override)
         assertTrue(StatusRepository.calculateStatus("Persona", listOf(longActivity), emptyList(), 4,
-            thursday, manualStatusFirst = true) is UserCurrentStatus.InClass)
+            thursday) is UserCurrentStatus.InClass)
     }
 
 }
