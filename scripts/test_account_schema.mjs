@@ -2,10 +2,11 @@
 // node scripts/test_account_schema.mjs
 // Runs a real embedded PostgreSQL instance; never connects to the remote project.
 import { PGlite } from '../build/schema-check/node_modules/@electric-sql/pglite/dist/index.js';
+import { btree_gist } from '../build/schema-check/node_modules/@electric-sql/pglite/dist/contrib/btree_gist.js';
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 
-const db = new PGlite();
+const db = new PGlite({ extensions: { btree_gist } });
 const a = '00000000-0000-0000-0000-000000000001';
 const b = '00000000-0000-0000-0000-000000000002';
 const c = '00000000-0000-0000-0000-000000000003';
@@ -31,6 +32,8 @@ try {
     insert into auth.users values ('${a}'), ('${b}'), ('${c}');
   `);
   await db.exec(await readFile(new URL('../supabase/account-model.sql', import.meta.url), 'utf8'));
+  await db.exec('create schema extensions');
+  await db.exec(await readFile(new URL('../supabase/migrations/20261105204109_validar_cruces_horarios.sql', import.meta.url), 'utf8'));
   await db.exec(`insert into public.account_profiles(id, display_name) values ('${a}','A'),('${b}','B'),('${c}','C');`);
   await asUser(a);
   await check(await count('account_profiles') === 1, 'Only own profile visible before linking');
@@ -90,6 +93,26 @@ try {
   await db.exec(`select public.accept_connection_invitation(' abcd-efgh ')`);
   await check(await count('person_connections') === 1, 'Short code accepts lowercase, spaces and separator');
   await denied(`select public.accept_connection_invitation('ABCD-EFGH')`, 'Short code is also single use');
+  const activity = (owner, day, start, end, category, modality, title) =>
+    `insert into public.personal_schedule(user_id,day_of_week,start_time,end_time,category,modality,title)
+      values ('${owner}',${day},'${start}','${end}','${category}','${modality}','${title}')`;
+  const work = activity(a, 3, '09:00', '12:00', 'work', 'presencial', 'Work');
+  const virtual = activity(a, 3, '10:00', '11:00', 'university', 'virtual', 'Virtual class');
+  await asUser(a);
+  await db.exec(work);
+  await db.exec(virtual);
+  await check(Number((await db.query('select count(*) n from public.personal_schedule where day_of_week = 3')).rows[0].n) === 2,
+    'Virtual class can overlap work');
+  for (const [category, modality] of [['work', 'virtual'], ['university', 'virtual'], ['university', 'presencial'], ['free', 'virtual']]) {
+    await assert.rejects(db.exec(activity(a, 3, '10:15', '10:45', category, modality, 'Conflict')), { code: '23P01' });
+    checks++;
+  }
+  await assert.rejects(db.exec("update public.personal_schedule set modality='presencial' where title='Virtual class'"), { code: '23P01' });
+  checks++;
+  await db.exec(activity(a, 3, '12:00', '13:00', 'free', 'presencial', 'Adjacent'));
+  await db.exec(activity(a, 4, '10:15', '10:45', 'university', 'presencial', 'Different day'));
+  await asUser(b);
+  await db.exec(activity(b, 3, '10:15', '10:45', 'university', 'presencial', 'Different owner'));
   await db.exec(`reset role; set role anon; select set_config('request.jwt.claim.sub','',false)`);
   for (const table of ['account_profiles','personal_schedule','personal_status','person_connections','connection_invitations','quick_messages','connection_signals']) {
     await denied(`select * from public.${table}`, `Anonymous access denied: ${table}`);
