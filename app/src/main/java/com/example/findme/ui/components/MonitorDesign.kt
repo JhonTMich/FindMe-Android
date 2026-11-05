@@ -20,22 +20,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.findme.data.model.ActivityCategory
 import com.example.findme.data.model.ScheduleDto
-import com.example.findme.data.repository.StatusRepository
 import com.example.findme.ui.theme.*
-import java.time.Duration
-import java.time.LocalTime
-
-@Composable
-fun RevealCard(index: Int = 0, content: @Composable () -> Unit) {
-    var entered by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { entered = true }
-    val progress by animateFloatAsState(if (entered) 1f else 0f,
-        tween(450, delayMillis = index.coerceAtMost(4) * 65, easing = FastOutSlowInEasing), label = "cardEntrance")
-    Box(Modifier.graphicsLayer { alpha = progress; translationY = (1f - progress) * 28.dp.toPx() }) { content() }
-}
 
 @Composable
 fun AccentIcon(icon: ImageVector, color: Color, modifier: Modifier = Modifier) {
@@ -56,43 +43,6 @@ fun StatusPill(text: String, color: Color = MaterialTheme.colorScheme.primary, p
             }
             Text(text, color = color, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
         }
-    }
-}
-
-@Composable
-fun DayOverview(schedules: List<ScheduleDto>) {
-    val now = LocalTime.now()
-    val finished = schedules.count { StatusRepository.parseLocalTimeOrNull(it.endTime)?.let { end -> !now.isBefore(end) } == true }
-    val minutes = schedules.sumOf {
-        val start = StatusRepository.parseLocalTimeOrNull(it.startTime)
-        val end = StatusRepository.parseLocalTimeOrNull(it.endTime)
-        if (start != null && end != null) Duration.between(start, end).toMinutes().coerceAtLeast(0) else 0L
-    }
-    val fraction by animateFloatAsState(if (schedules.isEmpty()) 0f else finished.toFloat() / schedules.size, tween(800), label = "dayProgress")
-    Card(colors = CardDefaults.cardColors(containerColor = DarkCardBg), shape = RoundedCornerShape(24.dp), border = BorderStroke(1.dp, DarkCardBorder)) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(Icons.Default.DonutLarge, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp))
-                Text("El día de un vistazo", style = MaterialTheme.typography.titleSmall, color = TextPrimary)
-                Spacer(Modifier.weight(1f))
-                Text("${(fraction * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OverviewMetric("${schedules.size}", "Actividades", MaterialTheme.colorScheme.primary, Modifier.weight(1f))
-                OverviewMetric(if (minutes >= 60) "${minutes / 60}h" + if (minutes % 60 > 0) " ${minutes % 60}m" else "" else "${minutes}m", "Programadas", Color(0xFF67D8E8), Modifier.weight(1f))
-                OverviewMetric("$finished", "Finalizadas", StatusGreenText, Modifier.weight(1f))
-            }
-            LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
-                color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.primary.copy(alpha = .12f))
-        }
-    }
-}
-
-@Composable
-private fun OverviewMetric(value: String, label: String, color: Color, modifier: Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(value, color = color, fontSize = 21.sp, fontWeight = FontWeight.Bold)
-        Text(label, color = TextSecondary, style = MaterialTheme.typography.labelSmall)
     }
 }
 
@@ -128,25 +78,6 @@ fun ActivityTimelineCard(schedule: ScheduleDto, active: Boolean, last: Boolean =
                     if (schedule.modality.isNotBlank()) Text("· ${schedule.modality}", color = TextMuted, style = MaterialTheme.typography.labelSmall)
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun ScheduleEmptyCard(loading: Boolean) {
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), border = BorderStroke(1.dp, DarkCardBorder),
-        colors = CardDefaults.cardColors(containerColor = DarkCardBg)) {
-        Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(76.dp).background(Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = .18f), Color.Transparent)), CircleShape),
-                contentAlignment = Alignment.Center) {
-                if (loading) CircularProgressIndicator(Modifier.size(28.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
-                else Icon(Icons.Default.EventAvailable, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(36.dp))
-            }
-            Text(if (loading) "Cargando actividades…" else "Un espacio para desconectar", style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold, color = TextPrimary)
-            Text(if (loading) "Preparando el horario" else "No hay actividades programadas para este día.",
-                color = TextSecondary, style = MaterialTheme.typography.bodyMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
 }

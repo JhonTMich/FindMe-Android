@@ -18,7 +18,6 @@ class GlanceWidgetWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            UserStatusWidget().updateAll(context)
             ConnectionWidget().updateAll(context)
             Result.success()
         } catch (_: Exception) {

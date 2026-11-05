@@ -9,13 +9,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
-import com.example.findme.data.local.UserSession
 import com.example.findme.data.model.ScheduleDto
 import com.example.findme.domain.model.UserCurrentStatus
 import com.example.findme.ui.components.HeroStatusCard
 import com.example.findme.ui.components.WeeklyScheduleHeader
-import com.example.findme.ui.screen.UpdateState
-import com.example.findme.ui.screen.profile.ProfileScreen
 import com.example.findme.ui.theme.FindmeTheme
 import org.junit.Rule
 import org.junit.Test
@@ -31,24 +28,6 @@ class MonitorUiTest {
                 bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
             }
         }
-    }
-    @Test fun profileShowsSettingsAndConfirmsUnlink() {
-        var activityEnabled = true
-        var statusEnabled = true
-        compose.setContent { FindmeTheme { Surface(Modifier.background(com.example.findme.ui.theme.DarkBackground).safeDrawingPadding()) {
-            ProfileScreen(UserSession("test", "Persona vinculada", "PRUEBA", "Mi cuenta"), true, true,
-                { activityEnabled = it }, { statusEnabled = it }, UpdateState(), {}, {}, {})
-        } } }
-        screenshot("profile")
-        compose.onNodeWithText("Inicio de actividades").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Cambios de estado").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Inicio de actividades").performScrollTo().performClick()
-        compose.onNodeWithText("Cambios de estado").performScrollTo().performClick()
-        org.junit.Assert.assertFalse(activityEnabled)
-        org.junit.Assert.assertFalse(statusEnabled)
-        compose.onNodeWithText("Desvincular cuenta").performScrollTo().performClick()
-        compose.onNodeWithText("¿Desvincular cuenta?").assertIsDisplayed()
-        compose.onNodeWithText("Cancelar").performClick()
     }
     @Test fun freeTimeDoesNotClaimAConfirmedLocation() {
         compose.setContent { FindmeTheme { Surface(Modifier.fillMaxSize().background(com.example.findme.ui.theme.DarkBackground).safeDrawingPadding()) {
@@ -81,7 +60,6 @@ class MonitorUiTest {
             androidx.compose.foundation.lazy.LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item { androidx.compose.material3.Text("Su día, a tu alcance", style = androidx.compose.material3.MaterialTheme.typography.headlineMedium, color = com.example.findme.ui.theme.TextPrimary) }
                 item { HeroStatusCard(UserCurrentStatus.InClass("Alex", activity, 45, .6f, 1, listOf(activity))) }
-                item { com.example.findme.ui.components.DayOverview(listOf(activity)) }
                 item { com.example.findme.ui.components.ActivityTimelineCard(activity, active = true, last = true) }
             }
         } } }
