@@ -386,43 +386,19 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
     val startTime = StatusRepository.parseLocalTimeOrNull(start)
     val endTime = StatusRepository.parseLocalTimeOrNull(end)
     LaunchedEffect(state.busy, state.notice) { if (submitted && !state.busy && state.notice == "Actividad guardada.") dismiss() }
-    Sheet(dismiss, if (existing == null) "Nueva actividad" else "Editar actividad", "Elige cuándo se repite cada semana.") {
+    Sheet(dismiss, if (existing == null) "Nueva actividad" else "Editar actividad", gesturesEnabled = false) {
         Field(title, { title = it.take(120) }, "Título", placeholder = "Ej. Clase de inglés")
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Tipo de actividad", style = MaterialTheme.typography.titleSmall)
-            Choices(listOf("university", "work", "free"), category, { category = it }) { ActivityCategory.fromKey(it).label }
-            Choices(listOf("presencial", "virtual"), modality, { modality = it }) { it.replaceFirstChar(Char::titlecase) }
-            if (category == "university" && modality == "virtual") {
-                Text("Puede coincidir con el trabajo. Para las demás actividades, elige otro horario.",
-                    color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            ScheduleChoice("Día", (1..7).toList(), day, { day = it }, Modifier.weight(1f)) { days[it - 1] }
+            ScheduleChoice("Tipo", ActivityCategory.entries, ActivityCategory.fromKey(category),
+                { category = it.key }, Modifier.weight(1f)) { it.label }
         }
-        Column {
-            Text("Día · ${days[day - 1]}", style = MaterialTheme.typography.titleSmall)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                days.forEachIndexed { index, name ->
-                    FilterChip(selected = day == index + 1, onClick = { day = index + 1 }, label = { Text(name.take(3)) })
-                }
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
+            Box(Modifier.weight(1f)) { TimeField(end, { end = it }, "Fin") }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Horario", style = MaterialTheme.typography.titleSmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
-                Box(Modifier.weight(1f)) { TimeField(end, { end = it }, "Fin") }
-            }
-            if (startTime != null) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(30L, 60L, 90L).forEach { minutes ->
-                        val suggestedEnd = startTime.plusMinutes(minutes).withSecond(0).withNano(0)
-                        if (suggestedEnd.isAfter(startTime)) {
-                            FilterChip(selected = endTime == suggestedEnd,
-                                onClick = { end = suggestedEnd.format(hourFormat) },
-                                label = { Text(if (minutes == 60L) "1 h" else "$minutes min") })
-                        }
-                    }
-                }
-            }
+        ScheduleChoice("Modalidad", listOf("presencial", "virtual"), modality, { modality = it }) {
+            it.replaceFirstChar(Char::titlecase)
         }
         val feedback = conflict?.conflictMessage()
             ?: if (startTime != null && endTime != null && !endTime.isAfter(startTime)) {
@@ -430,25 +406,61 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
             } else if (submitted) invalid ?: state.error else null
         feedback?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
         Field(location, { location = it.take(160) }, "Lugar o aula (opcional)")
-        Button(onClick = {
-            submitted = true
-            if (invalid == null) actions.saveSchedule(existing?.id, day, start, end, title, location, category, modality)
-        }, enabled = !state.busy && conflict == null, modifier = Modifier.fillMaxWidth()) { Text("Guardar actividad") }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = dismiss) { Text("Cancelar") }
+            Button(onClick = {
+                submitted = true
+                if (invalid == null) actions.saveSchedule(existing?.id, day, start, end, title, location, category, modality)
+            }, enabled = !state.busy && conflict == null, modifier = Modifier.weight(1f)) { Text("Guardar actividad") }
+        }
+    }
+}
+
+@Composable
+private fun <T> ScheduleChoice(
+    label: String,
+    choices: List<T>,
+    selected: T,
+    onSelect: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    name: (T) -> String
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier) {
+        ScheduleField(label, name(selected), onClick = { expanded = true }, dropdown = true)
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            choices.forEach { choice ->
+                DropdownMenuItem(text = { Text(name(choice)) }, onClick = {
+                    onSelect(choice)
+                    expanded = false
+                })
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScheduleField(label: String, value: String, onClick: () -> Unit, dropdown: Boolean = false) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(1.dp, DarkCardBorder),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp)
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+            Text(value, color = TextPrimary, style = MaterialTheme.typography.titleSmall)
+        }
+        if (dropdown) Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp), tint = TextMuted)
     }
 }
 
 @Composable
 private fun TimeField(value: String, change: (String) -> Unit, label: String) {
     var picking by rememberSaveable { mutableStateOf(false) }
-    OutlinedButton(onClick = { picking = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, DarkCardBorder)) {
-        Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(label, color = TextSecondary, style = MaterialTheme.typography.labelSmall)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Default.Schedule, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                Text(formatScheduleTime(value), color = TextPrimary, style = MaterialTheme.typography.titleMedium)
-            }
-        }
-    }
+    ScheduleField(label, formatScheduleTime(value), onClick = { picking = true })
     if (picking) {
         val initial = StatusRepository.parseLocalTimeOrNull(value) ?: LocalTime.of(9, 0)
         ScheduleTimePicker("Hora de ${label.lowercase()}", initial, dismiss = { picking = false }) { time ->
@@ -669,11 +681,28 @@ private fun EmptyPanel(icon: ImageVector, title: String, description: String) {
 }
 
 @Composable
-private fun Sheet(dismiss: () -> Unit, title: String, description: String, content: @Composable ColumnScope.() -> Unit) {
-    ModalBottomSheet(onDismissRequest = dismiss, containerColor = DarkSurface, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 22.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+private fun Sheet(
+    dismiss: () -> Unit,
+    title: String,
+    description: String? = null,
+    gesturesEnabled: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = dismiss,
+        containerColor = DarkSurface,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetGesturesEnabled = gesturesEnabled,
+        dragHandle = if (gesturesEnabled) { { BottomSheetDefaults.DragHandle() } } else null
+    ) {
+        val scroll = rememberScrollState()
+        val scrollModifier = if (gesturesEnabled) Modifier.verticalScroll(scroll).imePadding()
+            else Modifier.imePadding().verticalScroll(scroll, overscrollEffect = null)
+        Column(Modifier.fillMaxWidth().then(scrollModifier).padding(horizontal = 22.dp)
+            .padding(top = if (gesturesEnabled) 0.dp else 22.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(if (gesturesEnabled) 16.dp else 12.dp)) {
             Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            Text(description, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+            description?.let { Text(it, color = TextSecondary, style = MaterialTheme.typography.bodyMedium) }
             content()
         }
     }

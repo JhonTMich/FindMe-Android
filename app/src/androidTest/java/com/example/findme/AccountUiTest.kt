@@ -75,23 +75,33 @@ class AccountUiTest {
                 savedModality = modality
                 assertEquals("university", category)
                 assertEquals("21:01", start)
-                assertEquals("21:31", end)
+                assertEquals("22:00", end)
             }
         }, snapshot = state.copy(schedules = listOf(schedule, work)))
         compose.onNodeWithText("Horario").performClick()
         compose.onNodeWithText("Tu semana").assertIsDisplayed()
         screenshot("account-schedule")
         compose.onNodeWithText("Añadir").performScrollTo().performClick()
+        val heading = compose.onNodeWithText("Nueva actividad")
+        repeat(3) {
+            heading.performTouchInput { swipeDown(endY = bottom + 350f) }
+            heading.assertIsDisplayed()
+        }
+        listOf("30 min", "1 h", "90 min").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
         compose.onNodeWithText("Título").performTextInput("Nuevo proyecto")
         compose.onNodeWithText("Guardar actividad").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithText("Coincide con «Proyecto de investigación»", substring = true).assertExists()
-        compose.onNodeWithText("Trabajo").performScrollTo().performClick()
+        compose.onNodeWithText("Tipo").performScrollTo().performClick()
+        compose.onNodeWithText("Trabajo").performClick()
         compose.onNodeWithText("Guardar actividad").performScrollTo().assertIsNotEnabled()
-        compose.onNode(hasText("Universidad") and hasClickAction()).performScrollTo().performClick()
+        compose.onNodeWithText("Tipo").performScrollTo().performClick()
+        compose.onNode(hasText("Universidad") and hasClickAction()).performClick()
         // Use a work activity on a different day to check the allowed pairing.
-        val dayLabel = listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")[otherDay - 1]
-        compose.onNodeWithText(dayLabel).performScrollTo().performClick()
-        compose.onNodeWithText("Virtual").performScrollTo().performClick()
+        val dayLabel = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")[otherDay - 1]
+        compose.onNodeWithText("Día").performScrollTo().performClick()
+        compose.onNode(hasText(dayLabel) and hasClickAction()).performClick()
+        compose.onNodeWithText("Modalidad").performScrollTo().performClick()
+        compose.onNodeWithText("Virtual").performClick()
         compose.onNodeWithText("Inicio").performScrollTo().performClick()
         compose.onNodeWithText("Hora de inicio").assertIsDisplayed()
         compose.onNodeWithText("01").performClick()
@@ -99,11 +109,16 @@ class AccountUiTest {
         screenshot("account-schedule-wheel")
         compose.onNodeWithText("Aplicar hora").performClick()
         compose.onNodeWithText("9:01 p. m.").assertIsDisplayed()
-        compose.onNodeWithText("30 min").performScrollTo().performClick()
+        compose.onNodeWithText("Fin").performScrollTo().performClick()
+        compose.onNodeWithText("Hora de fin").assertIsDisplayed()
+        compose.onNodeWithText("p. m.").performClick()
+        compose.onNodeWithText("Aplicar hora").performClick()
         screenshot("account-schedule-editor")
         compose.onNodeWithText("Guardar actividad").performScrollTo().performClick()
         assertEquals("Nuevo proyecto", savedTitle)
         assertEquals("virtual", savedModality)
+        compose.onNodeWithText("Cancelar").performScrollTo().performClick()
+        heading.assertDoesNotExist()
     }
 
     @Test fun peopleExplainsMessagesAndKeepsConfigurationOutOfMainFlow() {
