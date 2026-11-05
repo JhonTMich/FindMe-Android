@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.findme.data.model.*
 import com.example.findme.data.repository.AccountRepository
 import com.example.findme.domain.model.validateSchedule
+import com.example.findme.domain.model.conflictMessage
+import com.example.findme.domain.model.findScheduleConflict
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -102,7 +104,12 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 _state.update { it.copy(error = error.message ?: "Revisa los datos ingresados.") }
             }
             catch (error: io.github.jan.supabase.postgrest.exception.PostgrestRestException) {
-                _state.update { it.copy(error = if (error.code == "23505") "Ese nombre de usuario ya está ocupado. Elige otro." else "No se pudieron guardar los datos. Inténtalo de nuevo.") }
+                val message = when (error.code) {
+                    "23505" -> "Ese nombre de usuario ya está ocupado. Elige otro."
+                    "23P01" -> "Este horario coincide con otra actividad. Actualiza tu horario y elige otra hora."
+                    else -> "No se pudieron guardar los datos. Inténtalo de nuevo."
+                }
+                _state.update { it.copy(error = message) }
             }
             catch (error: Exception) {
                 android.util.Log.w("AccountViewModel", "Account operation failed", error)
@@ -237,6 +244,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
     }
     override fun saveSchedule(existingId: String?, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
         val error = validateSchedule(day, start, end, title)
+            ?: findScheduleConflict(_state.value.schedules, existingId, day, start, end, category, modality)?.conflictMessage()
         if (error != null) { _state.update { it.copy(error = error) }; return }
         perform {
             repository.saveSchedule(ScheduleDto(existingId ?: UUID.randomUUID().toString(), repository.userId(), day,

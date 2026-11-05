@@ -46,6 +46,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.findme.data.model.*
 import com.example.findme.data.repository.StatusRepository
@@ -53,9 +55,13 @@ import com.example.findme.domain.model.Registration
 import com.example.findme.domain.model.Username
 import com.example.findme.domain.model.InvitationCode
 import com.example.findme.domain.model.UserCurrentStatus
+import com.example.findme.domain.model.conflictMessage
+import com.example.findme.domain.model.findScheduleConflict
+import com.example.findme.domain.model.validateSchedule
 import com.example.findme.ui.components.*
 import com.example.findme.ui.theme.*
 import java.time.ZoneId
+import java.time.LocalTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -63,6 +69,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private val days = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
+private val hourFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
 private val cyan = Color(0xFF67D8E8)
 private fun AccountProfile.zone() = runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneId.systemDefault())
 
@@ -367,44 +374,104 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
 private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: AccountState, actions: AccountActions, dismiss: () -> Unit) {
     var title by rememberSaveable { mutableStateOf(existing?.title.orEmpty()) }
     var location by rememberSaveable { mutableStateOf(existing?.location.orEmpty()) }
-    var start by rememberSaveable { mutableStateOf(existing?.startTime?.take(5) ?: "09:00") }
-    var end by rememberSaveable { mutableStateOf(existing?.endTime?.take(5) ?: "10:00") }
+    var start by rememberSaveable { mutableStateOf(existing?.startTime ?: "09:00") }
+    var end by rememberSaveable { mutableStateOf(existing?.endTime ?: "10:00") }
     var day by rememberSaveable { mutableStateOf(existing?.dayOfWeek ?: initialDay) }
     var category by rememberSaveable { mutableStateOf(existing?.category ?: "university") }
     var modality by rememberSaveable { mutableStateOf(existing?.modality ?: "presencial") }
     var submitted by remember { mutableStateOf(false) }
+    val invalid = validateSchedule(day, start, end, title)
+    val conflict = if (invalid == null) {
+        findScheduleConflict(state.schedules, existing?.id, day, start, end, category, modality)
+    } else null
+    val startTime = StatusRepository.parseLocalTimeOrNull(start)
+    val endTime = StatusRepository.parseLocalTimeOrNull(end)
     LaunchedEffect(state.busy, state.notice) { if (submitted && !state.busy && state.notice == "Actividad guardada.") dismiss() }
-    Sheet(dismiss, if (existing == null) "Una nueva actividad" else "Editar actividad", "Organiza tu semana a tu manera.") {
-        Text("Tipo de actividad", style = MaterialTheme.typography.titleSmall)
-        Choices(listOf("university", "work", "free"), category, { category = it }) { ActivityCategory.fromKey(it).label }
-        Field(title, { title = it.take(120) }, "Título", placeholder = "¿Qué tienes planeado?")
-        Choices((1..7).toList(), day, { day = it }) { days[it - 1].take(3) }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
-            Box(Modifier.weight(1f)) { TimeField(end, { end = it }, "Fin") }
+    Sheet(dismiss, if (existing == null) "Nueva actividad" else "Editar actividad", "Elige cuándo se repite cada semana.") {
+        Field(title, { title = it.take(120) }, "Título", placeholder = "Ej. Clase de inglés")
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Tipo de actividad", style = MaterialTheme.typography.titleSmall)
+            Choices(listOf("university", "work", "free"), category, { category = it }) { ActivityCategory.fromKey(it).label }
+            Choices(listOf("presencial", "virtual"), modality, { modality = it }) { it.replaceFirstChar(Char::titlecase) }
+            if (category == "university" && modality == "virtual") {
+                Text("Puede coincidir con el trabajo. Para las demás actividades, elige otro horario.",
+                    color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
         }
-        Choices(listOf("presencial", "virtual"), modality, { modality = it }) { it.replaceFirstChar(Char::titlecase) }
+        Column {
+            Text("Día · ${days[day - 1]}", style = MaterialTheme.typography.titleSmall)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                days.forEachIndexed { index, name ->
+                    FilterChip(selected = day == index + 1, onClick = { day = index + 1 }, label = { Text(name.take(3)) })
+                }
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Horario · 24 horas", style = MaterialTheme.typography.titleSmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
+                Box(Modifier.weight(1f)) { TimeField(end, { end = it }, "Fin") }
+            }
+            if (startTime != null) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(30L, 60L, 90L).forEach { minutes ->
+                        val suggestedEnd = startTime.plusMinutes(minutes).withSecond(0).withNano(0)
+                        if (suggestedEnd.isAfter(startTime)) {
+                            FilterChip(selected = endTime == suggestedEnd,
+                                onClick = { end = suggestedEnd.format(hourFormat) },
+                                label = { Text(if (minutes == 60L) "1 h" else "$minutes min") })
+                        }
+                    }
+                }
+            }
+        }
+        val feedback = conflict?.conflictMessage()
+            ?: if (startTime != null && endTime != null && !endTime.isAfter(startTime)) {
+                "La hora de fin debe ser posterior al inicio."
+            } else if (submitted) invalid ?: state.error else null
+        feedback?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
         Field(location, { location = it.take(160) }, "Lugar o aula (opcional)")
-        if (submitted) state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(onClick = { submitted = true; actions.saveSchedule(existing?.id, day, start, end, title, location, category, modality) },
-            enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Guardar actividad") }
+        Button(onClick = {
+            submitted = true
+            if (invalid == null) actions.saveSchedule(existing?.id, day, start, end, title, location, category, modality)
+        }, enabled = !state.busy && conflict == null, modifier = Modifier.fillMaxWidth()) { Text("Guardar actividad") }
     }
 }
 
 @Composable
 private fun TimeField(value: String, change: (String) -> Unit, label: String) {
-    var picking by remember { mutableStateOf(false) }
+    var picking by rememberSaveable { mutableStateOf(false) }
     OutlinedButton(onClick = { picking = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, DarkCardBorder)) {
         Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Text(label, color = TextSecondary, style = MaterialTheme.typography.labelSmall)
-            Text(value, color = TextPrimary, style = MaterialTheme.typography.titleLarge)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Default.Schedule, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                Text(value.take(5), color = TextPrimary, style = MaterialTheme.typography.titleLarge)
+            }
         }
     }
     if (picking) {
-        val time = rememberTimePickerState(initialHour = value.take(2).toIntOrNull() ?: 9, initialMinute = value.takeLast(2).toIntOrNull() ?: 0, is24Hour = true)
-        AlertDialog(onDismissRequest = { picking = false }, title = { Text("Hora de ${label.lowercase()}") }, text = { TimeInput(time) },
-            confirmButton = { TextButton(onClick = { change(String.format(Locale.ROOT, "%02d:%02d", time.hour, time.minute)); picking = false }) { Text("Listo") } },
-            dismissButton = { TextButton(onClick = { picking = false }) { Text("Cancelar") } })
+        val initial = StatusRepository.parseLocalTimeOrNull(value) ?: LocalTime.of(9, 0)
+        val time = rememberTimePickerState(initial.hour, initial.minute, is24Hour = true)
+        Dialog(onDismissRequest = { picking = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Surface(Modifier.padding(horizontal = 10.dp).widthIn(max = 360.dp).fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp), color = DarkCardBg) {
+                Column(Modifier.verticalScroll(rememberScrollState()).padding(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Hora de ${label.lowercase()}", style = MaterialTheme.typography.titleLarge)
+                    Text("Toca la hora y luego los minutos", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                    TimePicker(state = time, layoutType = TimePickerLayoutType.Vertical)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { picking = false }) { Text("Cancelar") }
+                        Button(onClick = {
+                            change(LocalTime.of(time.hour, time.minute).format(hourFormat))
+                            picking = false
+                        }) { Text("Aplicar hora") }
+                    }
+                }
+            }
+        }
     }
 }
 
