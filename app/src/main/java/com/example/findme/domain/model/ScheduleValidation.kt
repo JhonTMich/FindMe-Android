@@ -40,4 +40,4 @@ fun findScheduleConflict(
 }
 
 fun ScheduleDto.conflictMessage(): String =
-    "Coincide con «$title» (${startTime.take(5)}–${endTime.take(5)}). Cambia el horario o el día."
+    "Coincide con «$title» (${formatScheduleTime(startTime)}–${formatScheduleTime(endTime)}). Cambia el horario o el día."

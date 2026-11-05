@@ -1,10 +1,18 @@
 package com.example.findme
 
 import com.example.findme.domain.model.validateSchedule
+import com.example.findme.domain.model.formatScheduleTime
 import org.junit.Assert.*
 import org.junit.Test
 
 class ScheduleValidationTest {
+    @Test fun displaysNoonAndMidnightInTwelveHourFormat() {
+        assertEquals("12:00 a. m.", formatScheduleTime("00:00"))
+        assertEquals("12:00 p. m.", formatScheduleTime("12:00:00"))
+        assertEquals("9:01 p. m.", formatScheduleTime("21:01:00.000000"))
+        assertEquals("12:00 a. m.", formatScheduleTime("24:00:00"))
+    }
+
     @Test fun acceptsAValidSameDayActivity() {
         assertNull(validateSchedule(1, "09:00", "10:30", "Trabajo"))
         assertNull(validateSchedule(7, "00:00", "23:59", "Actividad"))

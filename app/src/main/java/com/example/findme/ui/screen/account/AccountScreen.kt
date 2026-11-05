@@ -46,8 +46,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.findme.data.model.*
 import com.example.findme.data.repository.StatusRepository
@@ -57,6 +55,7 @@ import com.example.findme.domain.model.InvitationCode
 import com.example.findme.domain.model.UserCurrentStatus
 import com.example.findme.domain.model.conflictMessage
 import com.example.findme.domain.model.findScheduleConflict
+import com.example.findme.domain.model.formatScheduleTime
 import com.example.findme.domain.model.validateSchedule
 import com.example.findme.ui.components.*
 import com.example.findme.ui.theme.*
@@ -347,7 +346,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 AccentIcon(category.icon, category.accentColor)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("${schedule.startTime.take(5)} — ${schedule.endTime.take(5)}", color = category.accentColor, style = MaterialTheme.typography.labelLarge)
+                    Text("${formatScheduleTime(schedule.startTime)} — ${formatScheduleTime(schedule.endTime)}", color = category.accentColor, style = MaterialTheme.typography.labelLarge)
                     Text(schedule.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
@@ -407,7 +406,7 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
             }
         }
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Horario · 24 horas", style = MaterialTheme.typography.titleSmall)
+            Text("Horario", style = MaterialTheme.typography.titleSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
                 Box(Modifier.weight(1f)) { TimeField(end, { end = it }, "Fin") }
@@ -446,31 +445,15 @@ private fun TimeField(value: String, change: (String) -> Unit, label: String) {
             Text(label, color = TextSecondary, style = MaterialTheme.typography.labelSmall)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Icon(Icons.Default.Schedule, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                Text(value.take(5), color = TextPrimary, style = MaterialTheme.typography.titleLarge)
+                Text(formatScheduleTime(value), color = TextPrimary, style = MaterialTheme.typography.titleMedium)
             }
         }
     }
     if (picking) {
         val initial = StatusRepository.parseLocalTimeOrNull(value) ?: LocalTime.of(9, 0)
-        val time = rememberTimePickerState(initial.hour, initial.minute, is24Hour = true)
-        Dialog(onDismissRequest = { picking = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-            Surface(Modifier.padding(horizontal = 10.dp).widthIn(max = 360.dp).fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp), color = DarkCardBg) {
-                Column(Modifier.verticalScroll(rememberScrollState()).padding(12.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Hora de ${label.lowercase()}", style = MaterialTheme.typography.titleLarge)
-                    Text("Toca la hora y luego los minutos", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-                    TimePicker(state = time, layoutType = TimePickerLayoutType.Vertical)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = { picking = false }) { Text("Cancelar") }
-                        Button(onClick = {
-                            change(LocalTime.of(time.hour, time.minute).format(hourFormat))
-                            picking = false
-                        }) { Text("Aplicar hora") }
-                    }
-                }
-            }
+        ScheduleTimePicker("Hora de ${label.lowercase()}", initial, dismiss = { picking = false }) { time ->
+            change(time.format(hourFormat))
+            picking = false
         }
     }
 }

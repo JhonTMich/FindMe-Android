@@ -22,6 +22,7 @@ import com.example.findme.data.model.AccountProfile
 import com.example.findme.data.repository.AccountRepository
 import com.example.findme.data.repository.StatusRepository
 import com.example.findme.domain.model.UserCurrentStatus
+import com.example.findme.domain.model.formatScheduleTime
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.first
@@ -99,7 +100,7 @@ class ConnectionWidget : GlanceAppWidget() {
     private suspend fun status(repo: AccountRepository, profile: AccountProfile): String {
         val now = ZonedDateTime.now(ZoneId.of(profile.timezone))
         return when (val state = StatusRepository.calculateStatus(profile.displayName, repo.schedules(profile.id), repo.overrides(profile.id), now.dayOfWeek.value, now)) {
-            is UserCurrentStatus.InClass -> "${state.currentSchedule.title} hasta ${state.currentSchedule.endTime.take(5)} (horario)"
+            is UserCurrentStatus.InClass -> "${state.currentSchedule.title} hasta ${formatScheduleTime(state.currentSchedule.endTime)} (horario)"
             is UserCurrentStatus.Override -> state.customLocation
             else -> "Sin actividad programada"
         }

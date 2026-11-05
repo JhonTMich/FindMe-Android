@@ -74,8 +74,8 @@ class AccountUiTest {
                 savedTitle = title
                 savedModality = modality
                 assertEquals("university", category)
-                assertEquals("09:00", start)
-                assertEquals("09:30", end)
+                assertEquals("21:01", start)
+                assertEquals("21:31", end)
             }
         }, snapshot = state.copy(schedules = listOf(schedule, work)))
         compose.onNodeWithText("Horario").performClick()
@@ -94,8 +94,11 @@ class AccountUiTest {
         compose.onNodeWithText("Virtual").performScrollTo().performClick()
         compose.onNodeWithText("Inicio").performScrollTo().performClick()
         compose.onNodeWithText("Hora de inicio").assertIsDisplayed()
-        screenshot("account-schedule-clock")
+        compose.onNodeWithText("01").performClick()
+        compose.onNodeWithText("p. m.").performClick()
+        screenshot("account-schedule-wheel")
         compose.onNodeWithText("Aplicar hora").performClick()
+        compose.onNodeWithText("9:01 p. m.").assertIsDisplayed()
         compose.onNodeWithText("30 min").performScrollTo().performClick()
         screenshot("account-schedule-editor")
         compose.onNodeWithText("Guardar actividad").performScrollTo().performClick()
