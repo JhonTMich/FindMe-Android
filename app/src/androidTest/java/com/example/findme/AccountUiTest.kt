@@ -68,16 +68,21 @@ class AccountUiTest {
 
     @Test fun scheduleEditorBlocksConflictsAndAllowsVirtualClassDuringWork() {
         val otherDay = (now.dayOfWeek.value % 7) + 1
+        val thirdDay = (otherDay % 7) + 1
         val work = schedule.copy(id = "work", dayOfWeek = otherDay, title = "Turno", category = "work")
         var savedTitle = ""
         var savedModality = ""
         show(object : AccountActions {
-            override fun saveSchedule(id: String, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
-                savedTitle = title
-                savedModality = modality
-                assertEquals("university", category)
-                assertEquals("21:01", start)
-                assertEquals("22:00", end)
+            override fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {
+                assertEquals(setOf(otherDay, thirdDay), activities.map { it.dayOfWeek }.toSet())
+                assertEquals(2, activities.map { it.id }.distinct().size)
+                activities.forEach {
+                    savedTitle = it.title
+                    savedModality = it.modality
+                    assertEquals("university", it.category)
+                    assertEquals("21:01", it.startTime)
+                    assertEquals("22:00", it.endTime)
+                }
             }
         }, snapshot = state.copy(schedules = listOf(schedule, work)))
         compose.onNodeWithText("Horario").performClick()
@@ -99,11 +104,20 @@ class AccountUiTest {
         compose.onNodeWithText("Tipo").performScrollTo().performClick()
         compose.onNode(hasText("Universidad") and hasClickAction()).performClick()
         // Use a work activity on a different day to check the allowed pairing.
-        val dayLabel = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")[otherDay - 1]
-        compose.onNodeWithText("Día").performScrollTo().performClick()
-        compose.onNode(hasText(dayLabel) and hasClickAction()).performClick()
+        val dayLabels = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
+        val dayField = compose.onNodeWithText("Días")
+        dayField.performScrollTo().performClick()
+        compose.onNode(hasText(dayLabels[otherDay - 1]) and hasClickAction()).performScrollTo().performClick()
+        compose.onNode(hasText(dayLabels[thirdDay - 1]) and hasClickAction()).performScrollTo().performClick()
+        compose.onNodeWithText("Listo").performScrollTo().performClick()
         compose.onNodeWithText("Modalidad").performScrollTo().performClick()
         compose.onNodeWithText("Virtual").performClick()
+        compose.onNodeWithText("Guardar actividad").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("Coincide con «Proyecto de investigación» el ${dayLabels[now.dayOfWeek.value - 1]}",
+            substring = true, ignoreCase = true).assertExists()
+        dayField.performScrollTo().performClick()
+        compose.onNode(hasText(dayLabels[now.dayOfWeek.value - 1]) and hasClickAction() and isSelected()).performScrollTo().performClick()
+        compose.onNodeWithText("Listo").performScrollTo().performClick()
         compose.onNodeWithText("Inicio").performScrollTo().performClick()
         compose.onNodeWithText("Hora de inicio").assertIsDisplayed()
         compose.onNodeWithText("01").performClick()
@@ -127,13 +141,13 @@ class AccountUiTest {
         val snapshot = mutableStateOf(state.copy(schedules = emptyList()))
         val attempts = mutableListOf<String>()
         val actions = object : AccountActions {
-            override fun saveSchedule(id: String, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
-                attempts += id
-                val row = ScheduleDto(id, own.id, day, start, end, title, location, category, modality)
+            override fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {
+                val row = activities.single().copy(userId = own.id)
+                attempts += row.id
                 snapshot.value = if (attempts.size == 1) {
                     snapshot.value.copy(busy = true, schedules = listOf(row))
                 } else {
-                    snapshot.value.copy(busy = false, error = null, savedScheduleId = id,
+                    snapshot.value.copy(busy = false, error = null, savedScheduleDraftId = draftId,
                         notice = "Actividad guardada.", schedules = listOf(row))
                 }
             }

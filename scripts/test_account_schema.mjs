@@ -109,6 +109,10 @@ try {
   }
   await assert.rejects(db.exec("update public.personal_schedule set modality='presencial' where title='Virtual class'"), { code: '23P01' });
   checks++;
+  await assert.rejects(db.exec(`insert into public.personal_schedule(user_id,day_of_week,start_time,end_time,title)
+    values ('${a}', 5, '10:15', '10:45', 'Batch'), ('${a}', 3, '10:15', '10:45', 'Batch')`), { code: '23P01' });
+  await check((await db.query("select id from public.personal_schedule where title = 'Batch'")).rows.length === 0,
+    'A conflict in one day rolls back the whole batch');
   await db.exec(activity(a, 3, '12:00', '13:00', 'free', 'presencial', 'Adjacent'));
   await db.exec(activity(a, 4, '10:15', '10:45', 'university', 'presencial', 'Different day'));
   await asUser(b);

@@ -39,6 +39,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -372,28 +374,39 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
 
 @Composable
 private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: AccountState, actions: AccountActions, dismiss: () -> Unit) {
-    val scheduleId = rememberSaveable { existing?.id ?: UUID.randomUUID().toString() }
+    val draftId = rememberSaveable { UUID.randomUUID().toString() }
+    val editingId by rememberSaveable { mutableStateOf(existing?.id) }
     var title by rememberSaveable { mutableStateOf(existing?.title.orEmpty()) }
     var location by rememberSaveable { mutableStateOf(existing?.location.orEmpty()) }
     var start by rememberSaveable { mutableStateOf(existing?.startTime ?: "09:00") }
     var end by rememberSaveable { mutableStateOf(existing?.endTime ?: "10:00") }
-    var day by rememberSaveable { mutableStateOf(existing?.dayOfWeek ?: initialDay) }
+    var selectedDays by rememberSaveable { mutableStateOf(listOf(existing?.dayOfWeek ?: initialDay)) }
     var category by rememberSaveable { mutableStateOf(existing?.category ?: "university") }
     var modality by rememberSaveable { mutableStateOf(existing?.modality ?: "presencial") }
-    var submitted by remember { mutableStateOf(false) }
-    val invalid = validateSchedule(day, start, end, title)
+    var submitted by rememberSaveable { mutableStateOf(false) }
+    val activities = selectedDays.map { day ->
+        val id = editingId ?: UUID.nameUUIDFromBytes("$draftId:$day".toByteArray(Charsets.UTF_8)).toString()
+        ScheduleDto(id = id, dayOfWeek = day, startTime = start.trim(), endTime = end.trim(),
+            title = title.trim(), location = location.trim(), category = category, modality = modality)
+    }
+    val invalid = selectedDays.firstOrNull()?.let { validateSchedule(it, start, end, title) }
     val conflict = if (invalid == null) {
-        findScheduleConflict(state.schedules, scheduleId, day, start, end, category, modality)
+        activities.firstNotNullOfOrNull { findScheduleConflict(state.schedules, it) }
     } else null
     val startTime = StatusRepository.parseLocalTimeOrNull(start)
     val endTime = StatusRepository.parseLocalTimeOrNull(end)
-    LaunchedEffect(state.busy, state.savedScheduleId) {
-        if (submitted && !state.busy && state.savedScheduleId == scheduleId) dismiss()
+    LaunchedEffect(state.busy, state.savedScheduleDraftId) {
+        if (submitted && !state.busy && state.savedScheduleDraftId == draftId) dismiss()
     }
-    Sheet(dismiss, if (existing == null) "Nueva actividad" else "Editar actividad", gesturesEnabled = false) {
+    Sheet(dismiss, if (editingId == null) "Nueva actividad" else "Editar actividad", gesturesEnabled = false) {
         Field(title, { title = it.take(120) }, "Título", placeholder = "Ej. Clase de inglés")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ScheduleChoice("Día", (1..7).toList(), day, { day = it }, Modifier.weight(1f)) { days[it - 1] }
+            if (editingId == null) {
+                ScheduleDays(selectedDays, { selectedDays = it }, Modifier.weight(1f))
+            } else {
+                ScheduleChoice("Día", (1..7).toList(), selectedDays.single(),
+                    { selectedDays = listOf(it) }, Modifier.weight(1f)) { days[it - 1] }
+            }
             ScheduleChoice("Tipo", ActivityCategory.entries, ActivityCategory.fromKey(category),
                 { category = it.key }, Modifier.weight(1f)) { it.label }
         }
@@ -404,7 +417,7 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
         ScheduleChoice("Modalidad", listOf("presencial", "virtual"), modality, { modality = it }) {
             it.replaceFirstChar(Char::titlecase)
         }
-        val feedback = conflict?.conflictMessage()
+        val feedback = if (selectedDays.isEmpty()) "Elige al menos un día." else conflict?.conflictMessage()
             ?: if (startTime != null && endTime != null && !endTime.isAfter(startTime)) {
                 "La hora de fin debe ser posterior al inicio."
             } else if (submitted) invalid ?: state.error else null
@@ -415,8 +428,39 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
             TextButton(onClick = dismiss) { Text("Cancelar") }
             Button(onClick = {
                 submitted = true
-                if (invalid == null) actions.saveSchedule(scheduleId, day, start, end, title, location, category, modality)
-            }, enabled = !state.busy && conflict == null, modifier = Modifier.weight(1f)) { Text("Guardar actividad") }
+                if (invalid == null) actions.saveSchedules(draftId, activities)
+            }, enabled = !state.busy && selectedDays.isNotEmpty() && conflict == null,
+                modifier = Modifier.weight(1f)) { Text("Guardar actividad") }
+        }
+    }
+}
+
+@Composable
+private fun ScheduleDays(chosen: List<Int>, onSelect: (List<Int>) -> Unit, modifier: Modifier = Modifier) {
+    var expanded by remember { mutableStateOf(false) }
+    val summary = when (chosen.size) {
+        0 -> "Elegir días"
+        1 -> days[chosen.single() - 1]
+        in 2..3 -> chosen.joinToString(", ") { days[it - 1].take(3) }
+        7 -> "Todos los días"
+        else -> "${chosen.size} días"
+    }
+    Box(modifier) {
+        ScheduleField("Días", summary, onClick = { expanded = true }, dropdown = true)
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            days.forEachIndexed { index, name ->
+                val day = index + 1
+                val checked = day in chosen
+                DropdownMenuItem(
+                    text = { Text(name) },
+                    leadingIcon = { Checkbox(checked = checked, onCheckedChange = null) },
+                    modifier = Modifier.semantics { selected = checked },
+                    onClick = { onSelect(if (checked) chosen - day else (chosen + day).sorted()) }
+                )
+            }
+            HorizontalDivider()
+            DropdownMenuItem(text = { Text("Listo", color = MaterialTheme.colorScheme.primary) },
+                onClick = { expanded = false })
         }
     }
 }

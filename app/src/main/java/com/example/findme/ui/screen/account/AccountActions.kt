@@ -2,6 +2,7 @@ package com.example.findme.ui.screen.account
 
 import com.example.findme.data.model.AccountProfile
 import com.example.findme.data.model.QuickMessage
+import com.example.findme.data.model.ScheduleDto
 import com.example.findme.data.local.AccountAlert
 import com.example.findme.data.local.AppAccent
 
@@ -16,7 +17,7 @@ interface AccountActions {
     fun saveProfile(name: String, username: String) {}
     fun setAlert(alert: AccountAlert, enabled: Boolean) {}
     fun setAccent(accent: AppAccent) {}
-    fun saveSchedule(id: String, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {}
+    fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {}
     fun deleteSchedule(id: String) {}
     fun setStatus(text: String, minutes: Long) {}
     fun clearStatus() {}

@@ -44,7 +44,7 @@ data class AccountState(
     val loginRevision: Int = 0,
     val profile: AccountProfile? = null,
     val schedules: List<ScheduleDto> = emptyList(),
-    val savedScheduleId: String? = null,
+    val savedScheduleDraftId: String? = null,
     val statuses: List<StatusOverrideDto> = emptyList(),
     val connections: List<PersonConnection> = emptyList(),
     val profiles: List<AccountProfile> = emptyList(),
@@ -96,7 +96,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
 
     private fun perform(action: suspend () -> Unit) {
         if (_state.value.busy) return
-        _state.update { it.copy(busy = true, error = null, notice = null, savedScheduleId = null) }
+        _state.update { it.copy(busy = true, error = null, notice = null, savedScheduleDraftId = null) }
         viewModelScope.launch {
             try { action() }
             catch (cancelled: CancellationException) { throw cancelled }
@@ -242,24 +242,28 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         _state.value = AccountState(initializing = false)
         com.example.findme.widget.ConnectionWidget().updateAll(getApplication())
     }
-    override fun saveSchedule(id: String, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
+    override fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {
         perform {
             snapshotMutex.withLock {
-                val error = validateSchedule(day, start, end, title)
-                    ?: findScheduleConflict(_state.value.schedules, id, day, start, end, category, modality)?.conflictMessage()
-                if (error != null) throw IllegalArgumentException(error)
+                require(activities.isNotEmpty()) { "Elige al menos un día." }
+                val currentSchedules = _state.value.schedules
+                activities.forEach { activity ->
+                    val error = validateSchedule(activity.dayOfWeek, activity.startTime, activity.endTime, activity.title)
+                        ?: findScheduleConflict(currentSchedules, activity)?.conflictMessage()
+                    if (error != null) throw IllegalArgumentException(error)
+                }
 
                 val ownerId = repository.userId()
-                val activity = ScheduleDto(id, ownerId, day, start.trim(), end.trim(), title.trim(),
-                    location.trim(), category, modality)
-                repository.saveSchedule(activity)
+                val rows = activities.map { it.copy(userId = ownerId) }
+                repository.saveSchedules(rows)
                 if (repository.auth.currentUserOrNull()?.id != ownerId) return@withLock
 
-                allSchedules = allSchedules.filterNot { it.id == id } + activity
+                val ids = rows.map { it.id }.toSet()
+                allSchedules = allSchedules.filterNot { it.id in ids } + rows
                 _state.update { old -> old.copy(
-                    schedules = old.schedules.filterNot { it.id == id } + activity,
-                    savedScheduleId = id,
-                    notice = "Actividad guardada."
+                    schedules = old.schedules.filterNot { it.id in ids } + rows,
+                    savedScheduleDraftId = draftId,
+                    notice = if (rows.size == 1) "Actividad guardada." else "Actividad guardada en ${rows.size} días."
                 ) }
             }
         }

@@ -58,9 +58,10 @@ class AccountRepository {
     suspend fun accessibleSchedules() = client.postgrest["personal_schedule"].select().decodeList<ScheduleDto>()
     suspend fun accessibleStatuses() = client.postgrest["personal_status"].select().decodeList<StatusOverrideDto>()
 
-    suspend fun saveSchedule(schedule: ScheduleDto) {
-        require(schedule.userId == userId())
-        client.postgrest["personal_schedule"].upsert(schedule)
+    suspend fun saveSchedules(activities: List<ScheduleDto>) {
+        val ownerId = userId()
+        require(activities.isNotEmpty() && activities.all { it.userId == ownerId })
+        client.postgrest["personal_schedule"].upsert(activities)
     }
 
     suspend fun deleteSchedule(id: String) {
