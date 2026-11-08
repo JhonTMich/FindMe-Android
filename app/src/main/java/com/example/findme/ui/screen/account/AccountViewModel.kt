@@ -7,11 +7,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.findme.data.model.*
 import com.example.findme.data.repository.AccountRepository
 import com.example.findme.domain.model.validateSchedule
+import com.example.findme.domain.model.conflictMessage
+import com.example.findme.domain.model.findScheduleConflict
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -23,11 +26,11 @@ import com.example.findme.data.local.*
 import com.example.findme.data.repository.AccountLiveUpdates
 import com.example.findme.data.repository.StatusRepository
 import com.example.findme.domain.model.UserCurrentStatus
+import com.example.findme.domain.model.ScheduleSyncGuard
 import com.example.findme.util.NotificationHelper
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import java.util.UUID
 
 data class AccountState(
     val settings: AccountSettings = AccountSettings(),
@@ -43,6 +46,7 @@ data class AccountState(
     val loginRevision: Int = 0,
     val profile: AccountProfile? = null,
     val schedules: List<ScheduleDto> = emptyList(),
+    val savedScheduleDraftId: String? = null,
     val statuses: List<StatusOverrideDto> = emptyList(),
     val connections: List<PersonConnection> = emptyList(),
     val profiles: List<AccountProfile> = emptyList(),
@@ -58,6 +62,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
     private val repository = AccountRepository()
     private val preferences = AccountSettingsRepository(application)
     private val snapshotMutex = Mutex()
+    private val scheduleSync = ScheduleSyncGuard()
     private var baselineOwner: String? = null
     private val messageNotifications = com.example.findme.domain.model.MessageNotificationTracker()
     private var knownStatuses = mutableMapOf<String, String>()
@@ -94,7 +99,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
 
     private fun perform(action: suspend () -> Unit) {
         if (_state.value.busy) return
-        _state.update { it.copy(busy = true, error = null, notice = null) }
+        _state.update { it.copy(busy = true, error = null, notice = null, savedScheduleDraftId = null) }
         viewModelScope.launch {
             try { action() }
             catch (cancelled: CancellationException) { throw cancelled }
@@ -102,7 +107,12 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 _state.update { it.copy(error = error.message ?: "Revisa los datos ingresados.") }
             }
             catch (error: io.github.jan.supabase.postgrest.exception.PostgrestRestException) {
-                _state.update { it.copy(error = if (error.code == "23505") "Ese nombre de usuario ya está ocupado. Elige otro." else "No se pudieron guardar los datos. Inténtalo de nuevo.") }
+                val message = when (error.code) {
+                    "23505" -> "Ese nombre de usuario ya está ocupado. Elige otro."
+                    "23P01" -> "Este horario coincide con otra actividad. Actualiza tu horario y elige otra hora."
+                    else -> "No se pudieron guardar los datos. Inténtalo de nuevo."
+                }
+                _state.update { it.copy(error = message) }
             }
             catch (error: Exception) {
                 android.util.Log.w("AccountViewModel", "Account operation failed", error)
@@ -120,33 +130,47 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
     }
 
     private suspend fun load() = snapshotMutex.withLock {
-        val id = repository.userId()
-        val profile = repository.ensureProfile()
-        val connections = repository.connections()
-        val profiles = repository.profiles()
-        val messages = repository.quickMessages()
-        val signals = repository.receivedSignals()
-        val schedules = repository.accessibleSchedules()
-        val statuses = repository.accessibleStatuses()
-        if (repository.auth.currentUserOrNull()?.id != id) return@withLock
-        if (baselineOwner != id) {
-            baselineOwner = id; knownStatuses.clear()
+        coroutineScope {
+            val id = repository.userId()
+            val scheduleRevision = scheduleSync.snapshotRevision()
+            val profile = repository.ensureProfile()
+            val connectionsRequest = async { repository.connections() }
+            val profilesRequest = async { repository.profiles() }
+            val messagesRequest = async { repository.quickMessages() }
+            val signalsRequest = async { repository.receivedSignals() }
+            val schedulesRequest = async { repository.accessibleSchedules() }
+            val statusesRequest = async { repository.accessibleStatuses() }
+            val connections = connectionsRequest.await()
+            val profiles = profilesRequest.await()
+            val messages = messagesRequest.await()
+            val signals = signalsRequest.await()
+            val remoteSchedules = schedulesRequest.await()
+            val statuses = statusesRequest.await()
+            if (repository.auth.currentUserOrNull()?.id != id) return@coroutineScope
+            // An older response must not undo a confirmed save or resurrect a deleted row.
+            val ownSchedules = if (scheduleSync.canApplySnapshot(scheduleRevision)) {
+                remoteSchedules.filter { it.userId == id }
+            } else _state.value.schedules.filter { it.userId == id }
+            val schedules = remoteSchedules.filterNot { it.userId == id } + ownSchedules
+            if (baselineOwner != id) {
+                baselineOwner = id; knownStatuses.clear()
+            }
+            val selected = _state.value.selectedPerson?.let { old -> profiles.find { it.id == old.id && it.id != profile.id } }
+                ?: profiles.firstOrNull { it.id != profile.id }
+            val newSignals = messageNotifications.update(id, signals, _state.value.settings.messages)
+            allSchedules = schedules
+            allStatuses = statuses
+            _state.update { it.copy(signedIn = true, profile = profile,
+                schedules = ownSchedules, statuses = statuses.filter { it.userId == id },
+                connections = connections, profiles = profiles, messages = messages, signals = signals,
+                selectedPerson = selected, personSchedules = schedules.filter { it.userId == selected?.id },
+                personStatuses = statuses.filter { it.userId == selected?.id }, lastSync = Instant.now(), syncIssue = false) }
+            if (_state.value.settings.messages) newSignals.forEach { signal ->
+                val sender = profiles.find { it.id == signal.senderId }?.displayName ?: "Tu gente"
+                NotificationHelper.showMessageNotification(getApplication(), signal.id, sender, signal.message)
+            }
+            updateStatusNotifications()
         }
-        val selected = _state.value.selectedPerson?.let { old -> profiles.find { it.id == old.id && it.id != profile.id } }
-            ?: profiles.firstOrNull { it.id != profile.id }
-        val newSignals = messageNotifications.update(id, signals, _state.value.settings.messages)
-        allSchedules = schedules
-        allStatuses = statuses
-        _state.update { it.copy(signedIn = true, profile = profile,
-            schedules = schedules.filter { it.userId == id }, statuses = statuses.filter { it.userId == id },
-            connections = connections, profiles = profiles, messages = messages, signals = signals,
-            selectedPerson = selected, personSchedules = schedules.filter { it.userId == selected?.id },
-            personStatuses = statuses.filter { it.userId == selected?.id }, lastSync = Instant.now(), syncIssue = false) }
-        if (_state.value.settings.messages) newSignals.forEach { signal ->
-            val sender = profiles.find { it.id == signal.senderId }?.displayName ?: "Tu gente"
-            NotificationHelper.showMessageNotification(getApplication(), signal.id, sender, signal.message)
-        }
-        updateStatusNotifications()
     }
 
     @OptIn(kotlinx.coroutines.FlowPreview::class)
@@ -235,17 +259,46 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         _state.value = AccountState(initializing = false)
         com.example.findme.widget.ConnectionWidget().updateAll(getApplication())
     }
-    override fun saveSchedule(existingId: String?, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
-        val error = validateSchedule(day, start, end, title)
-        if (error != null) { _state.update { it.copy(error = error) }; return }
+    override fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {
         perform {
-            repository.saveSchedule(ScheduleDto(existingId ?: UUID.randomUUID().toString(), repository.userId(), day,
-                start.trim(), end.trim(), title.trim(), location.trim(), category, modality))
-            load()
-            _state.update { it.copy(notice = "Actividad guardada.") }
+            require(activities.isNotEmpty()) { "Elige al menos un día." }
+            val currentSchedules = _state.value.schedules
+            activities.forEach { activity ->
+                val error = validateSchedule(activity.dayOfWeek, activity.startTime, activity.endTime, activity.title)
+                    ?: findScheduleConflict(currentSchedules, activity)?.conflictMessage()
+                if (error != null) throw IllegalArgumentException(error)
+            }
+
+            val ownerId = repository.userId()
+            val rows = activities.map { it.copy(userId = ownerId) }
+            scheduleSync.beginWrite()
+            try {
+                repository.saveSchedules(rows)
+                if (repository.auth.currentUserOrNull()?.id != ownerId) return@perform
+
+                val ids = rows.map { it.id }.toSet()
+                allSchedules = allSchedules.filterNot { it.id in ids } + rows
+                _state.update { old -> old.copy(
+                    schedules = old.schedules.filterNot { it.id in ids } + rows,
+                    savedScheduleDraftId = draftId,
+                    notice = if (rows.size == 1) "Actividad guardada." else "Actividad guardada en ${rows.size} días."
+                ) }
+            } finally { scheduleSync.finishWrite() }
         }
     }
-    override fun deleteSchedule(id: String) = perform { repository.deleteSchedule(id); load() }
+    override fun deleteSchedule(id: String) = perform {
+        val ownerId = repository.userId()
+        scheduleSync.beginWrite()
+        try {
+            repository.deleteSchedule(id)
+            if (repository.auth.currentUserOrNull()?.id != ownerId) return@perform
+            allSchedules = allSchedules.filterNot { it.id == id }
+            _state.update { old -> old.copy(
+                schedules = old.schedules.filterNot { it.id == id },
+                notice = "Actividad eliminada."
+            ) }
+        } finally { scheduleSync.finishWrite() }
+    }
     override fun setStatus(text: String, minutes: Long) = perform {
         repository.setStatus(text, minutes); load()
         _state.update { it.copy(notice = "Estado actualizado.") }

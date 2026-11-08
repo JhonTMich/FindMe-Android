@@ -2,6 +2,8 @@ package com.example.findme
 
 import android.content.ContentValues
 import android.provider.MediaStore
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -28,8 +30,8 @@ class AccountUiTest {
         selectedPerson = other, personSchedules = listOf(schedule.copy(userId = "other")), messages = listOf(quick),
         invitation = ConnectionInvitation("own", "ABCDEFGH", now.plusHours(24).toInstant().toString()))
 
-    private fun show(actions: AccountActions = object : AccountActions {}) {
-        compose.setContent { FindmeTheme { AccountContent(state, actions) } }
+    private fun show(actions: AccountActions = object : AccountActions {}, snapshot: AccountState = state) {
+        compose.setContent { FindmeTheme { AccountContent(snapshot, actions) } }
     }
     private fun screenshot(name: String, composeOnly: Boolean = false) {
         compose.waitForIdle()
@@ -64,23 +66,109 @@ class AccountUiTest {
         assertEquals(30L, duration)
     }
 
-    @Test fun scheduleEditorKeepsCategoriesAndEditsAnActivity() {
+    @Test fun scheduleEditorBlocksConflictsAndAllowsVirtualClassDuringWork() {
+        val otherDay = (now.dayOfWeek.value % 7) + 1
+        val thirdDay = (otherDay % 7) + 1
+        val work = schedule.copy(id = "work", dayOfWeek = otherDay, title = "Turno", category = "work")
         var savedTitle = ""
+        var savedModality = ""
         show(object : AccountActions {
-            override fun saveSchedule(existingId: String?, day: Int, start: String, end: String, title: String, location: String, category: String, modality: String) {
-                savedTitle = title
-                assertEquals("09:00", start)
-                assertEquals("10:00", end)
+            override fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {
+                assertEquals(setOf(otherDay, thirdDay), activities.map { it.dayOfWeek }.toSet())
+                assertEquals(2, activities.map { it.id }.distinct().size)
+                activities.forEach {
+                    savedTitle = it.title
+                    savedModality = it.modality
+                    assertEquals("university", it.category)
+                    assertEquals("21:01", it.startTime)
+                    assertEquals("22:00", it.endTime)
+                }
             }
-        })
+        }, snapshot = state.copy(schedules = listOf(schedule, work)))
         compose.onNodeWithText("Horario").performClick()
         compose.onNodeWithText("Tu semana").assertIsDisplayed()
         screenshot("account-schedule")
         compose.onNodeWithText("Añadir").performScrollTo().performClick()
+        val heading = compose.onNodeWithText("Nueva actividad")
+        repeat(3) {
+            heading.performTouchInput { swipeDown(endY = bottom + 350f) }
+            heading.assertIsDisplayed()
+        }
+        listOf("30 min", "1 h", "90 min").forEach { compose.onNodeWithText(it).assertDoesNotExist() }
         compose.onNodeWithText("Título").performTextInput("Nuevo proyecto")
+        compose.onNodeWithText("Guardar actividad").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("Coincide con «Proyecto de investigación»", substring = true).assertExists()
+        compose.onNodeWithText("Tipo").performScrollTo().performClick()
+        compose.onNodeWithText("Trabajo").performClick()
+        compose.onNodeWithText("Guardar actividad").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("Tipo").performScrollTo().performClick()
+        compose.onNode(hasText("Universidad") and hasClickAction()).performClick()
+        // Use a work activity on a different day to check the allowed pairing.
+        val dayLabels = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
+        val dayField = compose.onNodeWithText("Días")
+        dayField.performScrollTo().performClick()
+        compose.onNode(hasText(dayLabels[otherDay - 1]) and hasClickAction()).performScrollTo().performClick()
+        compose.onNode(hasText(dayLabels[thirdDay - 1]) and hasClickAction()).performScrollTo().performClick()
+        compose.onNodeWithText("Listo").performScrollTo().performClick()
+        compose.onNodeWithText("Modalidad").performScrollTo().performClick()
+        compose.onNodeWithText("Virtual").performClick()
+        compose.onNodeWithText("Guardar actividad").performScrollTo().assertIsNotEnabled()
+        compose.onNodeWithText("Coincide con «Proyecto de investigación» el ${dayLabels[now.dayOfWeek.value - 1]}",
+            substring = true, ignoreCase = true).assertExists()
+        dayField.performScrollTo().performClick()
+        compose.onNode(hasText(dayLabels[now.dayOfWeek.value - 1]) and hasClickAction() and isSelected()).performScrollTo().performClick()
+        compose.onNodeWithText("Listo").performScrollTo().performClick()
+        compose.onNodeWithText("Inicio").performScrollTo().performClick()
+        compose.onNodeWithText("Hora de inicio").assertIsDisplayed()
+        compose.onNodeWithText("01").performClick()
+        compose.onNodeWithText("p. m.").performClick()
+        screenshot("account-schedule-wheel")
+        compose.onNodeWithText("Aplicar hora").performClick()
+        compose.onNodeWithText("9:01 p. m.").assertIsDisplayed()
+        compose.onNodeWithText("Fin").performScrollTo().performClick()
+        compose.onNodeWithText("Hora de fin").assertIsDisplayed()
+        compose.onNodeWithText("p. m.").performClick()
+        compose.onNodeWithText("Aplicar hora").performClick()
         screenshot("account-schedule-editor")
         compose.onNodeWithText("Guardar actividad").performScrollTo().performClick()
         assertEquals("Nuevo proyecto", savedTitle)
+        assertEquals("virtual", savedModality)
+        compose.onNodeWithText("Cancelar").performScrollTo().performClick()
+        heading.assertDoesNotExist()
+    }
+
+    @Test fun scheduleEditorIgnoresItsOwnSavedRowAndReusesIdOnRetry() {
+        val snapshot = mutableStateOf(state.copy(schedules = emptyList()))
+        val attempts = mutableListOf<String>()
+        val actions = object : AccountActions {
+            override fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {
+                val row = activities.single().copy(userId = own.id)
+                attempts += row.id
+                snapshot.value = if (attempts.size == 1) {
+                    snapshot.value.copy(busy = true, schedules = listOf(row))
+                } else {
+                    snapshot.value.copy(busy = false, error = null, savedScheduleDraftId = draftId,
+                        notice = "Actividad guardada.", schedules = listOf(row))
+                }
+            }
+        }
+        compose.setContent { FindmeTheme { AccountContent(snapshot.value, actions) } }
+        compose.onNodeWithText("Horario").performClick()
+        compose.onNodeWithText("Añadir").performScrollTo().performClick()
+        compose.onNodeWithText("Título").performTextReplacement("Clase nueva")
+        val save = compose.onNodeWithText("Guardar actividad")
+        save.performSemanticsAction(SemanticsActions.OnClick)
+        save.assertIsNotEnabled()
+        compose.onNodeWithText("Coincide con «Clase nueva»", substring = true).assertDoesNotExist()
+
+        compose.runOnIdle {
+            snapshot.value = snapshot.value.copy(busy = false, error = "No se pudo confirmar el guardado.")
+        }
+        save.assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
+        compose.onNodeWithText("Nueva actividad").assertDoesNotExist()
+        compose.onNodeWithText("Clase nueva").assertExists()
+        assertEquals(2, attempts.size)
+        assertEquals(attempts.first(), attempts.last())
     }
 
     @Test fun peopleExplainsMessagesAndKeepsConfigurationOutOfMainFlow() {
