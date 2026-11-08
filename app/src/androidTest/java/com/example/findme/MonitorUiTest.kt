@@ -66,7 +66,7 @@ class MonitorUiTest {
         compose.onNodeWithText("Su día, a tu alcance").assertIsDisplayed()
         screenshot("today-designed")
         compose.onNodeWithText("Aula 302 · Campus universitario", useUnmergedTree = true).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Hasta ${activity.endTime.take(5)}").assertIsDisplayed()
+        compose.onNodeWithText("Hasta ${com.example.findme.domain.model.formatScheduleTime(activity.endTime)}").assertIsDisplayed()
     }
 
 }
