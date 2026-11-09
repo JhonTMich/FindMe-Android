@@ -64,6 +64,14 @@ Si falla una ejecución por una incidencia temporal, puedes volver a ejecutarla 
 
 Referencia: [API de releases de GitHub](https://docs.github.com/en/rest/releases/releases#get-the-latest-release).
 
+## Widget de estado actual
+
+Añade **FindMe · Estado actual** desde el selector de widgets de Android. Al añadirlo, elige **Mi estado** o una persona conectada. Puedes tener varios widgets con personas distintas y cambiar la selección tocando el nombre o **⋮**. El widget anterior «Mi gente» se actualiza al nuevo diseño y conserva su persona seleccionada; los mensajes rápidos se envían desde Personas.
+
+Muestra el estado manual vigente o la actividad del horario, la próxima actividad y la fecha de los últimos datos. El tamaño ampliado añade ubicación y hora de fin. El botón **↻** consulta los datos sin abrir la app. Sin conexión se conserva la última información y se siguen calculando las actividades y caducidades con esos datos.
+
+Los cambios sincronizados o guardados en la app actualizan la caché del widget. Con la app cerrada se consulta periódicamente cada 15 minutos y se programa un recálculo local para el siguiente comienzo, fin o vencimiento conocido. Android puede retrasar estos trabajos por ahorro de batería; no se promete actualización instantánea de cambios remotos con la app cerrada. No se necesitan permisos de alarmas exactas.
+
 ## Verificación
 
 ```powershell
