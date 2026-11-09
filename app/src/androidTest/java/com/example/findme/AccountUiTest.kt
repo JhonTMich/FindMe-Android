@@ -171,6 +171,41 @@ class AccountUiTest {
         assertEquals(attempts.first(), attempts.last())
     }
 
+    @Test fun editorPreservesTheOvernightFlagAndRejectsMissingFlag() {
+        val night = schedule.copy(id = "night", startTime = "19:00", endTime = "07:00",
+            title = "Turno nocturno", category = "work", endsNextDay = true)
+        var saved: ScheduleDto? = null
+        show(object : AccountActions {
+            override fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {
+                saved = activities.single()
+            }
+        }, snapshot = state.copy(schedules = listOf(night)))
+        compose.onNodeWithText("Horario").performClick()
+        compose.onNodeWithText("(+1 día)", substring = true).assertExists()
+        compose.onNodeWithText("Editar").performScrollTo().performClick()
+        val overnight = compose.onNodeWithText("Termina al día siguiente")
+        overnight.assertIsOn().performScrollTo().performClick()
+        compose.onNodeWithText("Guardar actividad").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        assertNull(saved)
+        compose.onNodeWithText("Activa «Termina al día siguiente»", substring = true).assertExists()
+        overnight.performScrollTo().performClick()
+        compose.onNodeWithText("Guardar actividad").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        assertEquals("night", saved?.id)
+        assertEquals("19:00", saved?.startTime)
+        assertEquals("07:00", saved?.endTime)
+        assertTrue(saved?.endsNextDay == true)
+        screenshot("overnight-editor")
+    }
+
+    @Test fun todaysAgendaIncludesTheShiftThatStartedYesterday() {
+        val night = schedule.copy(id = "night", dayOfWeek = (now.dayOfWeek.value + 5) % 7 + 1,
+            startTime = "19:00", endTime = "07:00", title = "Turno nocturno",
+            category = "work", endsNextDay = true)
+        show(snapshot = state.copy(schedules = listOf(night), statuses = emptyList()))
+        compose.onNodeWithText("Desde ayer").performScrollTo().assertIsDisplayed()
+        screenshot("overnight-agenda")
+    }
+
     @Test fun peopleExplainsMessagesAndKeepsConfigurationOutOfMainFlow() {
         var sent = ""
         show(object : AccountActions { override fun send(message: QuickMessage) { sent = message.id } })

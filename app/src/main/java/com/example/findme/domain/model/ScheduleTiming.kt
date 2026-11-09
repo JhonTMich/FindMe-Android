@@ -14,8 +14,10 @@ internal fun scheduleTimeNanos(value: String): Long =
 fun ScheduleDto.continuesOn(day: Int): Boolean =
     endsNextDay && day == dayOfWeek % 7 + 1 && runCatching { scheduleTimeNanos(endTime) > 0 }.getOrDefault(false)
 
+fun ScheduleDto.occursOn(day: Int): Boolean = dayOfWeek == day || continuesOn(day)
+
 fun List<ScheduleDto>.schedulesForDay(day: Int): List<ScheduleDto> =
-    filter { it.dayOfWeek == day || it.continuesOn(day) }
+    filter { it.occursOn(day) }
         .sortedBy { if (it.continuesOn(day)) 0L else runCatching { scheduleTimeNanos(it.startTime) }.getOrDefault(0) }
 
 private data class WeeklySpan(val start: Long, val end: Long) {

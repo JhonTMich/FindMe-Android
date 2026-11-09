@@ -100,7 +100,11 @@ class ConnectionWidget : GlanceAppWidget() {
     private suspend fun status(repo: AccountRepository, profile: AccountProfile): String {
         val now = ZonedDateTime.now(ZoneId.of(profile.timezone))
         return when (val state = StatusRepository.calculateStatus(profile.displayName, repo.schedules(profile.id), repo.overrides(profile.id), now.dayOfWeek.value, now)) {
-            is UserCurrentStatus.InClass -> "${state.currentSchedule.title} hasta ${formatScheduleTime(state.currentSchedule.endTime)} (horario)"
+            is UserCurrentStatus.InClass -> {
+                val activity = state.currentSchedule
+                val nextDay = if (activity.endsNextDay && activity.dayOfWeek == now.dayOfWeek.value) " de mañana" else ""
+                "${activity.title} hasta ${formatScheduleTime(activity.endTime)}$nextDay (horario)"
+            }
             is UserCurrentStatus.Override -> state.customLocation
             else -> "Sin actividad programada"
         }
