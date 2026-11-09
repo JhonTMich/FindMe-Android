@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.example.findme.data.model.ActivityCategory
 import com.example.findme.data.model.ScheduleDto
 import com.example.findme.domain.model.formatScheduleTime
+import com.example.findme.domain.model.continuesOn
 import com.example.findme.ui.theme.*
 
 @Composable
@@ -48,12 +49,13 @@ fun StatusPill(text: String, color: Color = MaterialTheme.colorScheme.primary, p
 }
 
 @Composable
-fun ActivityTimelineCard(schedule: ScheduleDto, active: Boolean, last: Boolean = false) {
+fun ActivityTimelineCard(schedule: ScheduleDto, active: Boolean, last: Boolean = false, displayDay: Int = schedule.dayOfWeek) {
     val category = ActivityCategory.fromKey(schedule.category, schedule.title)
     val accent = category.accentColor
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(Modifier.width(68.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(formatScheduleTime(schedule.startTime), style = MaterialTheme.typography.labelMedium, color = if (active) accent else TextSecondary)
+            Text(if (schedule.continuesOn(displayDay)) "Desde ayer" else formatScheduleTime(schedule.startTime),
+                style = MaterialTheme.typography.labelMedium, color = if (active) accent else TextSecondary)
             Spacer(Modifier.height(10.dp))
             Box(Modifier.size(10.dp).background(accent.copy(alpha = .15f), CircleShape).padding(2.dp).background(accent, CircleShape))
             if (!last) Box(Modifier.padding(top = 7.dp).width(1.dp).weight(1f).background(DarkCardBorder))
@@ -75,7 +77,8 @@ fun ActivityTimelineCard(schedule: ScheduleDto, active: Boolean, last: Boolean =
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Schedule, null, tint = TextMuted, modifier = Modifier.size(14.dp))
-                    Text("Hasta ${formatScheduleTime(schedule.endTime)}", color = TextMuted, style = MaterialTheme.typography.labelSmall)
+                    val nextDay = if (schedule.endsNextDay && !schedule.continuesOn(displayDay)) " del día siguiente" else ""
+                    Text("Hasta ${formatScheduleTime(schedule.endTime)}$nextDay", color = TextMuted, style = MaterialTheme.typography.labelSmall)
                     if (schedule.modality.isNotBlank()) Text("· ${schedule.modality}", color = TextMuted, style = MaterialTheme.typography.labelSmall)
                 }
             }

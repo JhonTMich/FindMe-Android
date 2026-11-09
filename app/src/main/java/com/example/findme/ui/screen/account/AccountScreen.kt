@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -59,6 +60,8 @@ import com.example.findme.domain.model.conflictMessage
 import com.example.findme.domain.model.findScheduleConflict
 import com.example.findme.domain.model.formatScheduleTime
 import com.example.findme.domain.model.validateSchedule
+import com.example.findme.domain.model.schedulesForDay
+import com.example.findme.domain.model.timeRangeLabel
 import com.example.findme.ui.components.*
 import com.example.findme.ui.theme.*
 import java.time.ZoneId
@@ -299,11 +302,12 @@ private fun MyDay(state: AccountState, actions: AccountActions) {
         }
         if (status is UserCurrentStatus.Override) TextButton(onClick = actions::clearStatus, enabled = !state.busy) { Text("Volver al horario", color = TextSecondary) }
     }
-    val today = state.schedules.filter { it.dayOfWeek == now.dayOfWeek.value }.sortedBy { it.startTime }
+    val today = state.schedules.schedulesForDay(now.dayOfWeek.value)
     SectionHeading(Icons.Default.CalendarToday, "Tu agenda de hoy", "${today.size} actividades programadas")
     if (today.isEmpty()) EmptyPanel(Icons.Default.WbSunny, "Un día a tu ritmo", "Aún no tienes actividades para hoy. Puedes añadirlas en Horario.")
     today.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule,
-        active = (status as? UserCurrentStatus.InClass)?.currentSchedule?.id == schedule.id, last = index == today.lastIndex) }
+        active = (status as? UserCurrentStatus.InClass)?.currentSchedule?.id == schedule.id,
+        last = index == today.lastIndex, displayDay = now.dayOfWeek.value) }
     if (editStatus) StatusEditor(state, actions, status as? UserCurrentStatus.Override) { editStatus = false }
 }
 
@@ -341,7 +345,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
             Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Añadir")
         }
     }
-    val schedules = state.schedules.filter { it.dayOfWeek == day }.sortedBy { it.startTime }
+    val schedules = state.schedules.schedulesForDay(day)
     if (schedules.isEmpty()) EmptyPanel(Icons.Default.EventAvailable, "Espacio para tus planes", "Añade una clase, tu trabajo o una actividad personal.")
     schedules.forEach { schedule ->
         val category = ActivityCategory.fromKey(schedule.category)
@@ -349,7 +353,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 AccentIcon(category.icon, category.accentColor)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("${formatScheduleTime(schedule.startTime)} — ${formatScheduleTime(schedule.endTime)}", color = category.accentColor, style = MaterialTheme.typography.labelLarge)
+                    Text(schedule.timeRangeLabel(day), color = category.accentColor, style = MaterialTheme.typography.labelLarge)
                     Text(schedule.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
@@ -380,6 +384,7 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
     var location by rememberSaveable { mutableStateOf(existing?.location.orEmpty()) }
     var start by rememberSaveable { mutableStateOf(existing?.startTime ?: "09:00") }
     var end by rememberSaveable { mutableStateOf(existing?.endTime ?: "10:00") }
+    var endsNextDay by rememberSaveable { mutableStateOf(existing?.endsNextDay ?: false) }
     var selectedDays by rememberSaveable { mutableStateOf(listOf(existing?.dayOfWeek ?: initialDay)) }
     var category by rememberSaveable { mutableStateOf(existing?.category ?: "university") }
     var modality by rememberSaveable { mutableStateOf(existing?.modality ?: "presencial") }
@@ -387,14 +392,14 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
     val activities = selectedDays.map { day ->
         val id = editingId ?: UUID.nameUUIDFromBytes("$draftId:$day".toByteArray(Charsets.UTF_8)).toString()
         ScheduleDto(id = id, dayOfWeek = day, startTime = start.trim(), endTime = end.trim(),
-            title = title.trim(), location = location.trim(), category = category, modality = modality)
+            title = title.trim(), location = location.trim(), category = category, modality = modality,
+            endsNextDay = endsNextDay)
     }
-    val invalid = selectedDays.firstOrNull()?.let { validateSchedule(it, start, end, title) }
+    val invalid = selectedDays.firstOrNull()?.let { validateSchedule(it, start, end, title, endsNextDay) }
     val conflict = if (invalid == null) {
         activities.firstNotNullOfOrNull { findScheduleConflict(state.schedules, it) }
     } else null
-    val startTime = StatusRepository.parseLocalTimeOrNull(start)
-    val endTime = StatusRepository.parseLocalTimeOrNull(end)
+    val timeError = validateSchedule(1, start, end, "Actividad", endsNextDay)
     LaunchedEffect(state.busy, state.savedScheduleDraftId) {
         if (submitted && !state.busy && state.savedScheduleDraftId == draftId) dismiss()
     }
@@ -414,13 +419,21 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
             Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
             Box(Modifier.weight(1f)) { TimeField(end, { end = it }, "Fin") }
         }
+        Row(
+            Modifier.fillMaxWidth().toggleable(value = endsNextDay, role = Role.Switch, enabled = !state.busy) {
+                endsNextDay = it
+            },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Termina al día siguiente", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = endsNextDay, onCheckedChange = null)
+        }
         ScheduleChoice("Modalidad", listOf("presencial", "virtual"), modality, { modality = it }) {
             it.replaceFirstChar(Char::titlecase)
         }
-        val feedback = if (selectedDays.isEmpty()) "Elige al menos un día." else conflict?.conflictMessage()
-            ?: if (startTime != null && endTime != null && !endTime.isAfter(startTime)) {
-                "La hora de fin debe ser posterior al inicio."
-            } else if (submitted) invalid ?: state.error else null
+        val feedback = if (selectedDays.isEmpty()) "Elige al menos un día."
+            else conflict?.conflictMessage() ?: timeError ?: if (submitted) invalid ?: state.error else null
         feedback?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
         Field(location, { location = it.take(160) }, "Lugar o aula (opcional)")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -576,9 +589,10 @@ private fun People(state: AccountState, actions: AccountActions) {
         SectionHeading(Icons.Default.CalendarMonth, "Su semana", "Actividades de ${person.displayName}")
         var personDay by rememberSaveable(person.id) { mutableStateOf(ZonedDateTime.now(person.zone()).dayOfWeek.value) }
         Choices((1..7).toList(), personDay, { personDay = it }) { days[it - 1].take(3) }
-        val schedules = state.personSchedules.filter { it.dayOfWeek == personDay }.sortedBy { it.startTime }
+        val schedules = state.personSchedules.schedulesForDay(personDay)
         if (schedules.isEmpty()) Text("Sin actividades para el ${days[personDay - 1].lowercase()}.", color = TextMuted)
-        schedules.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule, false, last = index == schedules.lastIndex) }
+        schedules.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule, false,
+            last = index == schedules.lastIndex, displayDay = personDay) }
         state.connections.find { it.otherPerson(state.profile?.id.orEmpty()) == person.id }?.let { connection ->
             TextButton(onClick = { disconnect = connection }, enabled = !state.busy) { Text("Administrar conexión con ${person.displayName}", color = TextMuted) }
         }

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.findme.data.model.ScheduleDto
+import com.example.findme.domain.model.occursOn
 import com.example.findme.ui.theme.TextSecondary
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -47,13 +48,13 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
                         Text("PANORAMA SEMANAL", style = MaterialTheme.typography.labelSmall, letterSpacing = 1.sp, color = TextSecondary)
                         Text("${allSchedules.size} ${if (allSchedules.size == 1) "actividad" else "actividades"}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
-                    val activeDays = allSchedules.map { it.dayOfWeek }.distinct().size
+                    val activeDays = (1..7).count { day -> allSchedules.any { it.occursOn(day) } }
                     StatusPill("$activeDays ${if (activeDays == 1) "día" else "días"}", Color(0xFF67D8E8))
                 }
-                val maximum = (1..7).maxOf { day -> allSchedules.count { it.dayOfWeek == day } }.coerceAtLeast(1)
+                val maximum = (1..7).maxOf { day -> allSchedules.count { it.occursOn(day) } }.coerceAtLeast(1)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
                     (1..7).forEach { day ->
-                        val count = allSchedules.count { it.dayOfWeek == day }
+                        val count = allSchedules.count { it.occursOn(day) }
                         val height by animateFloatAsState(if (chartVisible) count.toFloat() / maximum else 0f, tween(700), label = "weekBar$day")
                         val color by animateColorAsState(if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else Color(0xFF4A607C), tween(250), label = "weekBarColor$day")
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -88,7 +89,7 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
                 }
             }
         }
-        val selectedCount = allSchedules.count { it.dayOfWeek == selectedDayOfWeek }
+        val selectedCount = allSchedules.count { it.occursOn(selectedDayOfWeek) }
         Text("$selectedCount ${if (selectedCount == 1) "actividad programada" else "actividades programadas"}",
             style = MaterialTheme.typography.bodySmall, color = TextSecondary)
         if (showDayTitle) Text(DayOfWeek.of(selectedDayOfWeek).getDisplayName(java.time.format.TextStyle.FULL, Locale.forLanguageTag("es"))
