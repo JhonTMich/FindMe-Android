@@ -15,7 +15,7 @@ Rama: `feature/cuentas-conexiones`.
 - Desvinculación con confirmación. Retira el acceso a datos futuros; no puede borrar información que alguien ya haya visto.
 - Mensajes rápidos configurables dentro de «Mis mensajes», separados de los estados. Un campo define el mensaje; la etiqueta del botón se deriva automáticamente. Envían mensajes persistidos que aparecen automáticamente con la app abierta y caducan a las 24 horas.
 - Widget `FindMe · Estado actual` con el estado de tu cuenta o de una persona conectada, próxima actividad y fecha de los últimos datos. La selección se configura al añadir cada widget o tocando su nombre/menú y se vincula a la cuenta activa. Las instancias son independientes; el widget anterior conserva su persona como selección inicial. Usa caché local, sincronización periódica y recálculos al cambiar de actividad o caducar un estado; Android puede retrasar el trabajo en segundo plano.
-- Perfil y ajustes: avisos de actividades, estados y mensajes por cuenta; acceso a permisos de Android; búsqueda de actualizaciones; acentos índigo, menta y rosa guardados en el dispositivo.
+- Perfil y ajustes: avisos de actividades, estados y mensajes por cuenta; acceso a permisos de Android; búsqueda de actualizaciones; acentos lima, cian y violeta guardados en el dispositivo.
 
 ## Preparar Supabase
 
