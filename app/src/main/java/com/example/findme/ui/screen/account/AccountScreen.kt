@@ -75,7 +75,7 @@ import kotlinx.coroutines.launch
 
 private val days = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
 private val hourFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
-private val cyan = Color(0xFF67D8E8)
+private val cyan = BrandCyan
 private fun AccountProfile.zone() = runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneId.systemDefault())
 
 @Composable
@@ -93,7 +93,12 @@ fun AccountScreen(viewModel: AccountViewModel, updates: UpdateState = UpdateStat
 fun AccountContent(state: AccountState, actions: AccountActions,
     updates: UpdateState = UpdateState(), onCheckUpdates: () -> Unit = {}, onInstallUpdate: () -> Unit = {}) {
     if (state.initializing) {
-        Box(Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+        Box(Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                BrandMark(Modifier.size(88.dp))
+                CircularProgressIndicator(Modifier.size(24.dp), color = BrandLime, strokeWidth = 2.dp)
+            }
+        }
         return
     }
     var tab by rememberSaveable(state.signedIn) { mutableStateOf("Mi día") }
@@ -103,11 +108,9 @@ fun AccountContent(state: AccountState, actions: AccountActions,
     Scaffold(containerColor = DarkBackground, snackbarHost = { SnackbarHost(snackbar) }, topBar = {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(44.dp).background(Brush.linearGradient(listOf(Color(0xFF7370ED), Color(0xFF427FAD))), RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.NearMe, null, tint = Color.White, modifier = Modifier.size(23.dp))
-            }
+            BrandMark(Modifier.size(46.dp))
             Column(Modifier.weight(1f)) {
-                Text("FindMe", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("FindMe", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, letterSpacing = (-.7).sp)
                 Text(state.profile?.takeUnless { it.needsName }?.let { "Hola, ${it.displayName}" } ?: "Siempre cerca de tu gente", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
             if (state.signedIn) {
@@ -118,17 +121,27 @@ fun AccountContent(state: AccountState, actions: AccountActions,
             }
         }
     }, bottomBar = {
-        if (state.signedIn && state.profile?.needsProfile == false) NavigationBar(containerColor = DarkSurface) {
-            listOf(Triple("Mi día", "Hoy", Icons.Default.Today), Triple("Horario", "Horario", Icons.Default.CalendarMonth),
-                Triple("Personas", "Personas", Icons.Default.PeopleOutline), Triple("Cuenta", "Perfil", Icons.Default.PersonOutline)).forEach { (id, title, icon) ->
-                NavigationBarItem(selected = tab == id, onClick = { tab = id }, icon = { Icon(icon, null) }, label = { Text(title) },
-                    colors = NavigationBarItemDefaults.colors(selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary,
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer, unselectedIconColor = TextMuted, unselectedTextColor = TextMuted))
+        if (state.signedIn && state.profile?.needsProfile == false) {
+            Surface(Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(28.dp), color = DarkSurface,
+                border = BorderStroke(1.dp, DarkCardBorder)) {
+                NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp,
+                    windowInsets = WindowInsets(0, 0, 0, 0), modifier = Modifier.height(76.dp)) {
+                    listOf(Triple("Mi día", "Hoy", Icons.Default.Today), Triple("Horario", "Horario", Icons.Default.CalendarMonth),
+                        Triple("Personas", "Personas", Icons.Default.PeopleOutline), Triple("Cuenta", "Perfil", Icons.Default.PersonOutline)).forEach { (id, title, icon) ->
+                        NavigationBarItem(selected = tab == id, onClick = { tab = id },
+                            icon = { Icon(icon, null, Modifier.size(22.dp)) },
+                            label = { Text(title, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
+                            colors = NavigationBarItemDefaults.colors(selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary, indicatorColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = TextMuted, unselectedTextColor = TextMuted))
+                    }
+                }
             }
         }
     }) { padding ->
         Crossfade(tab, modifier = Modifier.fillMaxSize().padding(padding), label = "accountNavigation") { activeTab ->
-            Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF10172A), DarkBackground), endY = 1000f))
+            Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(DarkSurface, DarkBackground), endY = 1100f))
                 .verticalScroll(rememberScrollState()).imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 state.error?.let { error -> Panel {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -168,7 +181,8 @@ private fun PageHeading(eyebrow: String, title: String, subtitle: String) {
 private fun Panel(content: @Composable ColumnScope.() -> Unit) {
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), border = BorderStroke(1.dp, DarkCardBorder),
         colors = CardDefaults.cardColors(containerColor = DarkCardBg)) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
+        Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(DarkCardBg, DarkSurface)))
+            .padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
     }
 }
 
@@ -210,7 +224,7 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
     }
     val registering = mode == "register"
     val resending = mode == "resend"
-    PageHeading("Tu día, compartido", when { registering -> "Tu gente, más cerca."; resending -> "Un paso más."; else -> "Qué bueno verte." },
+    BrandWelcome("Tu día, compartido", when { registering -> "Tu gente, más cerca."; resending -> "Un paso más."; else -> "Qué bueno verte." },
         if (registering) "Crea tu cuenta con un correo autorizado. Tú eliges cómo te ve tu gente." else "Organiza tus actividades y mantente conectado con quienes tú elijas.")
     Panel {
         SectionHeading(Icons.Default.PersonOutline, when { registering -> "Crea tu cuenta"; resending -> "Confirma tu cuenta"; else -> "Inicia sesión" })
@@ -690,11 +704,13 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         }
     }
     Panel {
-        SectionHeading(Icons.Default.Palette, "Apariencia", "Elige el color de FindMe en este dispositivo.")
+        SectionHeading(Icons.Default.Palette, "Apariencia", "Los colores de tu órbita, a tu manera.")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AppAccent.entries.forEach { accent ->
                 FilterChip(selected = state.settings.accent == accent, onClick = { actions.setAccent(accent) },
-                    label = { Text(accent.label) }, modifier = Modifier.weight(1f),
+                    label = { Text(accent.label, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
+                    leadingIcon = { Box(Modifier.size(10.dp).background(brandAccent(accent), CircleShape)) },
+                    modifier = Modifier.weight(1f),
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                         selectedLabelColor = MaterialTheme.colorScheme.primary))
             }
@@ -770,7 +786,9 @@ private fun Sheet(
 private fun Field(value: String, change: (String) -> Unit, label: String, placeholder: String? = null, keyboard: KeyboardOptions = KeyboardOptions.Default) {
     OutlinedTextField(value, change, label = { Text(label) }, placeholder = { placeholder?.let { Text(it, color = TextMuted) } },
         keyboardOptions = keyboard, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = DarkCardBorder, focusedLabelColor = MaterialTheme.colorScheme.primary))
+        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = DarkCardBorder, focusedLabelColor = MaterialTheme.colorScheme.primary,
+            focusedContainerColor = DarkBackground.copy(alpha = .5f), unfocusedContainerColor = DarkBackground.copy(alpha = .35f)))
 }
 
 @Composable

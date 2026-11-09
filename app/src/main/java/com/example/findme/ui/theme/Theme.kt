@@ -1,28 +1,43 @@
 package com.example.findme.ui.theme
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.example.findme.data.local.AppAccent
 
-private val DarkColorScheme = darkColorScheme(
-    primary = AccentWork,
-    secondary = AccentFree,
-    tertiary = AccentUniversity,
-    background = DarkBackground,
-    surface = DarkSurface,
-    surfaceVariant = DarkCardBg,
-    onPrimary = Color.Black,
-    onSecondary = Color.Black,
-    onTertiary = Color.White,
-    onBackground = TextPrimary,
-    onSurface = TextPrimary,
-    onSurfaceVariant = TextSecondary,
-    outline = DarkCardBorder
+fun brandAccent(accent: AppAccent): Color = when (accent) {
+    AppAccent.Indigo -> BrandLime
+    AppAccent.Mint -> BrandCyan
+    AppAccent.Rose -> BrandVioletLight
+}
+
+private val BrandColors = darkColorScheme(
+    primary = BrandLime, onPrimary = BrandNight,
+    primaryContainer = IndigoCardBg, onPrimaryContainer = TextPrimary,
+    secondary = BrandCyan, onSecondary = BrandNight,
+    secondaryContainer = Color(0xFF19334F), onSecondaryContainer = TextPrimary,
+    tertiary = BrandVioletLight, onTertiary = BrandNight,
+    tertiaryContainer = Color(0xFF302450), onTertiaryContainer = TextPrimary,
+    background = DarkBackground, onBackground = TextPrimary,
+    surface = DarkSurface, onSurface = TextPrimary,
+    surfaceVariant = DarkInnerBg, onSurfaceVariant = TextSecondary,
+    surfaceContainerLowest = DarkBackground,
+    surfaceContainerLow = DarkSurface,
+    surfaceContainer = DarkCardBg,
+    surfaceContainerHigh = DarkInnerBg,
+    surfaceContainerHighest = Color(0xFF293653),
+    outline = DarkCardBorder, outlineVariant = DarkCardBorder,
+    error = Color(0xFFFFA2AD), onError = BrandNight,
+    errorContainer = Color(0xFF482333), onErrorContainer = Color(0xFFFFD9DE),
+    inverseSurface = TextPrimary, inverseOnSurface = BrandNight, inversePrimary = Color(0xFF365C1C),
+    surfaceTint = BrandCyan
 )
 
 @Composable
@@ -32,18 +47,18 @@ fun FindmeTheme(
     accent: AppAccent = AppAccent.Indigo,
     content: @Composable () -> Unit
 ) {
-    val colors = when (accent) {
-        AppAccent.Indigo -> Triple(IndigoPrimary, IndigoCardBg, IndigoCardBorder)
-        AppAccent.Mint -> Triple(Color(0xFF69DAB3), Color(0xFF102F2C), Color(0xFF28866A))
-        AppAccent.Rose -> Triple(Color(0xFFF5A3C6), Color(0xFF321D30), Color(0xFF995176))
-    }
-    val primary by animateColorAsState(colors.first, tween(250), label = "themeAccent")
-    val container by animateColorAsState(colors.second, tween(250), label = "themeContainer")
-    val border by animateColorAsState(colors.third, tween(250), label = "themeBorder")
+    // Persisted enum names remain compatible with the previous appearance settings.
+    val primary by animateColorAsState(brandAccent(accent), tween(250), label = "themeAccent")
+    val container by animateColorAsState(when (accent) {
+        AppAccent.Indigo -> IndigoCardBg
+        AppAccent.Mint -> Color(0xFF19334F)
+        AppAccent.Rose -> Color(0xFF302450)
+    }, tween(250), label = "themeContainer")
     MaterialTheme(
-        colorScheme = DarkColorScheme.copy(primary = primary, primaryContainer = container,
-            onPrimaryContainer = TextPrimary, outlineVariant = border),
+        colorScheme = BrandColors.copy(primary = primary, primaryContainer = container),
         typography = Typography,
+        shapes = Shapes(small = RoundedCornerShape(12.dp), medium = RoundedCornerShape(18.dp),
+            large = RoundedCornerShape(24.dp), extraLarge = RoundedCornerShape(32.dp)),
         content = content
     )
 }

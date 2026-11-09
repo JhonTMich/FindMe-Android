@@ -5,10 +5,10 @@
     android:height="108dp"
     android:viewportWidth="256"
     android:viewportHeight="256">
-  <group android:scaleX="0.61"
-      android:scaleY="0.61"
-      android:translateX="49.92"
-      android:translateY="49.92">
+  <group android:scaleX="0.65"
+      android:scaleY="0.65"
+      android:translateX="44.8"
+      android:translateY="44.8">
 
       <!-- Fondo azul oscuro del icono; exterior transparente -->
       <path

@@ -89,3 +89,9 @@ Las pruebas de dispositivo requieren un emulador o teléfono conectado. Incluyen
 - El código conserva funciones previas de administrador y widgets. La contraseña local de administrador existente no constituye autorización en el servidor; una futura gestión de roles necesita autenticación y políticas de acceso en Supabase.
 
 La versión 1.3 incorpora cuentas con registro por correos autorizados, acceso con usuario y contraseña, horarios propios, conexiones mutuas, ajustes de avisos y colores, y mensajes en vivo con la app abierta. Los mensajes enviados caducan a las 24 horas. La configuración del servidor y las limitaciones actuales están en [cuentas y conexiones](docs/cuentas-conexiones.md).
+
+## Identidad visual
+
+La interfaz usa el logo existente de FindMe: azul noche, aro cian/violeta y acento lima. Acceso, navegación, estados, categorías, horarios, ajustes y widgets comparten esta paleta. En **Perfil → Apariencia** se puede elegir Lima, Cian o Violeta; las preferencias guardadas conservan sus identificadores anteriores para mantener la compatibilidad.
+
+El símbolo de la cabecera reutiliza los trazados del icono adaptativo, sin el margen de seguridad del launcher. La prueba `brandScreensAcrossNavigationAndAppearance` recorre las pantallas y guarda capturas en `Pictures/FindMeTests` del emulador para revisar la presentación.

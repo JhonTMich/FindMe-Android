@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.example.findme.ui.theme.FindmeTheme
+import com.example.findme.ui.components.BrandMark
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
@@ -46,6 +47,7 @@ class StatusWidgetConfigurationActivity : ComponentActivity() {
                 }
                 Surface(Modifier.fillMaxSize()) {
                     Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        BrandMark(Modifier.size(64.dp))
                         Text("Estado actual", style = MaterialTheme.typography.headlineMedium)
                         Text("Elige de quién quieres ver el estado y la próxima actividad. Cada widget puede mostrar una persona distinta.")
                         if (loading) CircularProgressIndicator()

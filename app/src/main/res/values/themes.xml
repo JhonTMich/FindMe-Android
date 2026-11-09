@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.Findme" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.Findme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">#0D1328</item>
+        <item name="android:statusBarColor">#0D1328</item>
+        <item name="android:navigationBarColor">#0D1328</item>
+        <item name="android:colorAccent">#ACFA62</item>
+    </style>
 </resources>

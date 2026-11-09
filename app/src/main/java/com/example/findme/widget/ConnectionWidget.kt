@@ -75,13 +75,13 @@ class ConnectionWidget : GlanceAppWidget() {
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
                 .setData(Uri.parse("findme://widget/$widgetId"))
             val expanded = LocalSize.current.height >= 220.dp
-            val green = Color(0xFF079C4B)
-            val accent = Color.White
+            val green = Color(0xFFACFA62)
+            val accent = Color(0xFF0D1328)
             Column(GlanceModifier.fillMaxSize().background(ImageProvider(R.drawable.widget_background)).padding(14.dp)) {
                 Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
                     Text(person?.let { if (it.id == data?.owner) "Mi estado" else it.displayName } ?: "FindMe · Estado actual",
                         GlanceModifier.defaultWeight().clickable(actionStartActivity(config)),
-                        style = TextStyle(color = ColorProvider(Color(0xFF245C38)), fontSize = 14.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                        style = TextStyle(color = ColorProvider(Color(0xFFF8F9FF)), fontSize = 14.sp, fontWeight = FontWeight.Bold), maxLines = 1)
                     Text("↻", GlanceModifier.clickable(actionRunCallback<RefreshConnectionWidget>()).padding(horizontal = 10.dp, vertical = 4.dp),
                         style = TextStyle(color = ColorProvider(green), fontSize = 20.sp))
                     Text("⋮", GlanceModifier.clickable(actionStartActivity(config)).padding(horizontal = 6.dp, vertical = 4.dp),
@@ -105,7 +105,7 @@ class ConnectionWidget : GlanceAppWidget() {
                     if (expanded) {
                         Spacer(GlanceModifier.height(6.dp))
                         Text(state?.detail ?: "Inicia sesión y configura tu widget",
-                            style = TextStyle(color = ColorProvider(Color(0xFFE4F9E7)), fontSize = 12.sp), maxLines = 2)
+                            style = TextStyle(color = ColorProvider(Color(0xFF243A2A)), fontSize = 12.sp), maxLines = 2)
                     }
                 }
                 Spacer(GlanceModifier.height(8.dp))
@@ -113,7 +113,7 @@ class ConnectionWidget : GlanceAppWidget() {
                     Image(ImageProvider(R.drawable.widget_calendar), null, GlanceModifier.size(20.dp))
                     Spacer(GlanceModifier.width(8.dp))
                     Text("Próxima: ${state?.next ?: "Configura tu estado"}",
-                        style = TextStyle(color = ColorProvider(Color(0xFF245C38)), fontSize = 12.sp), maxLines = 2)
+                        style = TextStyle(color = ColorProvider(Color(0xFFF8F9FF)), fontSize = 12.sp), maxLines = 2)
                 }
                 Spacer(GlanceModifier.height(4.dp))
                     Text(data?.let {
@@ -122,7 +122,7 @@ class ConnectionWidget : GlanceAppWidget() {
                         if (prefs.get(WidgetStore.errorKey) != null) "Sin conexión · Datos del $time"
                         else "Datos del $time"
                     } ?: "Toca ⋮ para configurar",
-                        style = TextStyle(color = ColorProvider(Color(0xFF617768)), fontSize = if (expanded) 10.sp else 9.sp), maxLines = 1)
+                        style = TextStyle(color = ColorProvider(Color(0xFFB8C4DF)), fontSize = if (expanded) 10.sp else 9.sp), maxLines = 1)
             }
         }
     }
