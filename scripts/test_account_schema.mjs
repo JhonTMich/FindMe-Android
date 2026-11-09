@@ -118,7 +118,7 @@ try {
   await asUser(b);
   await db.exec(activity(b, 3, '10:15', '10:45', 'university', 'presencial', 'Different owner'));
   await db.exec('reset role');
-  await db.exec(await readFile(new URL('../supabase/migrations/20261109175316_permitir_turnos_nocturnos.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261109181959_permitir_turnos_nocturnos.sql', import.meta.url), 'utf8'));
   await asUser(c);
   const overnight = (day, start, end, title, category = 'work', modality = 'presencial') =>
     `insert into public.personal_schedule(user_id,day_of_week,start_time,end_time,title,category,modality,ends_next_day)
@@ -138,6 +138,14 @@ try {
   await db.exec(overnight(5, '07:00', '07:00', 'Full day'));
   await check((await db.query("select count(*) n from public.personal_schedule where user_id=$1 and ends_next_day", [c])).rows[0].n === 3,
     'Overnight rows are stored once and enforce both days including week wrap');
+  await asUser(a);
+  await db.exec(`insert into public.personal_schedule(user_id,day_of_week,start_time,end_time,title,ends_next_day)
+    values
+      ('${a}',1,'22:00','04:00','Three night shifts',true),
+      ('${a}',2,'22:00','04:00','Three night shifts',true),
+      ('${a}',3,'22:00','04:00','Three night shifts',true)`);
+  await check((await db.query("select count(*) n from public.personal_schedule where title='Three night shifts'")).rows[0].n === 3,
+    'Monday to Wednesday 22:00-04:00 creates three independent shifts ending Tuesday to Thursday');
   await db.exec(`reset role; set role anon; select set_config('request.jwt.claim.sub','',false)`);
   for (const table of ['account_profiles','personal_schedule','personal_status','person_connections','connection_invitations','quick_messages','connection_signals']) {
     await denied(`select * from public.${table}`, `Anonymous access denied: ${table}`);
