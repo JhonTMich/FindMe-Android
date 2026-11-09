@@ -264,7 +264,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             require(activities.isNotEmpty()) { "Elige al menos un día." }
             val currentSchedules = _state.value.schedules
             activities.forEach { activity ->
-                val error = validateSchedule(activity.dayOfWeek, activity.startTime, activity.endTime, activity.title)
+                val error = validateSchedule(activity.dayOfWeek, activity.startTime, activity.endTime, activity.title, activity.endsNextDay)
                     ?: findScheduleConflict(currentSchedules, activity)?.conflictMessage()
                 if (error != null) throw IllegalArgumentException(error)
             }

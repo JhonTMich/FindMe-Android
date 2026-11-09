@@ -3,6 +3,8 @@ package com.example.findme.data.repository
 import com.example.findme.data.model.ScheduleDto
 import com.example.findme.data.model.StatusOverrideDto
 import com.example.findme.domain.model.UserCurrentStatus
+import com.example.findme.domain.model.activeWindow
+import com.example.findme.domain.model.schedulesForDay
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
@@ -20,12 +22,7 @@ object StatusRepository {
         selectedDayOfWeek: Int,
         nowInLima: ZonedDateTime = ZonedDateTime.now(SYSTEM_ZONE)
     ): UserCurrentStatus {
-        val todayLimaDay = nowInLima.dayOfWeek.value
-        val currentTime = nowInLima.toLocalTime()
-
-        val daySchedules = schedules
-            .filter { it.dayOfWeek == selectedDayOfWeek }
-            .sortedBy { parseLocalTimeOrNull(it.startTime) ?: LocalTime.MIN }
+        val daySchedules = schedules.schedulesForDay(selectedDayOfWeek)
 
         // Find an unexpired manual status.
         val activeOverride = overrides
@@ -35,16 +32,8 @@ object StatusRepository {
                 expiresInstant != null && expiresInstant.isAfter(nowInLima.toInstant())
             }
 
-        val todayActualSchedules = schedules
-            .filter { it.dayOfWeek == todayLimaDay }
-            .sortedBy { parseLocalTimeOrNull(it.startTime) ?: LocalTime.MIN }
-
-        val currentSchedule = todayActualSchedules.firstOrNull { schedule ->
-            val start = parseLocalTimeOrNull(schedule.startTime)
-            val end = parseLocalTimeOrNull(schedule.endTime)
-            if (start != null && end != null) {
-                !currentTime.isBefore(start) && currentTime.isBefore(end)
-            } else false
+        val active = schedules.schedulesForDay(nowInLima.dayOfWeek.value).firstNotNullOfOrNull { schedule ->
+            schedule.activeWindow(nowInLima)?.let { schedule to it }
         }
 
         // Account users can explicitly share a change of plans, even during a scheduled activity.
@@ -54,12 +43,13 @@ object StatusRepository {
         }
 
         // An activity is active from its start time (inclusive) until its end (exclusive).
-        if (currentSchedule != null) {
-            val start = parseLocalTimeOrNull(currentSchedule.startTime) ?: currentTime
-            val end = parseLocalTimeOrNull(currentSchedule.endTime) ?: currentTime
+        if (active != null) {
+            val (currentSchedule, window) = active
+            val start = window.start
+            val end = window.end
             val totalSec = Duration.between(start, end).seconds.coerceAtLeast(1)
-            val elapsedSec = Duration.between(start, currentTime).seconds.coerceAtLeast(0)
-            val remainingMin = (Duration.between(currentTime, end).seconds / 60).coerceAtLeast(0)
+            val elapsedSec = Duration.between(start, nowInLima).seconds.coerceAtLeast(0)
+            val remainingMin = (Duration.between(nowInLima, end).seconds / 60).coerceAtLeast(0)
             val progress = (elapsedSec.toFloat() / totalSec.toFloat()).coerceIn(0f, 1f)
 
             return UserCurrentStatus.InClass(
