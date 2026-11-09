@@ -49,6 +49,37 @@ class AccountUiTest {
         }
     }
 
+    @Test fun brandScreensAcrossNavigationAndAppearance() {
+        val current = mutableStateOf(state)
+        compose.setContent {
+            FindmeTheme(accent = current.value.settings.accent) {
+                AccountContent(current.value, object : AccountActions {
+                    override fun setAccent(accent: com.example.findme.data.local.AppAccent) {
+                        current.value = current.value.copy(settings = current.value.settings.copy(accent = accent))
+                    }
+                })
+            }
+        }
+        compose.onNodeWithText("Mi día").assertIsDisplayed()
+        screenshot("brand-my-day", composeOnly = true)
+        compose.onNodeWithText("Horario").performClick()
+        compose.onNodeWithText("Tu semana").assertIsDisplayed()
+        screenshot("brand-schedule", composeOnly = true)
+        compose.onNodeWithText("Personas").performClick()
+        compose.onNodeWithText("Tu gente").assertIsDisplayed()
+        screenshot("brand-people", composeOnly = true)
+        compose.onNodeWithText("Perfil").performClick()
+        screenshot("brand-profile", composeOnly = true)
+        compose.onNodeWithText("Apariencia").performScrollTo()
+        compose.onNodeWithText("Cian").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Cian").assertIsSelected()
+        screenshot("brand-appearance", composeOnly = true)
+        current.value = AccountState(initializing = false)
+        compose.onNodeWithText("Qué bueno verte.").assertIsDisplayed()
+        screenshot("brand-login", composeOnly = true)
+    }
+
     @Test fun manualStatusIsVisibleDuringClassAndCanBeChanged() {
         var capturedText = ""
         var duration = 0L
@@ -334,8 +365,8 @@ class AccountUiTest {
         compose.onNodeWithText("Mensajes recibidos").performScrollTo().assertIsOn().performClick()
         compose.onNodeWithText("Mensajes recibidos").assertIsOff()
         screenshot("account-profile-notifications-compose", composeOnly = true)
-        compose.onNodeWithText("Menta").performScrollTo().assertIsDisplayed().performClick()
-        compose.onNodeWithText("Menta").assertIsSelected()
+        compose.onNodeWithText("Cian").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithText("Cian").assertIsSelected()
         assertEquals(com.example.findme.data.local.AppAccent.Mint, current.value.settings.accent)
         screenshot("account-profile-mint-compose", composeOnly = true)
         compose.onNodeWithText("Buscar actualizaciones").performScrollTo().assertIsDisplayed()

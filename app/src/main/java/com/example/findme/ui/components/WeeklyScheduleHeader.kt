@@ -41,7 +41,7 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
             color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
         Card(shape = RoundedCornerShape(24.dp), border = BorderStroke(1.dp, DarkCardBorder),
             colors = CardDefaults.cardColors(containerColor = Color.Transparent)) {
-            Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(Color(0xFF1E2443), DarkCardBg))).padding(20.dp),
+            Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(DarkSurface, DarkCardBg))).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -49,14 +49,14 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
                         Text("${allSchedules.size} ${if (allSchedules.size == 1) "actividad" else "actividades"}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
                     val activeDays = (1..7).count { day -> allSchedules.any { it.occursOn(day) } }
-                    StatusPill("$activeDays ${if (activeDays == 1) "día" else "días"}", Color(0xFF67D8E8))
+                    StatusPill("$activeDays ${if (activeDays == 1) "día" else "días"}", BrandCyan)
                 }
                 val maximum = (1..7).maxOf { day -> allSchedules.count { it.occursOn(day) } }.coerceAtLeast(1)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
                     (1..7).forEach { day ->
                         val count = allSchedules.count { it.occursOn(day) }
                         val height by animateFloatAsState(if (chartVisible) count.toFloat() / maximum else 0f, tween(700), label = "weekBar$day")
-                        val color by animateColorAsState(if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else Color(0xFF4A607C), tween(250), label = "weekBarColor$day")
+                        val color by animateColorAsState(if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else BrandBlue.copy(alpha = .5f), tween(250), label = "weekBarColor$day")
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("$count", style = MaterialTheme.typography.labelSmall, color = if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else TextMuted)
                             Box(Modifier.height(62.dp).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {

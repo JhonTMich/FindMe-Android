@@ -22,7 +22,7 @@ enum class ActivityCategory(
         key = "university",
         label = "Universidad",
         accentColor = AccentUniversity,
-        containerColor = Color(0xFF2E1E1C),
+        containerColor = Color(0xFF302450),
         badgeBgColor = AccentUniversity,
         icon = Icons.Default.School
     ),
@@ -30,7 +30,7 @@ enum class ActivityCategory(
         key = "work",
         label = "Trabajo",
         accentColor = AccentWork,
-        containerColor = Color(0xFF152A38),
+        containerColor = Color(0xFF19334F),
         badgeBgColor = AccentWork,
         icon = Icons.Default.Work
     ),
@@ -38,7 +38,7 @@ enum class ActivityCategory(
         key = "free",
         label = "Tiempo Libre",
         accentColor = AccentFree,
-        containerColor = Color(0xFF132B25),
+        containerColor = Color(0xFF233629),
         badgeBgColor = AccentFree,
         icon = Icons.Default.Restaurant
     );

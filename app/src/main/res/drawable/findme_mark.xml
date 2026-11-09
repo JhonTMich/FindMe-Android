@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+
+
+      <!-- Fondo azul oscuro del icono; exterior transparente -->
+      <path
+          android:fillColor="#131C38"
+          android:pathData="M 44,0 L 212,0 Q 256,0 256,44 L 256,212 Q 256,256 212,256 L 44,256 Q 0,256 0,212 L 0,44 Q 0,0 44,0 Z" />
+
+      <!-- Aro de estado, dividido en tonos azul, violeta y verde -->
+      <path
+          android:pathData="M 126,38 A 90,90 0,0 0,38 128 A 90,90 0,0 0,126 218"
+          android:fillColor="@android:color/transparent"
+          android:strokeWidth="16"
+          android:strokeLineCap="round">
+          <aapt:attr name="android:strokeColor">
+              <gradient xmlns:android="http://schemas.android.com/apk/res/android"
+                  android:type="linear"
+                  android:startX="35" android:startY="55"
+                  android:endX="135" android:endY="224"
+                  android:startColor="#51B9FF"
+                  android:endColor="#6545F6" />
+          </aapt:attr>
+      </path>
+      <path
+          android:pathData="M 126,38 A 90,90 0,0 1,218 128 A 90,90 0,0 1,205 170"
+          android:fillColor="@android:color/transparent"
+          android:strokeColor="#86F951"
+          android:strokeWidth="16"
+          android:strokeLineCap="round" />
+      <path
+          android:pathData="M 126,218 A 90,90 0,0 0,163 210"
+          android:fillColor="@android:color/transparent"
+          android:strokeColor="#397CFB"
+          android:strokeWidth="16"
+          android:strokeLineCap="round" />
+
+      <!-- Ojo abierto -->
+      <path android:fillColor="#F8F9FF"
+          android:pathData="M 99,101 C 99,94 104,89 110,89 C 116,89 121,94 121,101 L 121,122 C 121,129 116,134 110,134 C 104,134 99,129 99,122 Z" />
+
+      <!-- Ojo guiñado -->
+      <path android:fillColor="@android:color/transparent"
+          android:strokeColor="#F8F9FF"
+          android:strokeWidth="13"
+          android:strokeLineCap="round"
+          android:strokeLineJoin="round"
+          android:pathData="M 165,100 L 144,112 L 165,124" />
+
+      <!-- Sonrisa -->
+      <path android:fillColor="@android:color/transparent"
+          android:strokeColor="#F8F9FF"
+          android:strokeWidth="13"
+          android:strokeLineCap="round"
+          android:pathData="M 108,152 Q 130,176 152,152" />
+
+      <!-- Indicador verde de actividad -->
+      <path android:fillColor="#8CF952"
+          android:pathData="M 188,191 A 16,16 0,1 1,220 191 A 16,16 0,1 1,188 191 Z" />
+
+</vector>
