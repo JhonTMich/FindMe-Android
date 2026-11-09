@@ -574,7 +574,7 @@ private fun People(state: AccountState, actions: AccountActions) {
         HeroStatusCard(sharedStatus(person, state.personSchedules, state.personStatuses))
         Panel {
             SectionHeading(Icons.Default.ChatBubbleOutline, "Un mensaje para ${person.displayName}", "Envía un mensaje sin cambiar tu estado.")
-            if (state.messages.isEmpty()) Text("Guarda algo que suelas decir para enviarlo con un toque, también desde tu widget.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            if (state.messages.isEmpty()) Text("Guarda algo que suelas decir para enviarlo con un toque, desde Personas.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             state.messages.forEach { quick ->
                 OutlinedButton(onClick = { actions.send(quick) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))) {
                     Text(quick.label, Modifier.weight(1f), color = TextPrimary, textAlign = TextAlign.Start)
@@ -582,7 +582,7 @@ private fun People(state: AccountState, actions: AccountActions) {
                 }
             }
             TextButton(onClick = { manageMessages = true }) {
-                Icon(Icons.Default.Tune, null, Modifier.size(17.dp)); Spacer(Modifier.width(8.dp)); Text("Mis mensajes y widget", color = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.Tune, null, Modifier.size(17.dp)); Spacer(Modifier.width(8.dp)); Text("Mis mensajes", color = MaterialTheme.colorScheme.primary)
             }
             Text("Se actualizan automáticamente con FindMe abierta. Se borran después de 24 horas.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
         }
@@ -648,7 +648,6 @@ private fun ConnectionSheet(state: AccountState, actions: AccountActions, dismis
 @Composable
 private fun MessageSheet(state: AccountState, actions: AccountActions, dismiss: () -> Unit) {
     var message by rememberSaveable { mutableStateOf("") }
-    val person = state.selectedPerson
     LaunchedEffect(state.notice) { if (state.notice == "Mensaje rápido creado.") message = "" }
     Sheet(dismiss, "Tus mensajes rápidos", "Guarda un mensaje que quieras enviar con un toque.") {
         Text("Por ejemplo, una pregunta o un saludo. Se envía a la persona que tengas seleccionada; no cambia tu estado.", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
@@ -658,9 +657,6 @@ private fun MessageSheet(state: AccountState, actions: AccountActions, dismiss: 
         state.messages.forEach { quick ->
             Panel {
                 Text(quick.message, fontWeight = FontWeight.SemiBold)
-                if (person != null) OutlinedButton(onClick = { actions.configureWidget(quick) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Widgets, null, Modifier.size(17.dp)); Spacer(Modifier.width(7.dp)); Text("Usar en widget con ${person.displayName}")
-                }
                 TextButton(onClick = { actions.deleteMessage(quick.id) }, enabled = !state.busy) { Text("Eliminar mensaje", color = TextMuted) }
             }
         }

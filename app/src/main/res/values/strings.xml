@@ -2,4 +2,5 @@
     <string name="app_name" translatable="false">FindMe</string>
     <string name="widget_description" translatable="false">Muestra la ubicación familiar en tiempo real</string>
     <string name="control_widget_description" translatable="false">Control rápido de estado para administración de ubicación</string>
+    <string name="status_widget_description">El estado actual y la próxima actividad, tuyos o de alguien de tu gente.</string>
 </resources>
