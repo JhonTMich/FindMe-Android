@@ -62,6 +62,7 @@ import com.example.findme.domain.model.formatScheduleTime
 import com.example.findme.domain.model.validateSchedule
 import com.example.findme.domain.model.schedulesForDay
 import com.example.findme.domain.model.timeRangeLabel
+import com.example.findme.domain.model.nextActivityToday
 import com.example.findme.ui.components.*
 import com.example.findme.ui.theme.*
 import java.time.ZoneId
@@ -75,7 +76,7 @@ import kotlinx.coroutines.launch
 
 private val days = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
 private val hourFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
-private val cyan = BrandCyan
+private val cyan = BrandSky
 private fun AccountProfile.zone() = runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneId.systemDefault())
 
 @Composable
@@ -96,7 +97,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
         Box(Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 BrandMark(Modifier.size(88.dp))
-                CircularProgressIndicator(Modifier.size(24.dp), color = BrandLime, strokeWidth = 2.dp)
+                CircularProgressIndicator(Modifier.size(24.dp), color = BrandAccent, strokeWidth = 2.dp)
             }
         }
         return
@@ -158,7 +159,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
                 }
                 else if (state.profile.needsProfile) CompleteProfile(state, actions)
                 else when (activeTab) {
-                    "Mi día" -> MyDay(state, actions)
+                    "Mi día" -> MyDay(state, actions, onOpenSchedule = { tab = "Horario" })
                     "Horario" -> ScheduleManager(state, actions)
                     "Personas" -> People(state, actions)
                     else -> AccountProfilePanel(state, actions, updates, onCheckUpdates, onInstallUpdate)
@@ -205,6 +206,7 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.confirmationEmail) {
         if (state.confirmationEmail != null) { password = ""; confirmation = "" }
     }
@@ -224,21 +226,35 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
     }
     val registering = mode == "register"
     val resending = mode == "resend"
-    BrandWelcome("Tu día, compartido", when { registering -> "Tu gente, más cerca."; resending -> "Un paso más."; else -> "Qué bueno verte." },
-        if (registering) "Crea tu cuenta con un correo autorizado. Tú eliges cómo te ve tu gente." else "Organiza tus actividades y mantente conectado con quienes tú elijas.")
+    BrandWelcome("Tu día, compartido", when { registering -> "Tu gente, más cerca."; resending -> "Confirma tu cuenta."; else -> "Qué bueno verte." },
+        when { registering -> "Crea tu cuenta y confirma tu correo para empezar."
+            resending -> "Te enviaremos otro enlace al correo con el que empezaste tu registro."
+            else -> "Tu horario y tu gente, en un mismo lugar." })
     Panel {
-        SectionHeading(Icons.Default.PersonOutline, when { registering -> "Crea tu cuenta"; resending -> "Confirma tu cuenta"; else -> "Inicia sesión" })
+        SectionHeading(Icons.Default.PersonOutline, when { registering -> "Crea tu cuenta"; resending -> "Recibe otro enlace"; else -> "Inicia sesión" })
         if (registering) Field(name, { name = it.take(80) }, "Nombre visible", keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
         if (registering || resending) Field(email, { email = it.take(254) }, "Correo electrónico", keyboard = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
         if (!resending) Field(username, { username = it.take(24) }, "Nombre de usuario", keyboard = KeyboardOptions(autoCorrectEnabled = false))
         if (registering) Text("De 3 a 24 letras sin tildes, números o guion bajo. Será tu usuario para entrar.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
         if (!resending) {
             OutlinedTextField(password, { password = it.take(128) }, label = { Text("Contraseña") }, singleLine = true, enabled = !state.busy,
-                visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
+                    }
+                }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
         }
         if (registering) {
             OutlinedTextField(confirmation, { confirmation = it.take(128) }, label = { Text("Confirmar contraseña") }, singleLine = true, enabled = !state.busy,
-                visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
+                visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
+                    }
+                }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
                 isError = confirmation.isNotEmpty() && password != confirmation)
             Text(if (confirmation.isNotEmpty() && password != confirmation) "Las contraseñas no coinciden." else "Usa entre 8 y 128 caracteres. Confirma tu correo para empezar.",
                 color = if (confirmation.isNotEmpty() && password != confirmation) MaterialTheme.colorScheme.error else TextMuted, style = MaterialTheme.typography.bodySmall)
@@ -255,10 +271,10 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
         }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy && valid) {
             Text(when { state.busy -> "Un momento…"; registering -> "Registrarme"; resending -> "Enviar confirmación"; else -> "Entrar" })
         }
-        TextButton(onClick = { mode = if (mode == "login") "register" else "login"; password = ""; confirmation = "" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(if (mode == "login") "Crear cuenta" else "Ya tengo cuenta", color = MaterialTheme.colorScheme.primary)
+        TextButton(onClick = { mode = when (mode) { "login", "resend" -> "register"; else -> "login" }; password = ""; confirmation = ""; passwordVisible = false }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text(when (mode) { "login" -> "Crear cuenta"; "resend" -> "Volver al registro"; else -> "Ya tengo cuenta" }, color = MaterialTheme.colorScheme.primary)
         }
-        if (!resending) TextButton(onClick = { mode = "resend"; password = ""; confirmation = "" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+        if (registering) TextButton(onClick = { mode = "resend"; password = ""; confirmation = ""; passwordVisible = false }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("No recibí mi confirmación", color = TextMuted)
         }
     }
@@ -292,21 +308,28 @@ private fun ProfileNameForm(state: AccountState, actions: AccountActions, comple
 }
 
 @Composable
-private fun sharedStatus(profile: AccountProfile, schedules: List<ScheduleDto>, overrides: List<StatusOverrideDto>): UserCurrentStatus {
-    val zone = profile.zone()
+private fun profileClock(zone: ZoneId): ZonedDateTime {
     var now by remember(zone) { mutableStateOf(ZonedDateTime.now(zone)) }
     LaunchedEffect(zone) { while (true) { now = ZonedDateTime.now(zone); delay(15_000) } }
+    return now
+}
+
+@Composable
+private fun sharedStatus(profile: AccountProfile, schedules: List<ScheduleDto>, overrides: List<StatusOverrideDto>): UserCurrentStatus {
+    val now = profileClock(profile.zone())
     return StatusRepository.calculateStatus(profile.displayName, schedules, overrides, now.dayOfWeek.value, now)
 }
 
 @Composable
-private fun MyDay(state: AccountState, actions: AccountActions) {
+private fun MyDay(state: AccountState, actions: AccountActions, onOpenSchedule: () -> Unit) {
     var editStatus by rememberSaveable { mutableStateOf(false) }
     val profile = state.profile
-    val status = profile?.let { sharedStatus(it, state.schedules, state.statuses) }
-    val now = ZonedDateTime.now(profile?.zone() ?: ZoneId.systemDefault())
+    val now = profileClock(profile?.zone() ?: ZoneId.systemDefault())
+    val status = profile?.let { StatusRepository.calculateStatus(it.displayName, state.schedules, state.statuses, now.dayOfWeek.value, now) }
+    val next = nextActivityToday(state.schedules, now)
     PageHeading("Siempre cerca", "Mi día", now.format(DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es"))))
     status?.let { HeroStatusCard(it) }
+    NextActivityCard(next, onOpenSchedule)
     Panel {
         SectionHeading(Icons.Default.EditLocationAlt, "¿Cambiaste de planes?", "Comparte lo que estás haciendo ahora.")
         Text("Tu estado tiene prioridad sobre el horario hasta que termine o lo quites.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
@@ -704,7 +727,7 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         }
     }
     Panel {
-        SectionHeading(Icons.Default.Palette, "Apariencia", "Los colores de tu órbita, a tu manera.")
+        SectionHeading(Icons.Default.Palette, "Apariencia", "Tonos suaves, inspirados en el nuevo icono.")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AppAccent.entries.forEach { accent ->
                 FilterChip(selected = state.settings.accent == accent, onClick = { actions.setAccent(accent) },

@@ -49,7 +49,7 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
                         Text("${allSchedules.size} ${if (allSchedules.size == 1) "actividad" else "actividades"}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
                     val activeDays = (1..7).count { day -> allSchedules.any { it.occursOn(day) } }
-                    StatusPill("$activeDays ${if (activeDays == 1) "día" else "días"}", BrandCyan)
+                    StatusPill("$activeDays ${if (activeDays == 1) "día" else "días"}", BrandSky)
                 }
                 val maximum = (1..7).maxOf { day -> allSchedules.count { it.occursOn(day) } }.coerceAtLeast(1)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {

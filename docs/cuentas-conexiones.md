@@ -15,7 +15,7 @@ Rama: `feature/cuentas-conexiones`.
 - Desvinculación con confirmación. Retira el acceso a datos futuros; no puede borrar información que alguien ya haya visto.
 - Mensajes rápidos configurables dentro de «Mis mensajes», separados de los estados. Un campo define el mensaje; la etiqueta del botón se deriva automáticamente. Envían mensajes persistidos que aparecen automáticamente con la app abierta y caducan a las 24 horas.
 - Widget `FindMe · Estado actual` con el estado de tu cuenta o de una persona conectada, próxima actividad y fecha de los últimos datos. La selección se configura al añadir cada widget o tocando su nombre/menú y se vincula a la cuenta activa. Las instancias son independientes; el widget anterior conserva su persona como selección inicial. Usa caché local, sincronización periódica y recálculos al cambiar de actividad o caducar un estado; Android puede retrasar el trabajo en segundo plano.
-- Perfil y ajustes: avisos de actividades, estados y mensajes por cuenta; acceso a permisos de Android; búsqueda de actualizaciones; acentos lima, cian y violeta guardados en el dispositivo.
+- Perfil y ajustes: avisos de actividades, estados y mensajes por cuenta; acceso a permisos de Android; búsqueda de actualizaciones; acentos azul, hielo y acero guardados en el dispositivo.
 
 ## Preparar Supabase
 
@@ -104,7 +104,7 @@ La lista tiene RLS y no permite lectura ni modificación desde clientes anónimo
 1. Abrir la nueva compilación de FindMe y pulsar **Crear cuenta**.
 2. Escribir el correo autorizado y elegir su propio nombre visible, usuario y contraseña.
 3. Abrir el enlace del correo de confirmación y regresar a FindMe para iniciar sesión con usuario y contraseña.
-4. Si hace falta, pulsar **No recibí mi confirmación** y solicitar otro correo. No necesita proporcionar la contraseña para reenviarlo.
+4. Desde el registro (no desde Iniciar sesión), pulsar **No recibí mi confirmación** y solicitar otro correo. No necesita proporcionar la contraseña para reenviarlo.
 
 Cada cuenta nueva empieza sin conexiones. Compartir horarios requiere una invitación de Personas aceptada por la otra cuenta.
 

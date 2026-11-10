@@ -13,18 +13,18 @@ import androidx.compose.ui.unit.dp
 import com.example.findme.data.local.AppAccent
 
 fun brandAccent(accent: AppAccent): Color = when (accent) {
-    AppAccent.Indigo -> BrandLime
-    AppAccent.Mint -> BrandCyan
-    AppAccent.Rose -> BrandVioletLight
+    AppAccent.Indigo -> BrandAccent
+    AppAccent.Mint -> BrandSky
+    AppAccent.Rose -> BrandSlate
 }
 
 private val BrandColors = darkColorScheme(
-    primary = BrandLime, onPrimary = BrandNight,
+    primary = BrandAccent, onPrimary = BrandNight,
     primaryContainer = IndigoCardBg, onPrimaryContainer = TextPrimary,
-    secondary = BrandCyan, onSecondary = BrandNight,
-    secondaryContainer = Color(0xFF19334F), onSecondaryContainer = TextPrimary,
-    tertiary = BrandVioletLight, onTertiary = BrandNight,
-    tertiaryContainer = Color(0xFF302450), onTertiaryContainer = TextPrimary,
+    secondary = BrandSky, onSecondary = BrandNight,
+    secondaryContainer = Color(0xFF29425A), onSecondaryContainer = TextPrimary,
+    tertiary = BrandSlate, onTertiary = BrandNight,
+    tertiaryContainer = Color(0xFF303E53), onTertiaryContainer = TextPrimary,
     background = DarkBackground, onBackground = TextPrimary,
     surface = DarkSurface, onSurface = TextPrimary,
     surfaceVariant = DarkInnerBg, onSurfaceVariant = TextSecondary,
@@ -36,8 +36,8 @@ private val BrandColors = darkColorScheme(
     outline = DarkCardBorder, outlineVariant = DarkCardBorder,
     error = Color(0xFFFFA2AD), onError = BrandNight,
     errorContainer = Color(0xFF482333), onErrorContainer = Color(0xFFFFD9DE),
-    inverseSurface = TextPrimary, inverseOnSurface = BrandNight, inversePrimary = Color(0xFF365C1C),
-    surfaceTint = BrandCyan
+    inverseSurface = TextPrimary, inverseOnSurface = BrandNight, inversePrimary = Color(0xFF354F77),
+    surfaceTint = BrandSky
 )
 
 @Composable
@@ -51,8 +51,8 @@ fun FindmeTheme(
     val primary by animateColorAsState(brandAccent(accent), tween(250), label = "themeAccent")
     val container by animateColorAsState(when (accent) {
         AppAccent.Indigo -> IndigoCardBg
-        AppAccent.Mint -> Color(0xFF19334F)
-        AppAccent.Rose -> Color(0xFF302450)
+        AppAccent.Mint -> Color(0xFF29425A)
+        AppAccent.Rose -> Color(0xFF303E53)
     }, tween(250), label = "themeContainer")
     MaterialTheme(
         colorScheme = BrandColors.copy(primary = primary, primaryContainer = container),
