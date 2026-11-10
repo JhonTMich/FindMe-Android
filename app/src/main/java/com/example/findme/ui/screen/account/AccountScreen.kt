@@ -62,6 +62,7 @@ import com.example.findme.domain.model.formatScheduleTime
 import com.example.findme.domain.model.validateSchedule
 import com.example.findme.domain.model.schedulesForDay
 import com.example.findme.domain.model.timeRangeLabel
+import com.example.findme.domain.model.nextActivityToday
 import com.example.findme.ui.components.*
 import com.example.findme.ui.theme.*
 import java.time.ZoneId
@@ -158,7 +159,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
                 }
                 else if (state.profile.needsProfile) CompleteProfile(state, actions)
                 else when (activeTab) {
-                    "Mi día" -> MyDay(state, actions)
+                    "Mi día" -> MyDay(state, actions, onOpenSchedule = { tab = "Horario" })
                     "Horario" -> ScheduleManager(state, actions)
                     "Personas" -> People(state, actions)
                     else -> AccountProfilePanel(state, actions, updates, onCheckUpdates, onInstallUpdate)
@@ -307,21 +308,28 @@ private fun ProfileNameForm(state: AccountState, actions: AccountActions, comple
 }
 
 @Composable
-private fun sharedStatus(profile: AccountProfile, schedules: List<ScheduleDto>, overrides: List<StatusOverrideDto>): UserCurrentStatus {
-    val zone = profile.zone()
+private fun profileClock(zone: ZoneId): ZonedDateTime {
     var now by remember(zone) { mutableStateOf(ZonedDateTime.now(zone)) }
     LaunchedEffect(zone) { while (true) { now = ZonedDateTime.now(zone); delay(15_000) } }
+    return now
+}
+
+@Composable
+private fun sharedStatus(profile: AccountProfile, schedules: List<ScheduleDto>, overrides: List<StatusOverrideDto>): UserCurrentStatus {
+    val now = profileClock(profile.zone())
     return StatusRepository.calculateStatus(profile.displayName, schedules, overrides, now.dayOfWeek.value, now)
 }
 
 @Composable
-private fun MyDay(state: AccountState, actions: AccountActions) {
+private fun MyDay(state: AccountState, actions: AccountActions, onOpenSchedule: () -> Unit) {
     var editStatus by rememberSaveable { mutableStateOf(false) }
     val profile = state.profile
-    val status = profile?.let { sharedStatus(it, state.schedules, state.statuses) }
-    val now = ZonedDateTime.now(profile?.zone() ?: ZoneId.systemDefault())
+    val now = profileClock(profile?.zone() ?: ZoneId.systemDefault())
+    val status = profile?.let { StatusRepository.calculateStatus(it.displayName, state.schedules, state.statuses, now.dayOfWeek.value, now) }
+    val next = nextActivityToday(state.schedules, now)
     PageHeading("Siempre cerca", "Mi día", now.format(DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es"))))
     status?.let { HeroStatusCard(it) }
+    NextActivityCard(next, onOpenSchedule)
     Panel {
         SectionHeading(Icons.Default.EditLocationAlt, "¿Cambiaste de planes?", "Comparte lo que estás haciendo ahora.")
         Text("Tu estado tiene prioridad sobre el horario hasta que termine o lo quites.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
