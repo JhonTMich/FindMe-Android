@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -59,6 +60,9 @@ import com.example.findme.domain.model.conflictMessage
 import com.example.findme.domain.model.findScheduleConflict
 import com.example.findme.domain.model.formatScheduleTime
 import com.example.findme.domain.model.validateSchedule
+import com.example.findme.domain.model.schedulesForDay
+import com.example.findme.domain.model.timeRangeLabel
+import com.example.findme.domain.model.nextActivityToday
 import com.example.findme.ui.components.*
 import com.example.findme.ui.theme.*
 import java.time.ZoneId
@@ -72,7 +76,7 @@ import kotlinx.coroutines.launch
 
 private val days = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
 private val hourFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
-private val cyan = Color(0xFF67D8E8)
+private val cyan = BrandSky
 private fun AccountProfile.zone() = runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneId.systemDefault())
 
 @Composable
@@ -90,7 +94,12 @@ fun AccountScreen(viewModel: AccountViewModel, updates: UpdateState = UpdateStat
 fun AccountContent(state: AccountState, actions: AccountActions,
     updates: UpdateState = UpdateState(), onCheckUpdates: () -> Unit = {}, onInstallUpdate: () -> Unit = {}) {
     if (state.initializing) {
-        Box(Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+        Box(Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                BrandMark(Modifier.size(88.dp))
+                CircularProgressIndicator(Modifier.size(24.dp), color = BrandAccent, strokeWidth = 2.dp)
+            }
+        }
         return
     }
     var tab by rememberSaveable(state.signedIn) { mutableStateOf("Mi día") }
@@ -100,11 +109,9 @@ fun AccountContent(state: AccountState, actions: AccountActions,
     Scaffold(containerColor = DarkBackground, snackbarHost = { SnackbarHost(snackbar) }, topBar = {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.size(44.dp).background(Brush.linearGradient(listOf(Color(0xFF7370ED), Color(0xFF427FAD))), RoundedCornerShape(15.dp)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.NearMe, null, tint = Color.White, modifier = Modifier.size(23.dp))
-            }
+            BrandMark(Modifier.size(46.dp))
             Column(Modifier.weight(1f)) {
-                Text("FindMe", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("FindMe", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, letterSpacing = (-.7).sp)
                 Text(state.profile?.takeUnless { it.needsName }?.let { "Hola, ${it.displayName}" } ?: "Siempre cerca de tu gente", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
             if (state.signedIn) {
@@ -115,17 +122,27 @@ fun AccountContent(state: AccountState, actions: AccountActions,
             }
         }
     }, bottomBar = {
-        if (state.signedIn && state.profile?.needsProfile == false) NavigationBar(containerColor = DarkSurface) {
-            listOf(Triple("Mi día", "Hoy", Icons.Default.Today), Triple("Horario", "Horario", Icons.Default.CalendarMonth),
-                Triple("Personas", "Personas", Icons.Default.PeopleOutline), Triple("Cuenta", "Perfil", Icons.Default.PersonOutline)).forEach { (id, title, icon) ->
-                NavigationBarItem(selected = tab == id, onClick = { tab = id }, icon = { Icon(icon, null) }, label = { Text(title) },
-                    colors = NavigationBarItemDefaults.colors(selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary,
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer, unselectedIconColor = TextMuted, unselectedTextColor = TextMuted))
+        if (state.signedIn && state.profile?.needsProfile == false) {
+            Surface(Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(28.dp), color = DarkSurface,
+                border = BorderStroke(1.dp, DarkCardBorder)) {
+                NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp,
+                    windowInsets = WindowInsets(0, 0, 0, 0), modifier = Modifier.height(76.dp)) {
+                    listOf(Triple("Mi día", "Hoy", Icons.Default.Today), Triple("Horario", "Horario", Icons.Default.CalendarMonth),
+                        Triple("Personas", "Personas", Icons.Default.PeopleOutline), Triple("Cuenta", "Perfil", Icons.Default.PersonOutline)).forEach { (id, title, icon) ->
+                        NavigationBarItem(selected = tab == id, onClick = { tab = id },
+                            icon = { Icon(icon, null, Modifier.size(22.dp)) },
+                            label = { Text(title, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
+                            colors = NavigationBarItemDefaults.colors(selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary, indicatorColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = TextMuted, unselectedTextColor = TextMuted))
+                    }
+                }
             }
         }
     }) { padding ->
         Crossfade(tab, modifier = Modifier.fillMaxSize().padding(padding), label = "accountNavigation") { activeTab ->
-            Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF10172A), DarkBackground), endY = 1000f))
+            Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(DarkSurface, DarkBackground), endY = 1100f))
                 .verticalScroll(rememberScrollState()).imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 state.error?.let { error -> Panel {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -142,7 +159,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
                 }
                 else if (state.profile.needsProfile) CompleteProfile(state, actions)
                 else when (activeTab) {
-                    "Mi día" -> MyDay(state, actions)
+                    "Mi día" -> MyDay(state, actions, onOpenSchedule = { tab = "Horario" })
                     "Horario" -> ScheduleManager(state, actions)
                     "Personas" -> People(state, actions)
                     else -> AccountProfilePanel(state, actions, updates, onCheckUpdates, onInstallUpdate)
@@ -165,7 +182,8 @@ private fun PageHeading(eyebrow: String, title: String, subtitle: String) {
 private fun Panel(content: @Composable ColumnScope.() -> Unit) {
     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), border = BorderStroke(1.dp, DarkCardBorder),
         colors = CardDefaults.cardColors(containerColor = DarkCardBg)) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
+        Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(DarkCardBg, DarkSurface)))
+            .padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
     }
 }
 
@@ -188,6 +206,7 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.confirmationEmail) {
         if (state.confirmationEmail != null) { password = ""; confirmation = "" }
     }
@@ -207,21 +226,35 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
     }
     val registering = mode == "register"
     val resending = mode == "resend"
-    PageHeading("Tu día, compartido", when { registering -> "Tu gente, más cerca."; resending -> "Un paso más."; else -> "Qué bueno verte." },
-        if (registering) "Crea tu cuenta con un correo autorizado. Tú eliges cómo te ve tu gente." else "Organiza tus actividades y mantente conectado con quienes tú elijas.")
+    BrandWelcome("Tu día, compartido", when { registering -> "Tu gente, más cerca."; resending -> "Confirma tu cuenta."; else -> "Qué bueno verte." },
+        when { registering -> "Crea tu cuenta y confirma tu correo para empezar."
+            resending -> "Te enviaremos otro enlace al correo con el que empezaste tu registro."
+            else -> "Tu horario y tu gente, en un mismo lugar." })
     Panel {
-        SectionHeading(Icons.Default.PersonOutline, when { registering -> "Crea tu cuenta"; resending -> "Confirma tu cuenta"; else -> "Inicia sesión" })
+        SectionHeading(Icons.Default.PersonOutline, when { registering -> "Crea tu cuenta"; resending -> "Recibe otro enlace"; else -> "Inicia sesión" })
         if (registering) Field(name, { name = it.take(80) }, "Nombre visible", keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
         if (registering || resending) Field(email, { email = it.take(254) }, "Correo electrónico", keyboard = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
         if (!resending) Field(username, { username = it.take(24) }, "Nombre de usuario", keyboard = KeyboardOptions(autoCorrectEnabled = false))
         if (registering) Text("De 3 a 24 letras sin tildes, números o guion bajo. Será tu usuario para entrar.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
         if (!resending) {
             OutlinedTextField(password, { password = it.take(128) }, label = { Text("Contraseña") }, singleLine = true, enabled = !state.busy,
-                visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
+                    }
+                }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
         }
         if (registering) {
             OutlinedTextField(confirmation, { confirmation = it.take(128) }, label = { Text("Confirmar contraseña") }, singleLine = true, enabled = !state.busy,
-                visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
+                visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
+                    }
+                }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
                 isError = confirmation.isNotEmpty() && password != confirmation)
             Text(if (confirmation.isNotEmpty() && password != confirmation) "Las contraseñas no coinciden." else "Usa entre 8 y 128 caracteres. Confirma tu correo para empezar.",
                 color = if (confirmation.isNotEmpty() && password != confirmation) MaterialTheme.colorScheme.error else TextMuted, style = MaterialTheme.typography.bodySmall)
@@ -238,10 +271,10 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
         }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy && valid) {
             Text(when { state.busy -> "Un momento…"; registering -> "Registrarme"; resending -> "Enviar confirmación"; else -> "Entrar" })
         }
-        TextButton(onClick = { mode = if (mode == "login") "register" else "login"; password = ""; confirmation = "" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(if (mode == "login") "Crear cuenta" else "Ya tengo cuenta", color = MaterialTheme.colorScheme.primary)
+        TextButton(onClick = { mode = when (mode) { "login", "resend" -> "register"; else -> "login" }; password = ""; confirmation = ""; passwordVisible = false }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text(when (mode) { "login" -> "Crear cuenta"; "resend" -> "Volver al registro"; else -> "Ya tengo cuenta" }, color = MaterialTheme.colorScheme.primary)
         }
-        if (!resending) TextButton(onClick = { mode = "resend"; password = ""; confirmation = "" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+        if (registering) TextButton(onClick = { mode = "resend"; password = ""; confirmation = ""; passwordVisible = false }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("No recibí mi confirmación", color = TextMuted)
         }
     }
@@ -275,21 +308,28 @@ private fun ProfileNameForm(state: AccountState, actions: AccountActions, comple
 }
 
 @Composable
-private fun sharedStatus(profile: AccountProfile, schedules: List<ScheduleDto>, overrides: List<StatusOverrideDto>): UserCurrentStatus {
-    val zone = profile.zone()
+private fun profileClock(zone: ZoneId): ZonedDateTime {
     var now by remember(zone) { mutableStateOf(ZonedDateTime.now(zone)) }
     LaunchedEffect(zone) { while (true) { now = ZonedDateTime.now(zone); delay(15_000) } }
+    return now
+}
+
+@Composable
+private fun sharedStatus(profile: AccountProfile, schedules: List<ScheduleDto>, overrides: List<StatusOverrideDto>): UserCurrentStatus {
+    val now = profileClock(profile.zone())
     return StatusRepository.calculateStatus(profile.displayName, schedules, overrides, now.dayOfWeek.value, now)
 }
 
 @Composable
-private fun MyDay(state: AccountState, actions: AccountActions) {
+private fun MyDay(state: AccountState, actions: AccountActions, onOpenSchedule: () -> Unit) {
     var editStatus by rememberSaveable { mutableStateOf(false) }
     val profile = state.profile
-    val status = profile?.let { sharedStatus(it, state.schedules, state.statuses) }
-    val now = ZonedDateTime.now(profile?.zone() ?: ZoneId.systemDefault())
+    val now = profileClock(profile?.zone() ?: ZoneId.systemDefault())
+    val status = profile?.let { StatusRepository.calculateStatus(it.displayName, state.schedules, state.statuses, now.dayOfWeek.value, now) }
+    val next = nextActivityToday(state.schedules, now)
     PageHeading("Siempre cerca", "Mi día", now.format(DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es"))))
     status?.let { HeroStatusCard(it) }
+    NextActivityCard(next, onOpenSchedule)
     Panel {
         SectionHeading(Icons.Default.EditLocationAlt, "¿Cambiaste de planes?", "Comparte lo que estás haciendo ahora.")
         Text("Tu estado tiene prioridad sobre el horario hasta que termine o lo quites.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
@@ -299,11 +339,12 @@ private fun MyDay(state: AccountState, actions: AccountActions) {
         }
         if (status is UserCurrentStatus.Override) TextButton(onClick = actions::clearStatus, enabled = !state.busy) { Text("Volver al horario", color = TextSecondary) }
     }
-    val today = state.schedules.filter { it.dayOfWeek == now.dayOfWeek.value }.sortedBy { it.startTime }
+    val today = state.schedules.schedulesForDay(now.dayOfWeek.value)
     SectionHeading(Icons.Default.CalendarToday, "Tu agenda de hoy", "${today.size} actividades programadas")
     if (today.isEmpty()) EmptyPanel(Icons.Default.WbSunny, "Un día a tu ritmo", "Aún no tienes actividades para hoy. Puedes añadirlas en Horario.")
     today.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule,
-        active = (status as? UserCurrentStatus.InClass)?.currentSchedule?.id == schedule.id, last = index == today.lastIndex) }
+        active = (status as? UserCurrentStatus.InClass)?.currentSchedule?.id == schedule.id,
+        last = index == today.lastIndex, displayDay = now.dayOfWeek.value) }
     if (editStatus) StatusEditor(state, actions, status as? UserCurrentStatus.Override) { editStatus = false }
 }
 
@@ -341,7 +382,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
             Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Añadir")
         }
     }
-    val schedules = state.schedules.filter { it.dayOfWeek == day }.sortedBy { it.startTime }
+    val schedules = state.schedules.schedulesForDay(day)
     if (schedules.isEmpty()) EmptyPanel(Icons.Default.EventAvailable, "Espacio para tus planes", "Añade una clase, tu trabajo o una actividad personal.")
     schedules.forEach { schedule ->
         val category = ActivityCategory.fromKey(schedule.category)
@@ -349,7 +390,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 AccentIcon(category.icon, category.accentColor)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("${formatScheduleTime(schedule.startTime)} — ${formatScheduleTime(schedule.endTime)}", color = category.accentColor, style = MaterialTheme.typography.labelLarge)
+                    Text(schedule.timeRangeLabel(day), color = category.accentColor, style = MaterialTheme.typography.labelLarge)
                     Text(schedule.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
@@ -380,6 +421,7 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
     var location by rememberSaveable { mutableStateOf(existing?.location.orEmpty()) }
     var start by rememberSaveable { mutableStateOf(existing?.startTime ?: "09:00") }
     var end by rememberSaveable { mutableStateOf(existing?.endTime ?: "10:00") }
+    var endsNextDay by rememberSaveable { mutableStateOf(existing?.endsNextDay ?: false) }
     var selectedDays by rememberSaveable { mutableStateOf(listOf(existing?.dayOfWeek ?: initialDay)) }
     var category by rememberSaveable { mutableStateOf(existing?.category ?: "university") }
     var modality by rememberSaveable { mutableStateOf(existing?.modality ?: "presencial") }
@@ -387,14 +429,14 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
     val activities = selectedDays.map { day ->
         val id = editingId ?: UUID.nameUUIDFromBytes("$draftId:$day".toByteArray(Charsets.UTF_8)).toString()
         ScheduleDto(id = id, dayOfWeek = day, startTime = start.trim(), endTime = end.trim(),
-            title = title.trim(), location = location.trim(), category = category, modality = modality)
+            title = title.trim(), location = location.trim(), category = category, modality = modality,
+            endsNextDay = endsNextDay)
     }
-    val invalid = selectedDays.firstOrNull()?.let { validateSchedule(it, start, end, title) }
+    val invalid = selectedDays.firstOrNull()?.let { validateSchedule(it, start, end, title, endsNextDay) }
     val conflict = if (invalid == null) {
         activities.firstNotNullOfOrNull { findScheduleConflict(state.schedules, it) }
     } else null
-    val startTime = StatusRepository.parseLocalTimeOrNull(start)
-    val endTime = StatusRepository.parseLocalTimeOrNull(end)
+    val timeError = validateSchedule(1, start, end, "Actividad", endsNextDay)
     LaunchedEffect(state.busy, state.savedScheduleDraftId) {
         if (submitted && !state.busy && state.savedScheduleDraftId == draftId) dismiss()
     }
@@ -414,13 +456,21 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
             Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
             Box(Modifier.weight(1f)) { TimeField(end, { end = it }, "Fin") }
         }
+        Row(
+            Modifier.fillMaxWidth().toggleable(value = endsNextDay, role = Role.Switch, enabled = !state.busy) {
+                endsNextDay = it
+            },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Termina al día siguiente", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+            Switch(checked = endsNextDay, onCheckedChange = null)
+        }
         ScheduleChoice("Modalidad", listOf("presencial", "virtual"), modality, { modality = it }) {
             it.replaceFirstChar(Char::titlecase)
         }
-        val feedback = if (selectedDays.isEmpty()) "Elige al menos un día." else conflict?.conflictMessage()
-            ?: if (startTime != null && endTime != null && !endTime.isAfter(startTime)) {
-                "La hora de fin debe ser posterior al inicio."
-            } else if (submitted) invalid ?: state.error else null
+        val feedback = if (selectedDays.isEmpty()) "Elige al menos un día."
+            else conflict?.conflictMessage() ?: timeError ?: if (submitted) invalid ?: state.error else null
         feedback?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
         Field(location, { location = it.take(160) }, "Lugar o aula (opcional)")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -561,7 +611,7 @@ private fun People(state: AccountState, actions: AccountActions) {
         HeroStatusCard(sharedStatus(person, state.personSchedules, state.personStatuses))
         Panel {
             SectionHeading(Icons.Default.ChatBubbleOutline, "Un mensaje para ${person.displayName}", "Envía un mensaje sin cambiar tu estado.")
-            if (state.messages.isEmpty()) Text("Guarda algo que suelas decir para enviarlo con un toque, también desde tu widget.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            if (state.messages.isEmpty()) Text("Guarda algo que suelas decir para enviarlo con un toque, desde Personas.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             state.messages.forEach { quick ->
                 OutlinedButton(onClick = { actions.send(quick) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))) {
                     Text(quick.label, Modifier.weight(1f), color = TextPrimary, textAlign = TextAlign.Start)
@@ -569,16 +619,17 @@ private fun People(state: AccountState, actions: AccountActions) {
                 }
             }
             TextButton(onClick = { manageMessages = true }) {
-                Icon(Icons.Default.Tune, null, Modifier.size(17.dp)); Spacer(Modifier.width(8.dp)); Text("Mis mensajes y widget", color = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.Tune, null, Modifier.size(17.dp)); Spacer(Modifier.width(8.dp)); Text("Mis mensajes", color = MaterialTheme.colorScheme.primary)
             }
             Text("Se actualizan automáticamente con FindMe abierta. Se borran después de 24 horas.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
         }
         SectionHeading(Icons.Default.CalendarMonth, "Su semana", "Actividades de ${person.displayName}")
         var personDay by rememberSaveable(person.id) { mutableStateOf(ZonedDateTime.now(person.zone()).dayOfWeek.value) }
         Choices((1..7).toList(), personDay, { personDay = it }) { days[it - 1].take(3) }
-        val schedules = state.personSchedules.filter { it.dayOfWeek == personDay }.sortedBy { it.startTime }
+        val schedules = state.personSchedules.schedulesForDay(personDay)
         if (schedules.isEmpty()) Text("Sin actividades para el ${days[personDay - 1].lowercase()}.", color = TextMuted)
-        schedules.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule, false, last = index == schedules.lastIndex) }
+        schedules.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule, false,
+            last = index == schedules.lastIndex, displayDay = personDay) }
         state.connections.find { it.otherPerson(state.profile?.id.orEmpty()) == person.id }?.let { connection ->
             TextButton(onClick = { disconnect = connection }, enabled = !state.busy) { Text("Administrar conexión con ${person.displayName}", color = TextMuted) }
         }
@@ -634,7 +685,6 @@ private fun ConnectionSheet(state: AccountState, actions: AccountActions, dismis
 @Composable
 private fun MessageSheet(state: AccountState, actions: AccountActions, dismiss: () -> Unit) {
     var message by rememberSaveable { mutableStateOf("") }
-    val person = state.selectedPerson
     LaunchedEffect(state.notice) { if (state.notice == "Mensaje rápido creado.") message = "" }
     Sheet(dismiss, "Tus mensajes rápidos", "Guarda un mensaje que quieras enviar con un toque.") {
         Text("Por ejemplo, una pregunta o un saludo. Se envía a la persona que tengas seleccionada; no cambia tu estado.", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
@@ -644,9 +694,6 @@ private fun MessageSheet(state: AccountState, actions: AccountActions, dismiss: 
         state.messages.forEach { quick ->
             Panel {
                 Text(quick.message, fontWeight = FontWeight.SemiBold)
-                if (person != null) OutlinedButton(onClick = { actions.configureWidget(quick) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Widgets, null, Modifier.size(17.dp)); Spacer(Modifier.width(7.dp)); Text("Usar en widget con ${person.displayName}")
-                }
                 TextButton(onClick = { actions.deleteMessage(quick.id) }, enabled = !state.busy) { Text("Eliminar mensaje", color = TextMuted) }
             }
         }
@@ -680,11 +727,13 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         }
     }
     Panel {
-        SectionHeading(Icons.Default.Palette, "Apariencia", "Elige el color de FindMe en este dispositivo.")
+        SectionHeading(Icons.Default.Palette, "Apariencia", "Tonos suaves, inspirados en el nuevo icono.")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AppAccent.entries.forEach { accent ->
                 FilterChip(selected = state.settings.accent == accent, onClick = { actions.setAccent(accent) },
-                    label = { Text(accent.label) }, modifier = Modifier.weight(1f),
+                    label = { Text(accent.label, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
+                    leadingIcon = { Box(Modifier.size(10.dp).background(brandAccent(accent), CircleShape)) },
+                    modifier = Modifier.weight(1f),
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                         selectedLabelColor = MaterialTheme.colorScheme.primary))
             }
@@ -760,7 +809,9 @@ private fun Sheet(
 private fun Field(value: String, change: (String) -> Unit, label: String, placeholder: String? = null, keyboard: KeyboardOptions = KeyboardOptions.Default) {
     OutlinedTextField(value, change, label = { Text(label) }, placeholder = { placeholder?.let { Text(it, color = TextMuted) } },
         keyboardOptions = keyboard, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = DarkCardBorder, focusedLabelColor = MaterialTheme.colorScheme.primary))
+        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = DarkCardBorder, focusedLabelColor = MaterialTheme.colorScheme.primary,
+            focusedContainerColor = DarkBackground.copy(alpha = .5f), unfocusedContainerColor = DarkBackground.copy(alpha = .35f)))
 }
 
 @Composable

@@ -13,5 +13,6 @@ data class ScheduleDto(
     val title: String,
     val location: String,
     val category: String = "university",
-    val modality: String = "presencial"
+    val modality: String = "presencial",
+    @SerialName("ends_next_day") val endsNextDay: Boolean = false
 )

@@ -77,7 +77,10 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 val user = repository.auth.currentUserOrNull()
                 // Initializing has no user yet; wait until the SDK finishes restoring its session.
                 if (it is io.github.jan.supabase.auth.status.SessionStatus.Initializing) return@collect
-                if (user == null) _state.value = AccountState(initializing = false)
+                if (user == null) {
+                    _state.value = AccountState(initializing = false)
+                    com.example.findme.widget.WidgetStore.clear(getApplication())
+                }
                 else if (_state.value.profile?.id != user.id) {
                     _state.update { old -> old.copy(initializing = false, signedIn = true) }
                     refresh()
@@ -169,6 +172,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 val sender = profiles.find { it.id == signal.senderId }?.displayName ?: "Tu gente"
                 NotificationHelper.showMessageNotification(getApplication(), signal.id, sender, signal.message)
             }
+            publishWidgetSnapshot()
             updateStatusNotifications()
         }
     }
@@ -193,6 +197,18 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 catch (_: Exception) { _state.update { old -> old.copy(syncIssue = true) } }
             }
         }
+    }
+
+    private suspend fun publishWidgetSnapshot() {
+        val profile = _state.value.profile ?: return
+        if (repository.auth.currentUserOrNull()?.id != profile.id) return
+        try {
+            com.example.findme.widget.WidgetStore.publish(getApplication(), profile.id,
+                _state.value.profiles.filterNot { it.id == profile.id } + profile, allSchedules, allStatuses) {
+                repository.auth.currentUserOrNull()?.id == profile.id
+            }
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) { android.util.Log.w("AccountViewModel", "Widget update failed", error) }
     }
 
     private fun updateStatusNotifications() {
@@ -252,19 +268,19 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         _state.update { old -> old.copy(profile = profile,
             profiles = old.profiles.filterNot { it.id == profile.id } + profile,
             notice = "Perfil guardado.") }
-        com.example.findme.widget.ConnectionWidget().updateAll(getApplication())
+        publishWidgetSnapshot()
     }
     override fun logout() = perform {
         repository.auth.signOut()
         _state.value = AccountState(initializing = false)
-        com.example.findme.widget.ConnectionWidget().updateAll(getApplication())
+        com.example.findme.widget.WidgetStore.clear(getApplication())
     }
     override fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {
         perform {
             require(activities.isNotEmpty()) { "Elige al menos un día." }
             val currentSchedules = _state.value.schedules
             activities.forEach { activity ->
-                val error = validateSchedule(activity.dayOfWeek, activity.startTime, activity.endTime, activity.title)
+                val error = validateSchedule(activity.dayOfWeek, activity.startTime, activity.endTime, activity.title, activity.endsNextDay)
                     ?: findScheduleConflict(currentSchedules, activity)?.conflictMessage()
                 if (error != null) throw IllegalArgumentException(error)
             }
@@ -284,6 +300,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                     notice = if (rows.size == 1) "Actividad guardada." else "Actividad guardada en ${rows.size} días."
                 ) }
             } finally { scheduleSync.finishWrite() }
+            publishWidgetSnapshot()
         }
     }
     override fun deleteSchedule(id: String) = perform {
@@ -298,6 +315,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 notice = "Actividad eliminada."
             ) }
         } finally { scheduleSync.finishWrite() }
+        publishWidgetSnapshot()
     }
     override fun setStatus(text: String, minutes: Long) = perform {
         repository.setStatus(text, minutes); load()
@@ -325,13 +343,6 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         _state.update { it.copy(notice = "Mensaje rápido creado.") }
     }
     override fun deleteMessage(id: String) = perform { repository.deleteQuickMessage(id); load() }
-    override fun configureWidget(message: QuickMessage) {
-        val person = _state.value.selectedPerson ?: return
-        perform {
-            com.example.findme.widget.ConnectionWidgetSettings.save(getApplication(), repository.userId(), person.id, message.id)
-            _state.update { it.copy(notice = "Widget configurado para ${person.displayName}. Añade FindMe · Mi gente desde la pantalla de inicio de Android.") }
-        }
-    }
     override fun send(message: QuickMessage) {
         val recipient = _state.value.selectedPerson ?: return
         perform {

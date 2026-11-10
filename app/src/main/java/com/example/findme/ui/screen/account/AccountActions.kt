@@ -27,6 +27,5 @@ interface AccountActions {
     fun selectPerson(profile: AccountProfile) {}
     fun saveMessage(label: String, message: String) {}
     fun deleteMessage(id: String) {}
-    fun configureWidget(message: QuickMessage) {}
     fun send(message: QuickMessage) {}
 }

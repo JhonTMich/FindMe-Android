@@ -9,6 +9,7 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.SystemBarStyle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
@@ -73,7 +74,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         receiveConfirmation(intent)
         com.example.findme.util.NotificationHelper.createNotificationChannel(this)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
         setContent {
             val accent by appSettings.accent.collectAsStateWithLifecycle(initialValue = AppAccent.Indigo)
             val accountState by accountViewModel.state.collectAsStateWithLifecycle()

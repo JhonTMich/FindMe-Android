@@ -49,6 +49,37 @@ class AccountUiTest {
         }
     }
 
+    @Test fun brandScreensAcrossNavigationAndAppearance() {
+        val current = mutableStateOf(state)
+        compose.setContent {
+            FindmeTheme(accent = current.value.settings.accent) {
+                AccountContent(current.value, object : AccountActions {
+                    override fun setAccent(accent: com.example.findme.data.local.AppAccent) {
+                        current.value = current.value.copy(settings = current.value.settings.copy(accent = accent))
+                    }
+                })
+            }
+        }
+        compose.onNodeWithText("Mi día").assertIsDisplayed()
+        screenshot("brand-my-day", composeOnly = true)
+        compose.onNodeWithText("Horario").performClick()
+        compose.onNodeWithText("Tu semana").assertIsDisplayed()
+        screenshot("brand-schedule", composeOnly = true)
+        compose.onNodeWithText("Personas").performClick()
+        compose.onNodeWithText("Tu gente").assertIsDisplayed()
+        screenshot("brand-people", composeOnly = true)
+        compose.onNodeWithText("Perfil").performClick()
+        screenshot("brand-profile", composeOnly = true)
+        compose.onNodeWithText("Apariencia").performScrollTo()
+        compose.onNodeWithText("Hielo").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("Hielo").assertIsSelected()
+        screenshot("brand-appearance", composeOnly = true)
+        current.value = AccountState(initializing = false)
+        compose.onNodeWithText("Qué bueno verte.").assertIsDisplayed()
+        screenshot("brand-login", composeOnly = true)
+    }
+
     @Test fun manualStatusIsVisibleDuringClassAndCanBeChanged() {
         var capturedText = ""
         var duration = 0L
@@ -171,6 +202,41 @@ class AccountUiTest {
         assertEquals(attempts.first(), attempts.last())
     }
 
+    @Test fun editorPreservesTheOvernightFlagAndRejectsMissingFlag() {
+        val night = schedule.copy(id = "night", startTime = "19:00", endTime = "07:00",
+            title = "Turno nocturno", category = "work", endsNextDay = true)
+        var saved: ScheduleDto? = null
+        show(object : AccountActions {
+            override fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {
+                saved = activities.single()
+            }
+        }, snapshot = state.copy(schedules = listOf(night)))
+        compose.onNodeWithText("Horario").performClick()
+        compose.onNodeWithText("(+1 día)", substring = true).assertExists()
+        compose.onNodeWithText("Editar").performScrollTo().performClick()
+        val overnight = compose.onNodeWithText("Termina al día siguiente")
+        overnight.assertIsOn().performScrollTo().performClick()
+        compose.onNodeWithText("Guardar actividad").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        assertNull(saved)
+        compose.onNodeWithText("Activa «Termina al día siguiente»", substring = true).assertExists()
+        overnight.performScrollTo().performClick()
+        compose.onNodeWithText("Guardar actividad").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        assertEquals("night", saved?.id)
+        assertEquals("19:00", saved?.startTime)
+        assertEquals("07:00", saved?.endTime)
+        assertTrue(saved?.endsNextDay == true)
+        screenshot("overnight-editor")
+    }
+
+    @Test fun todaysAgendaIncludesTheShiftThatStartedYesterday() {
+        val night = schedule.copy(id = "night", dayOfWeek = (now.dayOfWeek.value + 5) % 7 + 1,
+            startTime = "19:00", endTime = "07:00", title = "Turno nocturno",
+            category = "work", endsNextDay = true)
+        show(snapshot = state.copy(schedules = listOf(night), statuses = emptyList()))
+        compose.onNodeWithText("Desde ayer").performScrollTo().assertIsDisplayed()
+        screenshot("overnight-agenda")
+    }
+
     @Test fun peopleExplainsMessagesAndKeepsConfigurationOutOfMainFlow() {
         var sent = ""
         show(object : AccountActions { override fun send(message: QuickMessage) { sent = message.id } })
@@ -180,7 +246,7 @@ class AccountUiTest {
         screenshot("account-people")
         compose.onNodeWithText("¿Todo bien?").performScrollTo().performClick()
         assertEquals("quick", sent)
-        compose.onNodeWithText("Mis mensajes y widget").performScrollTo().performClick()
+        compose.onNodeWithText("Mis mensajes").performScrollTo().performClick()
         compose.onNodeWithText("Tus mensajes rápidos").assertIsDisplayed()
         compose.onNodeWithText("¿Qué quieres decir?").assertIsDisplayed()
         compose.onNodeWithText("Nombre del botón").assertDoesNotExist()
@@ -234,7 +300,12 @@ class AccountUiTest {
         compose.onNodeWithText("Nombre de usuario").assertIsDisplayed()
         compose.onNodeWithText("Correo electrónico").assertDoesNotExist()
         compose.onNodeWithText("Crear cuenta").assertIsDisplayed()
-        compose.onNodeWithText("¿Primera vez? Crea tu cuenta").assertDoesNotExist()
+        compose.onNodeWithText("No recibí mi confirmación").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Mostrar contraseña").performClick()
+        compose.onNodeWithContentDescription("Ocultar contraseña").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Ocultar contraseña").performClick()
+        compose.onAllNodesWithContentDescription("FindMe").assertCountEquals(1)
+        screenshot("blue-login", composeOnly = true)
     }
 
     @Test fun registrationRequiresMatchingPasswordsAndSubmitsUserChoices() {
@@ -252,6 +323,8 @@ class AccountUiTest {
             })
         } }
         compose.onNodeWithText("Crear cuenta").performClick()
+        compose.onNodeWithText("No recibí mi confirmación").assertExists()
+        compose.onAllNodesWithContentDescription("FindMe").assertCountEquals(1)
         compose.onNodeWithText("Nombre visible").performTextInput("Chosen Name")
         compose.onNodeWithText("Correo electrónico").performTextInput("signup@example.test")
         compose.onNodeWithText("Nombre de usuario").performTextInput("chosen_user")
@@ -261,6 +334,44 @@ class AccountUiTest {
         compose.onNodeWithText("Confirmar contraseña").performScrollTo().performTextReplacement("local-test-password")
         compose.onNodeWithText("Registrarme").performScrollTo().performClick()
         assertTrue(submitted)
+    }
+
+    @Test fun confirmationRecoveryBelongsToRegistrationAndCanGoBack() {
+        var sentEmail = ""
+        compose.setContent { FindmeTheme {
+            AccountContent(AccountState(initializing = false), object : AccountActions {
+                override fun resendConfirmation(email: String) { sentEmail = email }
+            })
+        } }
+        compose.onNodeWithText("No recibí mi confirmación").assertDoesNotExist()
+        compose.onNodeWithText("Crear cuenta").performClick()
+        compose.onNodeWithText("No recibí mi confirmación").performScrollTo().performClick()
+        compose.onNodeWithText("Correo electrónico").performTextInput("signup@example.test")
+        compose.onNodeWithText("Contraseña").assertDoesNotExist()
+        screenshot("blue-confirmation-recovery", composeOnly = true)
+        compose.onNodeWithText("Enviar confirmación").performScrollTo().performClick()
+        assertEquals("signup@example.test", sentEmail)
+        compose.onNodeWithText("Volver al registro").performScrollTo().performClick()
+        compose.onNodeWithText("Crea tu cuenta").assertIsDisplayed()
+    }
+
+    @Test fun todayShowsOnlyTheNextActivityOrTheEndOfTheDay() {
+        val local = ZonedDateTime.now(java.time.ZoneId.of("America/Lima"))
+        val future = schedule.copy(id = "next", dayOfWeek = local.dayOfWeek.value, startTime = local.plusMinutes(10).toLocalTime().toString(),
+            endTime = local.plusMinutes(30).toLocalTime().toString(), title = "Siguiente actividad de prueba")
+        // Very late runs cannot have a future start on the same local date.
+        org.junit.Assume.assumeTrue(local.plusMinutes(30).toLocalDate() == local.toLocalDate())
+        val current = mutableStateOf(state.copy(schedules = listOf(future)))
+        compose.setContent { FindmeTheme { AccountContent(current.value, object : AccountActions {}) } }
+        compose.onNodeWithText("Próxima en tu horario").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Nada más por hoy").assertDoesNotExist()
+        screenshot("blue-today-next", composeOnly = true)
+        compose.onNodeWithText("Ver horario").performScrollTo().performClick()
+        compose.onNodeWithText("Tu semana").assertIsDisplayed()
+        compose.onNodeWithText("Hoy").performClick()
+        current.value = state.copy(schedules = emptyList())
+        compose.onNodeWithText("Nada más por hoy").performScrollTo().assertIsDisplayed()
+        screenshot("blue-today-finished", composeOnly = true)
     }
 
     @Test fun confirmationExplainsNextStepAndSupportsResending() {
@@ -299,8 +410,8 @@ class AccountUiTest {
         compose.onNodeWithText("Mensajes recibidos").performScrollTo().assertIsOn().performClick()
         compose.onNodeWithText("Mensajes recibidos").assertIsOff()
         screenshot("account-profile-notifications-compose", composeOnly = true)
-        compose.onNodeWithText("Menta").performScrollTo().assertIsDisplayed().performClick()
-        compose.onNodeWithText("Menta").assertIsSelected()
+        compose.onNodeWithText("Hielo").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithText("Hielo").assertIsSelected()
         assertEquals(com.example.findme.data.local.AppAccent.Mint, current.value.settings.accent)
         screenshot("account-profile-mint-compose", composeOnly = true)
         compose.onNodeWithText("Buscar actualizaciones").performScrollTo().assertIsDisplayed()

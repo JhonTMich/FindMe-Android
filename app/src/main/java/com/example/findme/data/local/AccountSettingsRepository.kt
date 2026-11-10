@@ -7,7 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
-enum class AppAccent(val label: String) { Indigo("Índigo"), Mint("Menta"), Rose("Rosa") }
+enum class AppAccent(val label: String) { Indigo("Azul"), Mint("Hielo"), Rose("Acero") }
 enum class AccountAlert { Activities, Statuses, Messages }
 data class AccountSettings(
     val activities: Boolean = true,

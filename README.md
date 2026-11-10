@@ -2,9 +2,9 @@
 
 Aplicación Kotlin con Jetpack Compose para organizar horarios y compartir actividades y estados entre personas conectadas. El registro requiere un correo autorizado. [Configuración de cuentas y conexiones](docs/cuentas-conexiones.md).
 
-Versión actual: **1.4** (`versionCode = 1004000`).
+Versión actual: **1.5** (`versionCode = 1005000`).
 
-La versión 1.4 mejora el editor de horarios: creación para varios días, selección de horas en formato de 12 horas, validación de cruces y guardado y borrado de actividades más rápidos.
+La versión 1.5 incorpora turnos nocturnos, un widget de estado configurable por persona, la identidad azul del nuevo icono, un acceso más claro y la próxima actividad en Hoy.
 
 ## Flujo de trabajo
 
@@ -64,6 +64,14 @@ Si falla una ejecución por una incidencia temporal, puedes volver a ejecutarla 
 
 Referencia: [API de releases de GitHub](https://docs.github.com/en/rest/releases/releases#get-the-latest-release).
 
+## Widget de estado actual
+
+Añade **FindMe · Estado actual** desde el selector de widgets de Android. Al añadirlo, elige **Mi estado** o una persona conectada. Puedes tener varios widgets con personas distintas y cambiar la selección tocando el nombre o **⋮**. El widget anterior «Mi gente» se actualiza al nuevo diseño y conserva su persona seleccionada; los mensajes rápidos se envían desde Personas.
+
+Muestra el estado manual vigente o la actividad del horario, la próxima actividad y la fecha de los últimos datos. El tamaño ampliado añade ubicación y hora de fin. El botón **↻** consulta los datos sin abrir la app. Sin conexión se conserva la última información y se siguen calculando las actividades y caducidades con esos datos.
+
+Los cambios sincronizados o guardados en la app actualizan la caché del widget. Con la app cerrada se consulta periódicamente cada 15 minutos y se programa un recálculo local para el siguiente comienzo, fin o vencimiento conocido. Android puede retrasar estos trabajos por ahorro de batería; no se promete actualización instantánea de cambios remotos con la app cerrada. No se necesitan permisos de alarmas exactas.
+
 ## Verificación
 
 ```powershell
@@ -81,3 +89,11 @@ Las pruebas de dispositivo requieren un emulador o teléfono conectado. Incluyen
 - El código conserva funciones previas de administrador y widgets. La contraseña local de administrador existente no constituye autorización en el servidor; una futura gestión de roles necesita autenticación y políticas de acceso en Supabase.
 
 La versión 1.3 incorpora cuentas con registro por correos autorizados, acceso con usuario y contraseña, horarios propios, conexiones mutuas, ajustes de avisos y colores, y mensajes en vivo con la app abierta. Los mensajes enviados caducan a las 24 horas. La configuración del servidor y las limitaciones actuales están en [cuentas y conexiones](docs/cuentas-conexiones.md).
+
+## Identidad visual
+
+La interfaz usa el nuevo símbolo de FindMe: azul noche, azul acero y blanco suave. Acceso, navegación, estados, categorías, horarios, ajustes y widgets comparten esta paleta sin acentos fluorescentes. En **Perfil → Apariencia** se puede elegir Azul, Hielo o Acero; las preferencias guardadas conservan sus identificadores anteriores para mantener la compatibilidad.
+
+El símbolo de la cabecera reutiliza los trazados del icono adaptativo, sin el margen de seguridad del launcher. La cabecera muestra un único logo. La recuperación del correo de confirmación se ofrece desde el registro y desde la pantalla posterior a crear la cuenta. En **Hoy**, una tarjeta presenta la siguiente actividad que empieza en la fecha y zona del perfil, o «Nada más por hoy», y permite abrir Horario.
+
+La prueba `brandScreensAcrossNavigationAndAppearance` recorre las pantallas y guarda capturas en `Pictures/FindMeTests` del emulador para revisar la presentación.
