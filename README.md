@@ -2,9 +2,9 @@
 
 Aplicación Kotlin con Jetpack Compose para organizar horarios y compartir actividades y estados entre personas conectadas. El registro requiere un correo autorizado. [Configuración de cuentas y conexiones](docs/cuentas-conexiones.md).
 
-Versión actual: **1.4** (`versionCode = 1004000`).
+Versión actual: **1.5** (`versionCode = 1005000`).
 
-La versión 1.4 mejora el editor de horarios: creación para varios días, selección de horas en formato de 12 horas, validación de cruces y guardado y borrado de actividades más rápidos.
+La versión 1.5 incorpora turnos nocturnos, un widget de estado configurable por persona, la identidad azul del nuevo icono, un acceso más claro y la próxima actividad en Hoy.
 
 ## Flujo de trabajo
 
