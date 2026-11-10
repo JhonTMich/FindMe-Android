@@ -75,7 +75,7 @@ import kotlinx.coroutines.launch
 
 private val days = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
 private val hourFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
-private val cyan = BrandCyan
+private val cyan = BrandSky
 private fun AccountProfile.zone() = runCatching { ZoneId.of(timezone) }.getOrDefault(ZoneId.systemDefault())
 
 @Composable
@@ -96,7 +96,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
         Box(Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 BrandMark(Modifier.size(88.dp))
-                CircularProgressIndicator(Modifier.size(24.dp), color = BrandLime, strokeWidth = 2.dp)
+                CircularProgressIndicator(Modifier.size(24.dp), color = BrandAccent, strokeWidth = 2.dp)
             }
         }
         return
@@ -704,7 +704,7 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         }
     }
     Panel {
-        SectionHeading(Icons.Default.Palette, "Apariencia", "Los colores de tu órbita, a tu manera.")
+        SectionHeading(Icons.Default.Palette, "Apariencia", "Tonos suaves, inspirados en el nuevo icono.")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AppAccent.entries.forEach { accent ->
                 FilterChip(selected = state.settings.accent == accent, onClick = { actions.setAccent(accent) },
