@@ -205,6 +205,7 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmation by remember { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.confirmationEmail) {
         if (state.confirmationEmail != null) { password = ""; confirmation = "" }
     }
@@ -224,21 +225,35 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
     }
     val registering = mode == "register"
     val resending = mode == "resend"
-    BrandWelcome("Tu día, compartido", when { registering -> "Tu gente, más cerca."; resending -> "Un paso más."; else -> "Qué bueno verte." },
-        if (registering) "Crea tu cuenta con un correo autorizado. Tú eliges cómo te ve tu gente." else "Organiza tus actividades y mantente conectado con quienes tú elijas.")
+    BrandWelcome("Tu día, compartido", when { registering -> "Tu gente, más cerca."; resending -> "Confirma tu cuenta."; else -> "Qué bueno verte." },
+        when { registering -> "Crea tu cuenta y confirma tu correo para empezar."
+            resending -> "Te enviaremos otro enlace al correo con el que empezaste tu registro."
+            else -> "Tu horario y tu gente, en un mismo lugar." })
     Panel {
-        SectionHeading(Icons.Default.PersonOutline, when { registering -> "Crea tu cuenta"; resending -> "Confirma tu cuenta"; else -> "Inicia sesión" })
+        SectionHeading(Icons.Default.PersonOutline, when { registering -> "Crea tu cuenta"; resending -> "Recibe otro enlace"; else -> "Inicia sesión" })
         if (registering) Field(name, { name = it.take(80) }, "Nombre visible", keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
         if (registering || resending) Field(email, { email = it.take(254) }, "Correo electrónico", keyboard = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
         if (!resending) Field(username, { username = it.take(24) }, "Nombre de usuario", keyboard = KeyboardOptions(autoCorrectEnabled = false))
         if (registering) Text("De 3 a 24 letras sin tildes, números o guion bajo. Será tu usuario para entrar.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
         if (!resending) {
             OutlinedTextField(password, { password = it.take(128) }, label = { Text("Contraseña") }, singleLine = true, enabled = !state.busy,
-                visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
+                    }
+                }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
         }
         if (registering) {
             OutlinedTextField(confirmation, { confirmation = it.take(128) }, label = { Text("Confirmar contraseña") }, singleLine = true, enabled = !state.busy,
-                visualTransformation = PasswordVisualTransformation(), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
+                visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
+                    }
+                }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
                 isError = confirmation.isNotEmpty() && password != confirmation)
             Text(if (confirmation.isNotEmpty() && password != confirmation) "Las contraseñas no coinciden." else "Usa entre 8 y 128 caracteres. Confirma tu correo para empezar.",
                 color = if (confirmation.isNotEmpty() && password != confirmation) MaterialTheme.colorScheme.error else TextMuted, style = MaterialTheme.typography.bodySmall)
@@ -255,10 +270,10 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
         }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy && valid) {
             Text(when { state.busy -> "Un momento…"; registering -> "Registrarme"; resending -> "Enviar confirmación"; else -> "Entrar" })
         }
-        TextButton(onClick = { mode = if (mode == "login") "register" else "login"; password = ""; confirmation = "" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(if (mode == "login") "Crear cuenta" else "Ya tengo cuenta", color = MaterialTheme.colorScheme.primary)
+        TextButton(onClick = { mode = when (mode) { "login", "resend" -> "register"; else -> "login" }; password = ""; confirmation = ""; passwordVisible = false }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text(when (mode) { "login" -> "Crear cuenta"; "resend" -> "Volver al registro"; else -> "Ya tengo cuenta" }, color = MaterialTheme.colorScheme.primary)
         }
-        if (!resending) TextButton(onClick = { mode = "resend"; password = ""; confirmation = "" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+        if (registering) TextButton(onClick = { mode = "resend"; password = ""; confirmation = ""; passwordVisible = false }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("No recibí mi confirmación", color = TextMuted)
         }
     }

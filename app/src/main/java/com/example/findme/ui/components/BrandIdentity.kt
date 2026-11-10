@@ -2,7 +2,6 @@ package com.example.findme.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,7 +11,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -51,18 +49,11 @@ fun BrandContour(modifier: Modifier = Modifier) {
 
 @Composable
 fun BrandWelcome(eyebrow: String, title: String, subtitle: String) {
-    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp))
-        .background(Brush.linearGradient(listOf(DarkSurface, BrandBlue.copy(alpha = .22f), DarkCardBg)))
-        .border(1.dp, DarkCardBorder, RoundedCornerShape(28.dp))) {
-        BrandContour(Modifier.alpha(.22f).align(Alignment.TopEnd).offset(x = 72.dp, y = (-40).dp).size(240.dp))
-        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            BrandMark(Modifier.size(64.dp))
-            Text(eyebrow.uppercase(), color = BrandAccent, style = MaterialTheme.typography.labelSmall,
-                letterSpacing = 1.5.sp)
-            Text(title, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold,
-                color = TextPrimary)
-            Text(subtitle, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-        }
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(eyebrow.uppercase(), color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelSmall, letterSpacing = 1.2.sp)
+        Text(title, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text(subtitle, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

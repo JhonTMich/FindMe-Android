@@ -300,7 +300,12 @@ class AccountUiTest {
         compose.onNodeWithText("Nombre de usuario").assertIsDisplayed()
         compose.onNodeWithText("Correo electrónico").assertDoesNotExist()
         compose.onNodeWithText("Crear cuenta").assertIsDisplayed()
-        compose.onNodeWithText("¿Primera vez? Crea tu cuenta").assertDoesNotExist()
+        compose.onNodeWithText("No recibí mi confirmación").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Mostrar contraseña").performClick()
+        compose.onNodeWithContentDescription("Ocultar contraseña").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Ocultar contraseña").performClick()
+        compose.onAllNodesWithContentDescription("FindMe").assertCountEquals(1)
+        screenshot("blue-login", composeOnly = true)
     }
 
     @Test fun registrationRequiresMatchingPasswordsAndSubmitsUserChoices() {
@@ -318,6 +323,8 @@ class AccountUiTest {
             })
         } }
         compose.onNodeWithText("Crear cuenta").performClick()
+        compose.onNodeWithText("No recibí mi confirmación").assertExists()
+        compose.onAllNodesWithContentDescription("FindMe").assertCountEquals(1)
         compose.onNodeWithText("Nombre visible").performTextInput("Chosen Name")
         compose.onNodeWithText("Correo electrónico").performTextInput("signup@example.test")
         compose.onNodeWithText("Nombre de usuario").performTextInput("chosen_user")
@@ -327,6 +334,25 @@ class AccountUiTest {
         compose.onNodeWithText("Confirmar contraseña").performScrollTo().performTextReplacement("local-test-password")
         compose.onNodeWithText("Registrarme").performScrollTo().performClick()
         assertTrue(submitted)
+    }
+
+    @Test fun confirmationRecoveryBelongsToRegistrationAndCanGoBack() {
+        var sentEmail = ""
+        compose.setContent { FindmeTheme {
+            AccountContent(AccountState(initializing = false), object : AccountActions {
+                override fun resendConfirmation(email: String) { sentEmail = email }
+            })
+        } }
+        compose.onNodeWithText("No recibí mi confirmación").assertDoesNotExist()
+        compose.onNodeWithText("Crear cuenta").performClick()
+        compose.onNodeWithText("No recibí mi confirmación").performScrollTo().performClick()
+        compose.onNodeWithText("Correo electrónico").performTextInput("signup@example.test")
+        compose.onNodeWithText("Contraseña").assertDoesNotExist()
+        screenshot("blue-confirmation-recovery", composeOnly = true)
+        compose.onNodeWithText("Enviar confirmación").performScrollTo().performClick()
+        assertEquals("signup@example.test", sentEmail)
+        compose.onNodeWithText("Volver al registro").performScrollTo().performClick()
+        compose.onNodeWithText("Crea tu cuenta").assertIsDisplayed()
     }
 
     @Test fun confirmationExplainsNextStepAndSupportsResending() {
