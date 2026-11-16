@@ -26,11 +26,7 @@ const migration = async (suffix) => {
   assert.ok(name, `Missing migration ${suffix}`);
   await db.exec(await readFile(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8'));
 };
-// The base model may still live outside migrations/ or already be moved there.
-const baseModel = async () => {
-  try { await db.exec(await readFile(new URL('../supabase/account-model.sql', import.meta.url), 'utf8')); }
-  catch (error) { if (error.code !== 'ENOENT') throw error; await migration('_crear_cuentas_horarios_y_conexiones.sql'); }
-};
+const baseModel = () => migration('_crear_cuentas_horarios_y_conexiones.sql');
 
 try {
   await db.exec(`
