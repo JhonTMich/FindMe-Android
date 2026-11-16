@@ -22,19 +22,18 @@ class GlanceWidgetWorker(private val context: Context, params: WorkerParameters)
         // Recalculate cached schedules even when the network is unavailable.
         context.dataStore.edit { it[longPreferencesKey("widget_clock")] = System.currentTimeMillis() }
         ConnectionWidget().updateAll(context)
-        val result = try {
+        // A failed fetch only marks the widget as stale. Retrying with backoff while offline would
+        // wake the device repeatedly; the periodic run tries again in 15 minutes anyway.
+        try {
             withTimeout(20_000) { WidgetStore.refresh(context) }
-            Result.success()
         } catch (_: TimeoutCancellationException) {
             markStale()
-            Result.retry()
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) {
             markStale()
-            Result.retry()
         }
         enqueueBoundaryUpdate(context)
-        return result
+        return Result.success()
     }
 
     private suspend fun markStale() {
