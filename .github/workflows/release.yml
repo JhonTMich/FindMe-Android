@@ -110,6 +110,12 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # Optional key rotation (see README). All five must be set together.
+          ANDROID_NEW_KEYSTORE_BASE64: ${{ secrets.ANDROID_NEW_KEYSTORE_BASE64 }}
+          ANDROID_NEW_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_NEW_KEYSTORE_PASSWORD }}
+          ANDROID_NEW_KEY_ALIAS: ${{ secrets.ANDROID_NEW_KEY_ALIAS }}
+          ANDROID_NEW_KEY_PASSWORD: ${{ secrets.ANDROID_NEW_KEY_PASSWORD }}
+          ANDROID_SIGNING_LINEAGE_BASE64: ${{ secrets.ANDROID_SIGNING_LINEAGE_BASE64 }}
         run: |
           for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
             if [[ -z "${!name}" ]]; then
@@ -117,16 +123,33 @@ jobs:
               exit 1
             fi
           done
+          rotation=(ANDROID_NEW_KEYSTORE_BASE64 ANDROID_NEW_KEYSTORE_PASSWORD ANDROID_NEW_KEY_ALIAS ANDROID_NEW_KEY_PASSWORD ANDROID_SIGNING_LINEAGE_BASE64)
+          present=0
+          for name in "${rotation[@]}"; do [[ -n "${!name}" ]] && present=$((present + 1)); done
+          if (( present != 0 && present != ${#rotation[@]} )); then
+            echo "Key rotation needs all of: ${rotation[*]}" >&2
+            exit 1
+          fi
           umask 077
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/findme-signing.keystore"
           mkdir -p dist
           tools="$ANDROID_HOME/build-tools/36.0.0"
           "$tools/zipalign" -P 16 -f 4 unsigned/app-release-unsigned.apk "$RUNNER_TEMP/aligned.apk"
-          "$tools/apksigner" sign --ks "$RUNNER_TEMP/findme-signing.keystore" \
-            --ks-key-alias "$ANDROID_KEY_ALIAS" --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
-            --key-pass env:ANDROID_KEY_PASSWORD --v4-signing-enabled false \
+          signers=(--ks "$RUNNER_TEMP/findme-signing.keystore" --ks-key-alias "$ANDROID_KEY_ALIAS"
+            --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD)
+          if (( present )); then
+            # The original key keeps signing for older Android versions; newer ones switch to the
+            # new key and accept it as an update because the lineage was signed by the original.
+            printf '%s' "$ANDROID_NEW_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/findme-signing-new.keystore"
+            printf '%s' "$ANDROID_SIGNING_LINEAGE_BASE64" | base64 --decode > "$RUNNER_TEMP/findme-signing.lineage"
+            signers+=(--next-signer --ks "$RUNNER_TEMP/findme-signing-new.keystore" --ks-key-alias "$ANDROID_NEW_KEY_ALIAS"
+              --ks-pass env:ANDROID_NEW_KEYSTORE_PASSWORD --key-pass env:ANDROID_NEW_KEY_PASSWORD
+              --lineage "$RUNNER_TEMP/findme-signing.lineage")
+            echo "Signing with key rotation." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          "$tools/apksigner" sign "${signers[@]}" --v4-signing-enabled false \
             --out "dist/$APK_NAME" "$RUNNER_TEMP/aligned.apk"
-          "$tools/apksigner" verify --verbose "dist/$APK_NAME"
+          "$tools/apksigner" verify --verbose --print-certs "dist/$APK_NAME"
           "$tools/zipalign" -c -P 16 4 "dist/$APK_NAME"
           "$tools/aapt" dump badging "dist/$APK_NAME" > "$RUNNER_TEMP/apk-metadata.txt"
           python3 - <<'PY'
@@ -158,4 +181,4 @@ jobs:
           echo "Release published: https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
       - name: Remove the signing key from the runner
         if: always()
-        run: rm -f -- "$RUNNER_TEMP/findme-signing.keystore"
+        run: rm -f -- "$RUNNER_TEMP/findme-signing.keystore" "$RUNNER_TEMP/findme-signing-new.keystore" "$RUNNER_TEMP/findme-signing.lineage"

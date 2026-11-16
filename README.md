@@ -56,7 +56,28 @@ Los cuatro secretos de firma de este repositorio ya están configurados en GitHu
 | `ANDROID_KEY_ALIAS` | Alias de la clave |
 | `ANDROID_KEY_PASSWORD` | Contraseña de la clave |
 
-Se utiliza el mismo certificado local de desarrollo de los APK publicados hasta ahora para conservar la compatibilidad de actualización. La clave privada no se incorpora al repositorio ni a los artefactos. Para una distribución de producción se debe definir y custodiar una estrategia de firma apropiada.
+Se utiliza el mismo certificado local de desarrollo de los APK publicados hasta ahora para conservar la compatibilidad de actualización. La clave privada no se incorpora al repositorio ni a los artefactos.
+
+### Rotación a una clave de producción
+
+Cambiar de clave sin más obligaría a desinstalar la app. Android 9 y posteriores admiten la rotación de firma (APK Signature Scheme v3): la clave original firma un *linaje* que autoriza a la nueva, y las versiones antiguas de Android siguen validando la clave original. El workflow y el validador de actualizaciones de la app ya la admiten. Pasos, en un equipo de confianza y con build-tools 36:
+
+```bash
+keytool -genkeypair -v -keystore findme-release.jks -alias findme-release -keyalg RSA -keysize 4096 -validity 10000
+apksigner rotate --out findme.lineage --old-signer --ks <clave-actual>.jks --ks-key-alias <alias-actual> --new-signer --ks findme-release.jks --ks-key-alias findme-release
+```
+
+Después se añaden estos secretos, además de los cuatro anteriores, que deben conservarse:
+
+| Secreto | Contenido |
+| --- | --- |
+| `ANDROID_NEW_KEYSTORE_BASE64` | `findme-release.jks` en Base64 |
+| `ANDROID_NEW_KEYSTORE_PASSWORD` | Contraseña del archivo nuevo |
+| `ANDROID_NEW_KEY_ALIAS` | `findme-release` |
+| `ANDROID_NEW_KEY_PASSWORD` | Contraseña de la clave nueva |
+| `ANDROID_SIGNING_LINEAGE_BASE64` | `findme.lineage` en Base64 |
+
+Si falta alguno de los cinco, el workflow falla en vez de firmar a medias. Con `apksigner` 33 o posterior, la clave nueva se aplica en Android 13 y posteriores; los dispositivos anteriores siguen viendo la clave original. Por eso esa clave debe seguir guardándose. Antes de publicar conviene instalar un APK rotado sobre la versión actual en un dispositivo de prueba. La nueva clave y su contraseña se guardan fuera del repositorio, con copia de seguridad cifrada: perderlas impide publicar actualizaciones.
 
 Los PR solo ejecutan comprobaciones y compilación sin acceso a los secretos de firma. La firma y publicación están reservadas a tags integrados en `main`. Se puede consultar el progreso en [Actions](https://github.com/JhonTMich/FindMe-Android/actions/workflows/release.yml).
 
