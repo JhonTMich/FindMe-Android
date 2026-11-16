@@ -37,12 +37,16 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     private var downloadJob: Job? = null
     init { check() }
 
+    private fun updatesDirectory() = File(getApplication<Application>().cacheDir, "updates")
+
     fun check() {
         if (_state.value.checking || _state.value.downloading || _state.value.requestInstall) return
         _state.update { it.copy(checking = true) }
         viewModelScope.launch {
             try {
                 val release = repository.latest(BuildConfig.VERSION_NAME)
+                // Up to date: an APK left from the update that was just installed is no longer needed.
+                if (release == null) withContext(Dispatchers.IO) { ApkDownloader.clear(updatesDirectory()) }
                 _state.value = UpdateState(release = release,
                     message = if (release == null) "Tienes la versión más reciente." else "Hay una actualización de FindMe disponible.",
                     showDialog = release != null)
@@ -61,7 +65,7 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
         downloadJob = viewModelScope.launch {
             try {
                 val file = _state.value.downloadedApk?.takeIf { it.isFile } ?: downloader.download(
-                    release.apk, File(getApplication<Application>().cacheDir, "updates")
+                    release.apk, updatesDirectory()
                 ) { progress -> _state.update { it.copy(progress = progress) } }
                 withContext(Dispatchers.IO) { ApkUpdateInstaller.validate(getApplication(), file, release.version) }
                 _state.update { it.copy(downloading = false, downloadedApk = file, requestInstall = true,

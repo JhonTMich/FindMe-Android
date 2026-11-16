@@ -7,7 +7,7 @@ import org.junit.Test
 class AppReleaseParserTest {
     private val repository = AppUpdateRepository()
     private val url = "https://github.com/JhonTMich/FindMe-Android/releases/download/v1.3/FindMe-1.3.apk"
-    private fun asset(name: String = "FindMe-1.3.apk", source: String = url, size: Long = 100, digest: String = "null") =
+    private fun asset(name: String = "FindMe-1.3.apk", source: String = url, size: Long = 100, digest: String = "\"sha256:${"ab".repeat(32)}\"") =
         """{"name":"$name","browser_download_url":"$source","size":$size,"digest":$digest,"state":"uploaded"}"""
     private fun release(assets: String, draft: Boolean = false, prerelease: Boolean = false) =
         """{"tag_name":"v1.3","body":"Patch notes are ignored","html_url":"https://github.com/JhonTMich/FindMe-Android/releases/tag/v1.3","draft":$draft,"prerelease":$prerelease,"assets":[$assets]}"""
@@ -45,7 +45,9 @@ class AppReleaseParserTest {
     @Test fun acceptsOnlyValidSha256Digests() {
         val digest = "ab".repeat(32)
         assertEquals(digest, repository.parseRelease(release(asset(digest = "\"sha256:$digest\"")), "1.2")!!.apk.sha256)
-        try { repository.parseRelease(release(asset(digest = "\"sha256:bad\"")), "1.2"); fail("Bad digest accepted") }
-        catch (_: IllegalStateException) { }
+        for (bad in listOf("\"sha256:bad\"", "null", "\"md5:${"ab".repeat(16)}\"", "\"${"ab".repeat(32)}\"")) {
+            try { repository.parseRelease(release(asset(digest = bad)), "1.2"); fail("Missing or bad digest accepted: $bad") }
+            catch (_: IllegalStateException) { }
+        }
     }
 }

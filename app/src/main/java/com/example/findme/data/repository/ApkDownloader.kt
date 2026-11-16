@@ -17,6 +17,8 @@ class ApkDownloader(
         check(ReleaseApkPolicy.isTrustedUrl(apk.url)) { "La descarga de la actualización no es válida." }
         check(apk.size in 1..ReleaseApkPolicy.MAX_BYTES)
         check(directory.isDirectory || directory.mkdirs()) { "No hay espacio disponible para descargar la actualización." }
+        // Only one update is kept: earlier or interrupted downloads would otherwise pile up in the cache.
+        clear(directory)
         val identifier = java.util.UUID.randomUUID().toString()
         val partial = File(directory, "$identifier.part")
         val destination = File(directory, "$identifier.apk")
@@ -55,13 +57,20 @@ class ApkDownloader(
             currentCoroutineContext().ensureActive()
             check(received == apk.size) { "La descarga quedó incompleta. Intenta otra vez." }
             val actualDigest = digest.digest().joinToString("") { "%02x".format(it) }
-            check(apk.sha256 == null || actualDigest == apk.sha256) { "No se pudo verificar la actualización. Intenta otra vez." }
+            check(actualDigest == apk.sha256) { "No se pudo verificar la actualización. Intenta otra vez." }
             check(!destination.exists() || destination.delete())
             check(partial.renameTo(destination)) { "No se pudo guardar la actualización." }
             destination
         } finally {
             connection.disconnect()
             partial.delete()
+        }
+    }
+
+    companion object {
+        /** Deletes downloaded or partial update files; the directory belongs to the updater alone. */
+        fun clear(directory: File) {
+            directory.listFiles()?.filter { it.isFile && (it.extension == "apk" || it.extension == "part") }?.forEach { it.delete() }
         }
     }
 }

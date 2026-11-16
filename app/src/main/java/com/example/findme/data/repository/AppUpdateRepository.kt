@@ -6,7 +6,7 @@ import kotlinx.serialization.json.*
 import java.net.HttpURLConnection
 import java.net.URL
 
-data class ReleaseApk(val name: String, val url: String, val size: Long, val sha256: String?)
+data class ReleaseApk(val name: String, val url: String, val size: Long, val sha256: String)
 data class AppRelease(val version: String, val apk: ReleaseApk)
 
 object ReleaseApkPolicy {
@@ -78,12 +78,14 @@ class AppUpdateRepository {
         check(ReleaseApkPolicy.isTrustedUrl(url)) { "No se pudo verificar la descarga de la actualización." }
         val size = asset.getValue("size").jsonPrimitive.long
         check(size in 1..ReleaseApkPolicy.MAX_BYTES) { "El tamaño de la actualización no es válido." }
-        val digest = asset["digest"]?.jsonPrimitive?.contentOrNull
-        val sha256 = digest?.removePrefix("sha256:")
-        check(sha256 == null || (digest?.startsWith("sha256:") == true && sha256.matches(Regex("[0-9a-fA-F]{64}")))) {
+        // GitHub publishes a SHA-256 digest for every uploaded asset; without it nothing ties the
+        // downloaded bytes to the release, so the update is not offered.
+        val digest = asset["digest"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        val sha256 = digest.removePrefix("sha256:")
+        check(digest.startsWith("sha256:") && sha256.matches(Regex("[0-9a-fA-F]{64}"))) {
             "No se pudo verificar la actualización."
         }
-        return AppRelease(version, ReleaseApk(asset.getValue("name").jsonPrimitive.content, url, size, sha256?.lowercase()))
+        return AppRelease(version, ReleaseApk(asset.getValue("name").jsonPrimitive.content, url, size, sha256.lowercase()))
     }
 
 }
