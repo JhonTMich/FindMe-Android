@@ -241,7 +241,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
     }
 
     @OptIn(kotlinx.coroutines.FlowPreview::class)
-    suspend fun observeWhileVisible() = coroutineScope {
+    suspend fun observeWhileVisible(): Unit = coroutineScope {
         launch {
             while (isActive) {
                 delay(15_000)
