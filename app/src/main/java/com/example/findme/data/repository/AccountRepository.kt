@@ -91,7 +91,9 @@ class AccountRepository {
 
     suspend fun acceptInvitation(code: String) {
         require(InvitationCode.isValid(code)) { "Introduce el código de invitación completo, por ejemplo ABCD-EFGH." }
-        client.postgrest.rpc("accept_connection_invitation", buildJsonObject { put("invitation_code", InvitationCode.normalize(code)) })
+        val result = client.postgrest.rpc("accept_connection_invitation", buildJsonObject { put("invitation_code", InvitationCode.normalize(code)) })
+        // The server returns null (not an error) for unknown or expired codes so it can count attempts.
+        require(result.data.trim() != "null") { "Ese código no existe o ya venció. Pide a la otra persona uno nuevo." }
     }
 
     suspend fun disconnect(id: String) {

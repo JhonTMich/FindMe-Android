@@ -146,6 +146,50 @@ try {
       ('${a}',3,'22:00','04:00','Three night shifts',true)`);
   await check((await db.query("select count(*) n from public.personal_schedule where title='Three night shifts'")).rows[0].n === 3,
     'Monday to Wednesday 22:00-04:00 creates three independent shifts ending Tuesday to Thursday');
+  await db.exec('reset role');
+  await db.exec(await readFile(new URL('../supabase/migrations/20261116130000_limites_de_datos.sql', import.meta.url), 'utf8'));
+  const rejectedWith = async (sql, code, name) => {
+    let actual;
+    try { await db.exec(sql); } catch (error) { actual = error.code; }
+    await check(actual === code, `${name} (got ${actual})`);
+  };
+  await asUser(a);
+  await rejectedWith(`insert into public.personal_status(id,user_id,custom_location,custom_message,expires_at)
+    values ('${a}','${a}','Here','${'x'.repeat(241)}',now()+interval '1 hour')`, '23514', 'Status message length is bounded');
+  await rejectedWith(`insert into public.personal_status(id,user_id,custom_location,expires_at)
+    values ('${a}','${a}','Here',now()+interval '30 days')`, '23514', 'Status lifetime is bounded');
+  await db.exec(`insert into public.personal_status(id,user_id,custom_location,custom_message,expires_at)
+    values ('${a}','${a}','Here','${'x'.repeat(240)}',now()+interval '24 hours')`);
+  await rejectedWith(`update public.account_profiles set timezone='Not/AZone' where id='${a}'`, 'FM003', 'Profile time zone is validated');
+  await db.exec(`update public.account_profiles set timezone='Europe/Madrid' where id='${a}'`);
+  const owned = Number((await db.query(`select count(*) n from public.personal_schedule where user_id='${a}'`)).rows[0].n);
+  await db.exec(`insert into public.personal_schedule(user_id,day_of_week,start_time,end_time,title)
+    select '${a}', 7, make_time(0, 0, 0) + make_interval(mins => i), make_time(0, 0, 0) + make_interval(mins => i + 1), 'Slot ' || i
+    from generate_series(0, ${200 - owned - 1}) i`);
+  await rejectedWith(`insert into public.personal_schedule(user_id,day_of_week,start_time,end_time,title)
+    values ('${a}',6,'23:00','23:30','One too many')`, 'FM001', 'Schedule rows are capped at 200');
+  const edited = await db.query(`insert into public.personal_schedule(id,user_id,day_of_week,start_time,end_time,title)
+    select id,user_id,day_of_week,start_time,end_time,'Edited' from public.personal_schedule where title='Slot 0'
+    on conflict (id) do update set title=excluded.title returning title`);
+  await check(edited.rows[0].title === 'Edited', 'Editing an activity at the cap is still allowed');
+  await db.exec(`insert into public.quick_messages(user_id,label,message) select '${a}','L'||i,'M' from generate_series(1, 29) i`);
+  await rejectedWith(`insert into public.quick_messages(user_id,label,message) values ('${a}','Extra','M')`, 'FM001', 'Quick messages are capped at 30');
+  await asUser(b);
+  await db.exec(`insert into public.connection_invitations values ('${b}','QRSTUVWX',now()+interval '1 hour')`);
+  await asUser(c);
+  for (let i = 0; i < 9; i++) {
+    const row = (await db.query(`select public.accept_connection_invitation('ZZZZZZZ${i + 2}') id`)).rows[0];
+    await check(row.id === null, 'Unknown code returns no connection');
+  }
+  const linked = (await db.query(`select public.accept_connection_invitation('QRST-UVWX') id`)).rows[0];
+  await check(linked.id !== null, 'A valid code still works within the attempt budget');
+  await rejectedWith(`select public.accept_connection_invitation('QRSTUVWX')`, 'FM002', 'Eleventh invitation attempt is refused');
+  await db.exec(`reset role; update private.username_login_limits set expires_at=now()-interval '1 minute' where key like 'invite:%'`);
+  await asUser(c);
+  await check((await db.query(`select public.accept_connection_invitation('QRSTUVWX') id`)).rows[0].id === null, 'Attempts reset after the window');
+  for (let i = 0; i < 30; i++) await db.exec(`insert into public.connection_signals(sender_id,recipient_id,message) values ('${c}','${b}','Ping ${i}')`);
+  await rejectedWith(`insert into public.connection_signals(sender_id,recipient_id,message) values ('${c}','${b}','Spam')`, 'FM002', 'Messages to one person are rate limited');
+
   await db.exec(`reset role; set role anon; select set_config('request.jwt.claim.sub','',false)`);
   for (const table of ['account_profiles','personal_schedule','personal_status','person_connections','connection_invitations','quick_messages','connection_signals']) {
     await denied(`select * from public.${table}`, `Anonymous access denied: ${table}`);
