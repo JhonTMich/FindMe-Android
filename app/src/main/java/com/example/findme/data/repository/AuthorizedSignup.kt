@@ -2,9 +2,6 @@ package com.example.findme.data.repository
 
 import com.example.findme.data.network.SupabaseClientProvider
 import com.example.findme.domain.model.Username
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.*
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -14,9 +11,7 @@ import java.time.ZoneId
 import java.util.Locale
 
 internal object AuthorizedSignup {
-    private val http = HttpClient(CIO) {
-        install(HttpTimeout) { requestTimeoutMillis = 45_000; connectTimeoutMillis = 15_000 }
-    }
+    private val http get() = SupabaseClientProvider.functionsHttp
     suspend fun register(name: String, email: String, username: String, password: String) = submit(buildJsonObject {
         put("email", email.trim().lowercase(Locale.ROOT)); put("name", name.trim())
         put("username", Username.normalize(username)); put("password", password)
