@@ -1,8 +1,19 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/widget_background" android:padding="16dp">
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Mi estado" android:textColor="#F8F9FF" android:textSize="14sp" android:textStyle="bold" />
-<LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:gravity="center_vertical" android:padding="16dp" android:layout_marginVertical="10dp" android:background="@drawable/widget_status_background">
-<ImageView android:layout_width="38dp" android:layout_height="38dp" android:src="@drawable/widget_school" android:contentDescription="@null"/>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:text="En clase" android:textColor="#0B1831" android:textSize="28sp" android:textStyle="bold" />
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/widget_surface_free" android:paddingStart="16dp" android:paddingEnd="10dp" android:paddingVertical="8dp">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+<TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Mi estado" android:textColor="#45200B" android:textSize="14sp" android:textStyle="bold" />
+<ImageView android:layout_width="30dp" android:layout_height="30dp" android:padding="6dp" android:src="@drawable/widget_ic_refresh" android:tint="#45200B" android:contentDescription="@null" />
+<ImageView android:layout_width="30dp" android:layout_height="30dp" android:padding="6dp" android:src="@drawable/widget_ic_more" android:tint="#45200B" android:contentDescription="@null" />
 </LinearLayout>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Próxima actividad: Libre" android:textColor="#F8F9FF" android:textSize="13sp" android:drawableStart="@drawable/widget_calendar" android:drawablePadding="8dp"/>
+<LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:gravity="center_vertical">
+<LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/widget_chip_free" android:paddingStart="10dp" android:paddingEnd="11dp" android:paddingTop="2dp" android:paddingBottom="4dp" android:text="Tiempo libre" android:textColor="#9E420A" android:textSize="11sp" android:textStyle="bold" />
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Libre" android:textColor="#45200B" android:textSize="21sp" android:textStyle="bold" />
+</LinearLayout>
+<ImageView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="0.75" android:src="@drawable/widget_art_free" android:scaleType="fitCenter" android:contentDescription="@null" />
+</LinearLayout>
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/widget_card" android:paddingHorizontal="12dp" android:paddingVertical="4dp">
+<ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/widget_ic_calendar" android:tint="#6E3B20" android:contentDescription="@null" />
+<FrameLayout android:layout_width="1dp" android:layout_height="18dp" android:layout_marginHorizontal="10dp" android:background="#66C75A1A" />
+<TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Próxima: Proyecto de Investigación · 7:00 a. m." android:textColor="#6E3B20" android:textSize="11sp" android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+</LinearLayout>
 </LinearLayout>
