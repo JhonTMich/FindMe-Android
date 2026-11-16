@@ -19,14 +19,14 @@ Rama: `feature/cuentas-conexiones`.
 
 ## Preparar Supabase
 
-El esquema está en `supabase/account-model.sql`. **Aplicado al proyecto personal existente el 29 de octubre de 2026**, mediante la migración remota `crear_cuentas_horarios_y_conexiones`.
+El esquema está en `supabase/migrations/20261030040750_crear_cuentas_horarios_y_conexiones.sql`. **Aplicado al proyecto personal existente el 29 de octubre de 2026**, mediante la migración remota `crear_cuentas_horarios_y_conexiones`.
 El esquema inicial es anterior al uso de la CLI. El 30 de octubre se utilizó la CLI 2.122.0 mediante npm para generar la migración de registro; su archivo se alineó con la versión registrada por el despliegue remoto. No volver a ejecutar el esquema inicial en este proyecto. Antes de usar `db push`, se debe incorporar el resto del historial remoto al flujo de migraciones local.
 
 Comprobaciones remotas después del despliegue: siete tablas nuevas con RLS y políticas; ninguna permite SELECT al rol `anon`; consultar perfiles por la API sin sesión devuelve HTTP 401. Los asesores de seguridad solo señalaron problemas en las tablas anteriores. Se conservaron un perfil, 11 actividades y 26 estados anteriores. En ese despliegue inicial no se crearon cuentas ni se reasignó el horario de Michael.
 
 La comprobación del 30 de octubre confirmó `disable_signup = false` y `mailer_autoconfirm = false`: registro habilitado y confirmación obligatoria. El acceso al registro se controla ahora con la tabla `signup_allowed_emails` y los triggers de Auth descritos más abajo. **No desactivar `Allow new users to sign up` para este flujo**, porque impediría también registrarse a los correos autorizados. Falta configurar SMTP, una URL de confirmación válida y probar la entrega y el registro real con un correo autorizado. Las dos cuentas existentes se conservan sin cambios.
 
-El 30 de octubre se aplicó la migración `acortar_codigos_de_invitacion` (`supabase/upgrades/short-invitations.sql`), que amplía la validación para códigos de ocho caracteres y acepta códigos escritos en minúsculas, con espacios o guiones. No modifica conexiones ni elimina invitaciones existentes.
+El 30 de octubre se aplicó la migración `acortar_codigos_de_invitacion` (`supabase/migrations/20261030052255_acortar_codigos_de_invitacion.sql`), que amplía la validación para códigos de ocho caracteres y acepta códigos escritos en minúsculas, con espacios o guiones. No modifica conexiones ni elimina invitaciones existentes.
 
 La interfaz de cuentas recupera el estilo de la app anterior: tarjetas oscuras, acentos índigo, cabecera, iconos, panorama semanal y actividades en tarjetas. Los formularios de estado, actividad, conexión y mensajes se abren en paneles inferiores para mantener las pantallas centradas en consultar el día.
 
@@ -67,7 +67,7 @@ Ejecuta PostgreSQL embebido, sin conexión con Supabase, y crea un sustituto mí
 
 ## Acceso por nombre de usuario — 30 de octubre de 2026
 
-Aplicada la migración remota `agregar_usuario_para_inicio_de_sesion`, cuyo SQL está en `supabase/upgrades/username-login.sql`. Añade `account_profiles.username` sin recrear usuarios. Conserva las contraseñas, sesiones y conexiones existentes. Para entornos nuevos, ejecutar primero el esquema base, después las dos actualizaciones de `supabase/upgrades/` y finalmente la migración de registro de `supabase/migrations/`.
+Aplicada la migración remota `agregar_usuario_para_inicio_de_sesion`, cuyo SQL está en `supabase/migrations/20261030145253_agregar_usuario_para_inicio_de_sesion.sql`. Añade `account_profiles.username` sin recrear usuarios. Conserva las contraseñas, sesiones y conexiones existentes. Para entornos nuevos, ejecutar primero el esquema base, después las dos actualizaciones de `supabase/upgrades/` y finalmente la migración de registro de `supabase/migrations/`.
 
 La Edge Function `username-login` está desplegada. Sus fuentes están en `supabase/functions/username-login/`. Se publica con `verify_jwt = false` porque recibe credenciales antes de existir una sesión y realiza su propia autenticación: resuelve el usuario exclusivamente en el servidor y solicita a Supabase Auth una sesión mediante contraseña. La clave de servicio solo existe en el entorno del servidor. No hay una API pública que traduzca usuarios a correos. Los errores de usuario inexistente y contraseña incorrecta usan el mismo mensaje. La función no registra contraseñas, cuerpos ni tokens y devuelve `Cache-Control: no-store`.
 

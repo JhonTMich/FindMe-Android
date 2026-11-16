@@ -20,8 +20,8 @@ try {
     grant usage on schema auth to anon,authenticated,supabase_auth_admin;
     grant insert on auth.users to supabase_auth_admin;
     insert into auth.users(id,email) values ('${user(1)}','existing@example.test');`);
-  await db.exec(await readFile(new URL('../supabase/account-model.sql', import.meta.url), 'utf8'));
-  await db.exec(await readFile(new URL('../supabase/upgrades/username-login.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261030040750_crear_cuentas_horarios_y_conexiones.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261030145253_agregar_usuario_para_inicio_de_sesion.sql', import.meta.url), 'utf8'));
   await db.exec(`insert into public.account_profiles(id,display_name,username) values ('${user(1)}','Existing','existing')`);
   const migration = (await readdir(new URL('../supabase/migrations/', import.meta.url))).find((name) => name.endsWith('_registro_por_correos_autorizados.sql'));
   await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), 'utf8'));
