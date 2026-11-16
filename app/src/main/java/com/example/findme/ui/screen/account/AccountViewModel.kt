@@ -100,8 +100,12 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    private fun perform(action: suspend () -> Unit) {
-        if (_state.value.busy) return
+    private fun perform(quiet: Boolean = false, action: suspend () -> Unit) {
+        if (_state.value.busy) {
+            // Say why nothing happened instead of dropping the tap silently. A refresh is simply skipped.
+            if (!quiet) _state.update { it.copy(notice = "Espera a que termine la operación en curso e inténtalo de nuevo.") }
+            return
+        }
         _state.update { it.copy(busy = true, error = null, notice = null, savedScheduleDraftId = null) }
         viewModelScope.launch {
             try { action() }
@@ -249,7 +253,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
     }
     override fun setAccent(accent: AppAccent) { viewModelScope.launch { preferences.setAccent(accent) } }
 
-    override fun refresh() = perform { load() }
+    override fun refresh() = perform(quiet = true) { load() }
     override fun register(name: String, email: String, username: String, password: String, confirmation: String) = perform {
         com.example.findme.domain.model.Registration.error(name, email, username, password, confirmation)?.let { throw IllegalArgumentException(it) }
         com.example.findme.data.repository.AuthorizedSignup.register(name, email, username, password)
