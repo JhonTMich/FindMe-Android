@@ -73,6 +73,7 @@ import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val days = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
 private val hourFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
@@ -749,11 +750,93 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         OutlinedButton(onClick = onCheckUpdates, enabled = !updates.checking && !updates.downloading) { Text(if (updates.checking) "Comprobando…" else "Buscar actualizaciones") }
         if (updates.release != null && !updates.downloading) TextButton(onClick = onInstallUpdate) { Text("Actualizar ahora") }
     }
+    var accountSheet by remember { mutableStateOf<AccountSheet?>(null) }
+    val scope = rememberCoroutineScope()
+    val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        val data = actions.exportData()
+        if (uri == null || data == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val saved = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching { context.contentResolver.openOutputStream(uri)?.use { it.write(data.toByteArray()) } != null }.getOrDefault(false)
+            }
+            actions.exportFinished(saved)
+        }
+    }
     Panel {
         SectionHeading(Icons.Default.PrivacyTip, "Tu privacidad")
         Text("Tu horario y tus estados solo se comparten con las personas que conectes. Puedes retirar la conexión desde Personas.", color = TextSecondary)
+        OutlinedButton(onClick = { accountSheet = AccountSheet.Password }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Cambiar contraseña") }
+        OutlinedButton(onClick = { exportLauncher.launch("findme-${state.profile?.username ?: "datos"}.json") },
+            enabled = !state.busy && state.profile != null, modifier = Modifier.fillMaxWidth()) { Text("Exportar mis datos") }
         OutlinedButton(onClick = actions::logout, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Cerrar sesión") }
+        TextButton(onClick = { accountSheet = AccountSheet.Delete }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+            Text("Eliminar mi cuenta", color = MaterialTheme.colorScheme.error)
+        }
     }
+    when (accountSheet) {
+        AccountSheet.Password -> ChangePasswordSheet(state, actions) { accountSheet = null }
+        AccountSheet.Delete -> DeleteAccountSheet(state, actions) { accountSheet = null }
+        null -> Unit
+    }
+}
+
+private enum class AccountSheet { Password, Delete }
+
+/** Closes a sheet once its own request finishes without an error. */
+@Composable
+private fun CloseWhenDone(state: AccountState, submitted: Boolean, onDone: () -> Unit, onFailed: () -> Unit) {
+    LaunchedEffect(state.busy, submitted) {
+        if (submitted && !state.busy) { if (state.error == null) onDone() else onFailed() }
+    }
+}
+
+@Composable
+private fun ChangePasswordSheet(state: AccountState, actions: AccountActions, dismiss: () -> Unit) {
+    var current by remember { mutableStateOf("") }
+    var new by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
+    var submitted by remember { mutableStateOf(false) }
+    CloseWhenDone(state, submitted, dismiss) { submitted = false }
+    Sheet(dismiss, "Cambiar contraseña", "Confirma tu contraseña actual y elige una nueva de 8 a 128 caracteres.") {
+        PasswordField(current, { current = it.take(128) }, "Contraseña actual", !state.busy)
+        PasswordField(new, { new = it.take(128) }, "Nueva contraseña", !state.busy)
+        PasswordField(confirmation, { confirmation = it.take(128) }, "Confirmar nueva contraseña", !state.busy,
+            isError = confirmation.isNotEmpty() && confirmation != new)
+        if (submitted || state.error != null) state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        Button(onClick = { submitted = true; actions.changePassword(current, new, confirmation) },
+            enabled = !state.busy && current.isNotEmpty() && new.length in 8..128 && new == confirmation,
+            modifier = Modifier.fillMaxWidth()) { Text(if (state.busy) "Guardando…" else "Guardar contraseña") }
+    }
+}
+
+@Composable
+private fun DeleteAccountSheet(state: AccountState, actions: AccountActions, dismiss: () -> Unit) {
+    var password by remember { mutableStateOf("") }
+    var submitted by remember { mutableStateOf(false) }
+    CloseWhenDone(state, submitted, dismiss) { submitted = false }
+    Sheet(dismiss, "¿Eliminar tu cuenta?", "Se borran tu perfil, tu horario, tus estados, tus mensajes rápidos y tus conexiones. " +
+        "Tu gente dejará de verte. No se puede deshacer. Si quieres conservar una copia, usa antes «Exportar mis datos».") {
+        PasswordField(password, { password = it.take(128) }, "Tu contraseña", !state.busy)
+        if (submitted || state.error != null) state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        Button(onClick = { submitted = true; actions.deleteAccount(password) }, enabled = !state.busy && password.isNotEmpty(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            modifier = Modifier.fillMaxWidth()) { Text(if (state.busy) "Eliminando…" else "Eliminar definitivamente") }
+        TextButton(onClick = dismiss, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
+    }
+}
+
+@Composable
+private fun PasswordField(value: String, change: (String) -> Unit, label: String, enabled: Boolean, isError: Boolean = false) {
+    var visible by remember { mutableStateOf(false) }
+    OutlinedTextField(value, change, label = { Text(label) }, singleLine = true, enabled = enabled, isError = isError,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+        visualTransformation = if (visible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+            IconButton(onClick = { visible = !visible }) {
+                Icon(if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (visible) "Ocultar contraseña" else "Mostrar contraseña")
+            }
+        }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
 }
 
 @Composable

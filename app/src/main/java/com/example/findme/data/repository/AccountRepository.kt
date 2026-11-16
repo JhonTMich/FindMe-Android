@@ -24,6 +24,26 @@ class AccountRepository {
         auth.importSession(UsernameLogin.signIn(username, password))
     }
 
+    /** Re-checks the current password with a fresh login before setting the new one. */
+    suspend fun changePassword(username: String, current: String, new: String) {
+        require(new.length in 8..128) { "La nueva contraseña debe tener entre 8 y 128 caracteres." }
+        require(new != current) { "La nueva contraseña debe ser distinta de la actual." }
+        val session = try { UsernameLogin.signIn(username, current) } catch (wrong: IllegalArgumentException) {
+            if (wrong.message == "Usuario o contraseña incorrectos.") throw IllegalArgumentException("La contraseña actual no es correcta.")
+            throw wrong
+        }
+        require(session.user?.id == null || session.user?.id == userId()) { "La sesión cambió. Vuelve a intentarlo." }
+        auth.importSession(session)
+        auth.updateUser { password = new }
+    }
+
+    suspend fun deleteAccount(password: String) {
+        val token = requireNotNull(auth.currentAccessTokenOrNull()) { "Inicia sesión para continuar." }
+        AccountDeletion.delete(token, password)
+        // The server already revoked the account; only forget the local session.
+        auth.clearSession()
+    }
+
     suspend fun ensureProfile(): AccountProfile {
         val id = userId()
         val existing = client.postgrest["account_profiles"].select { filter { eq("id", id) } }

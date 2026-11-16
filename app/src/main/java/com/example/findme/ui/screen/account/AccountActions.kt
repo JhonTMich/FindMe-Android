@@ -28,4 +28,9 @@ interface AccountActions {
     fun saveMessage(label: String, message: String) {}
     fun deleteMessage(id: String) {}
     fun send(message: QuickMessage) {}
+    fun changePassword(current: String, new: String, confirmation: String) {}
+    fun deleteAccount(password: String) {}
+    /** JSON copy of the signed-in account's data, or null when nothing is loaded. */
+    fun exportData(): String? = null
+    fun exportFinished(saved: Boolean) {}
 }

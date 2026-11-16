@@ -343,6 +343,27 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         _state.update { it.copy(notice = "Mensaje rápido creado.") }
     }
     override fun deleteMessage(id: String) = perform { repository.deleteQuickMessage(id); load() }
+    override fun changePassword(current: String, new: String, confirmation: String) = perform {
+        require(new == confirmation) { "Las contraseñas no coinciden." }
+        val username = requireNotNull(_state.value.profile?.username) { "Elige un nombre de usuario antes de cambiar la contraseña." }
+        repository.changePassword(username, current, new)
+        _state.update { it.copy(notice = "Contraseña actualizada.") }
+    }
+    override fun deleteAccount(password: String) = perform {
+        repository.deleteAccount(password)
+        _state.value = AccountState(initializing = false, notice = "Tu cuenta y tus datos se eliminaron.")
+        com.example.findme.widget.WidgetStore.clear(getApplication())
+    }
+    override fun exportData(): String? {
+        val state = _state.value
+        val profile = state.profile ?: return null
+        return com.example.findme.domain.model.AccountExport.build(profile, state.schedules, state.statuses, state.messages,
+            state.connections, state.profiles, state.signals, Instant.now().toString())
+    }
+    override fun exportFinished(saved: Boolean) {
+        _state.update { it.copy(notice = if (saved) "Copia de tus datos guardada." else null,
+            error = if (saved) null else "No se pudo guardar la copia de tus datos.") }
+    }
     override fun send(message: QuickMessage) {
         val recipient = _state.value.selectedPerson ?: return
         perform {
