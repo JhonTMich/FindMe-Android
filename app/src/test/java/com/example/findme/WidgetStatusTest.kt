@@ -2,6 +2,8 @@ package com.example.findme
 
 import com.example.findme.data.model.ScheduleDto
 import com.example.findme.data.model.StatusOverrideDto
+import com.example.findme.widget.WidgetScene
+import com.example.findme.widget.sceneForSharedStatus
 import com.example.findme.widget.widgetStatus
 import org.junit.Assert.*
 import org.junit.Test
@@ -20,7 +22,7 @@ class WidgetStatusTest {
     }
 
     @Test fun cachedScheduleChangesAtEndWithoutFetchingAgain() {
-        assertEquals("activity", widgetStatus("Yo", listOf(lesson), emptyList(), now).kind)
+        assertEquals(WidgetScene.UNIVERSITY, widgetStatus("Yo", listOf(lesson), emptyList(), now).scene)
         assertEquals("Libre", widgetStatus("Yo", listOf(lesson), emptyList(), now.withHour(11)).title)
     }
 
@@ -49,5 +51,25 @@ class WidgetStatusTest {
         val state = widgetStatus("Yo", emptyList(), emptyList(), now)
         assertEquals("Libre", state.title)
         assertEquals("Libre · sin actividades programadas", state.next)
+    }
+
+    @Test fun eachStateUsesTheSceneOfItsCategory() {
+        val work = lesson.copy(title = "Oficina", category = "work")
+        val lunch = lesson.copy(title = "Almuerzo", category = "free")
+        assertEquals(WidgetScene.WORK, widgetStatus("Yo", listOf(work), emptyList(), now).scene)
+        assertEquals("Trabajando", widgetStatus("Yo", listOf(work), emptyList(), now).label)
+        assertEquals(WidgetScene.FREE, widgetStatus("Yo", listOf(lunch), emptyList(), now).scene)
+        assertEquals("En clase", widgetStatus("Yo", listOf(lesson), emptyList(), now).label)
+        assertEquals(WidgetScene.FREE, widgetStatus("Yo", emptyList(), emptyList(), now).scene)
+    }
+
+    @Test fun sharedStatusSceneFollowsItsWords() {
+        assertEquals(WidgetScene.WORK, sceneForSharedStatus("Reunión en la oficina"))
+        assertEquals(WidgetScene.UNIVERSITY, sceneForSharedStatus("En la biblioteca"))
+        assertEquals(WidgetScene.FREE, sceneForSharedStatus("En casa"))
+        val manual = StatusOverrideDto("override", "me", true, "En casa", expiresAt = now.plusMinutes(5).toInstant().toString())
+        val state = widgetStatus("Yo", listOf(lesson), listOf(manual), now)
+        assertTrue(state.shared)
+        assertEquals(WidgetScene.FREE, state.scene)
     }
 }
