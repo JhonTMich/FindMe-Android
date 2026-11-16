@@ -28,11 +28,16 @@ object NotificationHelper {
         }
     }
 
-    fun showMessageNotification(context: Context, id: String, sender: String, message: String) {
+    /** Opens the People tab, where both messages and status changes are shown. */
+    private fun openPeople(context: Context): PendingIntent {
         val intent = Intent(context, com.example.findme.MainActivity::class.java).apply { action = OPEN_PEOPLE }
-        val pending = PendingIntent.getActivity(context, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return PendingIntent.getActivity(context, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    fun showMessageNotification(context: Context, id: String, sender: String, message: String) {
+        val pending = openPeople(context)
         val notification = NotificationCompat.Builder(context, MESSAGES_CHANNEL)
-            .setSmallIcon(android.R.drawable.ic_dialog_email).setContentTitle(sender).setContentText(message)
+            .setSmallIcon(R.drawable.ic_notification).setContentTitle(sender).setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message)).setContentIntent(pending)
             .setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).build()
         try { (context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager)?.notify(id.hashCode(), notification) }
@@ -43,9 +48,10 @@ object NotificationHelper {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Fallback icon
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(message)
+            .setContentIntent(openPeople(context))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()

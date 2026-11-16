@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import com.example.findme.ui.screen.account.AccountScreen
@@ -36,6 +37,8 @@ import com.example.findme.data.local.AccountSettingsRepository
 import com.example.findme.data.local.AppAccent
 import com.example.findme.util.NotificationHelper
 
+private const val NOTIFICATION_PROMPT_SEEN = "notification_prompt_seen"
+
 class MainActivity : ComponentActivity() {
     private var confirmationLink by mutableStateOf<ConfirmationLink?>(null)
     private var openPeople by mutableStateOf(false)
@@ -43,7 +46,8 @@ class MainActivity : ComponentActivity() {
     private val updateViewModel: UpdateViewModel by viewModels()
     private val accountViewModel: AccountViewModel by viewModels()
 
-    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    private val promptPreferences by lazy { getSharedPreferences("findme_prompts", MODE_PRIVATE) }
+    private val requestPermissionLauncher =registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
     private val installPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (packageManager.canRequestPackageInstalls()) updateViewModel.requestInstallation()
         else updateViewModel.installationUnavailable()
@@ -92,13 +96,26 @@ class MainActivity : ComponentActivity() {
                     onPauseOrDispose { }
                 }
                 AppUpdateDialog(updateState, updateViewModel::update, updateViewModel::dismiss, updateViewModel::cancelDownload)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    LaunchedEffect(Unit) {
-                        if (androidx.core.content.ContextCompat.checkSelfPermission(this@MainActivity,
-                                android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                            requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    }
+                // Ask for notifications only once signed in, after explaining what they are for.
+                // A "not now" is remembered; the Profile screen still links to Android settings.
+                var explainNotifications by remember { mutableStateOf(false) }
+                LaunchedEffect(accountState.signedIn) {
+                    explainNotifications = accountState.signedIn && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                        androidx.core.content.ContextCompat.checkSelfPermission(this@MainActivity,
+                            android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED &&
+                        !promptPreferences.getBoolean(NOTIFICATION_PROMPT_SEEN, false)
+                }
+                if (explainNotifications) {
+                    val close = { explainNotifications = false; promptPreferences.edit().putBoolean(NOTIFICATION_PROMPT_SEEN, true).apply() }
+                    AlertDialog(onDismissRequest = close,
+                        title = { Text("¿Activar avisos?") },
+                        text = { Text("FindMe te avisa cuando tu gente te envía un mensaje, empieza una actividad o comparte un cambio de planes.") },
+                        confirmButton = { TextButton(onClick = {
+                            close()
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
+                                requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        }) { Text("Activar") } },
+                        dismissButton = { TextButton(onClick = close) { Text("Ahora no") } })
                 }
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     confirmationLink?.let { link ->
