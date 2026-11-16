@@ -1,4 +1,6 @@
-const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+import { clientKey } from '../_shared/client-key.mjs';
+
+const headers ={ 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
 const reply = (body, status = 200, extra = {}) => new Response(JSON.stringify(body), { status, headers: { ...headers, ...extra } });
 const unavailable = () => reply({ message: 'No se pudo completar el registro. Inténtalo más tarde.' }, 503);
 
@@ -38,7 +40,10 @@ export function createSignupHandler({ url, serviceKey, anonKey }, request = fetc
       const serverRequest = (path, options = {}) => request(`${url}${path}`, { ...options, headers: adminHeaders, signal: AbortSignal.timeout(12000) });
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`signup:${email}`));
       const hash = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
-      const limit = await serverRequest('/rest/v1/rpc/consume_username_login_attempt', { method: 'POST', body: JSON.stringify({ username_hash: hash }) });
+      const client = await clientKey(req, serviceKey);
+      const limit = await serverRequest('/rest/v1/rpc/consume_username_login_attempt', {
+        method: 'POST', body: JSON.stringify({ username_hash: hash, client_hash: client ?? undefined }),
+      });
       if (!limit.ok) return unavailable();
       if (await limit.json() !== true) return reply({ message: 'Demasiados intentos. Espera unos minutos.' }, 429, { 'Retry-After': '300' });
       const allowed = await serverRequest(`/rest/v1/signup_allowed_emails?select=enabled,expires_at,used_at&email=eq.${encodeURIComponent(email)}&limit=1`);
