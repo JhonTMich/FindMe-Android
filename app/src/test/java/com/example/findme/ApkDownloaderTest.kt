@@ -2,6 +2,7 @@ package com.example.findme
 
 import com.example.findme.data.repository.*
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.io.InputStream
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -18,7 +19,7 @@ class ApkDownloaderTest {
     @get:Rule val temporary = TemporaryFolder()
     private val bytes = "signed apk fixture".toByteArray()
     private val source = "https://github.com/JhonTMich/FindMe-Android/releases/download/v1.3/FindMe-1.3.apk"
-    private fun apk(size: Long = bytes.size.toLong(), digest: String? = hash(bytes)) = ReleaseApk("FindMe-1.3.apk", source, size, digest)
+    private fun apk(size: Long = bytes.size.toLong(), digest: String = hash(bytes)) = ReleaseApk("FindMe-1.3.apk", source, size, digest)
     private fun hash(value: ByteArray) = MessageDigest.getInstance("SHA-256").digest(value).joinToString("") { "%02x".format(it) }
     private class Connection(url: URL, private val stream: InputStream, private val code: Int = 200) : HttpURLConnection(url) {
         var disconnected = false
@@ -38,6 +39,17 @@ class ApkDownloaderTest {
         assertEquals(1f, progress.last())
         assertTrue(connection.disconnected)
         assertTrue(directory.listFiles()!!.none { it.extension == "part" })
+    }
+    @Test fun aNewDownloadRemovesEarlierUpdatesButKeepsOtherFiles() = runBlocking {
+        val directory = temporary.newFolder()
+        val old = File(directory, "previous.apk").apply { writeText("old") }
+        val partial = File(directory, "interrupted.part").apply { writeText("partial") }
+        val unrelated = File(directory, "notes.txt").apply { writeText("keep") }
+        val file = ApkDownloader { Connection(it, ByteArrayInputStream(bytes)) }.download(apk(), directory) { }
+        assertFalse(old.exists())
+        assertFalse(partial.exists())
+        assertTrue(unrelated.exists())
+        assertEquals(listOf(file.name, unrelated.name).sorted(), directory.listFiles()!!.map { it.name }.sorted())
     }
     @Test fun truncatedOversizedAndCorruptDownloadsAreDiscarded() = runBlocking {
         for (metadata in listOf(apk(size = bytes.size + 1L), apk(size = bytes.size - 1L), apk(digest = "00".repeat(32)))) {

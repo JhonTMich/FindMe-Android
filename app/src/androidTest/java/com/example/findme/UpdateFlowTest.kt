@@ -20,7 +20,7 @@ class UpdateFlowTest {
     @get:Rule val compose = createComposeRule()
     @Test fun oneDialogOffersUpdateAndShowsDownloadProgressWithoutPatchNotes() {
         var state by mutableStateOf(UpdateState(release = AppRelease("v1.3", ReleaseApk("FindMe-1.3.apk",
-            "https://github.com/JhonTMich/FindMe-Android/releases/download/v1.3/FindMe-1.3.apk", 100, null)),
+            "https://github.com/JhonTMich/FindMe-Android/releases/download/v1.3/FindMe-1.3.apk", 100, "ab".repeat(32))),
             message = "Hay una actualización de FindMe disponible.", showDialog = true))
         compose.setContent { FindmeTheme {
             AppUpdateDialog(state, onUpdate = { state = state.copy(downloading = true, progress = .42f, message = "Descargando actualización…") },
