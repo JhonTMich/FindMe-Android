@@ -14,3 +14,9 @@
 # Glance creates widget click callbacks by class name from a PendingIntent; keep the no-arg
 # constructor even if a future Glance version stops shipping this rule.
 -keep class * implements androidx.glance.appwidget.action.ActionCallback { <init>(); }
+
+# Room (used internally by WorkManager) creates each generated database by reflection:
+# Class.forName("..._Impl").getDeclaredConstructor().newInstance(). Without this rule R8
+# removes the no-arg constructor of androidx.work.impl.WorkDatabase_Impl and the app
+# crashes in androidx.startup.InitializationProvider before any screen opens (v1.6).
+-keep class * extends androidx.room.RoomDatabase { <init>(); }
