@@ -80,9 +80,12 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 if (user == null) {
                     _state.value = AccountState(initializing = false)
                     com.example.findme.widget.WidgetStore.clear(getApplication())
+                    AccountCache.clear(getApplication())
                 }
                 else if (_state.value.profile?.id != user.id) {
                     _state.update { old -> old.copy(initializing = false, signedIn = true) }
+                    // Show the last successful sync at once, then refresh it from the network.
+                    restoreCache(user.id)
                     refresh()
                 }
             }
@@ -179,9 +182,38 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 val sender = profiles.find { it.id == signal.senderId }?.displayName ?: "Tu gente"
                 NotificationHelper.showMessageNotification(getApplication(), signal.id, sender, signal.message)
             }
+            saveCache(AccountSnapshot(id, profile, profiles, schedules, statuses, connections, messages, signals, Instant.now().toString()))
             publishWidgetSnapshot()
             updateStatusNotifications()
         }
+    }
+
+    private suspend fun saveCache(snapshot: AccountSnapshot) {
+        try {
+            if (repository.auth.currentUserOrNull()?.id == snapshot.owner) AccountCache.save(getApplication(), snapshot)
+            // A logout that happened during the write must not leave this account's data behind.
+            if (repository.auth.currentUserOrNull()?.id != snapshot.owner) AccountCache.clear(getApplication())
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (error: Exception) { android.util.Log.w("AccountViewModel", "Account cache update failed", error) }
+    }
+
+    private suspend fun restoreCache(id: String) {
+        val cached = try { AccountCache.load(getApplication(), id) } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { null } ?: return
+        if (repository.auth.currentUserOrNull()?.id != id || _state.value.profile != null) return
+        val cutoff = Instant.now().minusSeconds(86400)
+        val signals = cached.signals.filter { runCatching { Instant.parse(it.createdAt) > cutoff }.getOrDefault(false) }
+        // Messages already seen before closing the app are not notified again.
+        messageNotifications.update(id, signals, enabled = false)
+        val selected = cached.profiles.firstOrNull { it.id != id }
+        allSchedules = cached.schedules
+        allStatuses = cached.statuses
+        _state.update { it.copy(signedIn = true, initializing = false, profile = cached.profile,
+            schedules = cached.schedules.filter { row -> row.userId == id }, statuses = cached.statuses.filter { row -> row.userId == id },
+            connections = cached.connections, profiles = cached.profiles, messages = cached.messages, signals = signals,
+            selectedPerson = selected, personSchedules = cached.schedules.filter { row -> row.userId == selected?.id },
+            personStatuses = cached.statuses.filter { row -> row.userId == selected?.id },
+            lastSync = runCatching { Instant.parse(cached.syncedAt) }.getOrNull()) }
     }
 
     @OptIn(kotlinx.coroutines.FlowPreview::class)
