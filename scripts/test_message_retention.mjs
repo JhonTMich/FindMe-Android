@@ -15,7 +15,7 @@ try {
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth to authenticated,anon;
     insert into auth.users values ('${a}'),('${b}'),('${c}');`);
-  await db.exec(await readFile(new URL('../supabase/account-model.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261030040750_crear_cuentas_horarios_y_conexiones.sql', import.meta.url), 'utf8'));
   const migration = (await readdir(new URL('../supabase/migrations/', import.meta.url))).find((n) => n.endsWith('_mensajes_en_vivo_y_retencion_diaria.sql'));
   await db.exec(await readFile(new URL(`../supabase/migrations/${migration}`, import.meta.url), 'utf8'));
   await db.exec(`insert into public.account_profiles(id,display_name) values ('${a}','A'),('${b}','B'),('${c}','C');
