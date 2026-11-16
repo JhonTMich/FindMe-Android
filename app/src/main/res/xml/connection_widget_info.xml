@@ -11,6 +11,6 @@
     android:description="@string/status_widget_description"
     android:previewLayout="@layout/widget_status_preview"
     android:initialLayout="@layout/widget_status_preview"
-    android:updatePeriodMillis="1800000"
+    android:updatePeriodMillis="0"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />
