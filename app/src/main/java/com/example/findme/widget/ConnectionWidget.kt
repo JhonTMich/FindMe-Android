@@ -78,62 +78,56 @@ class ConnectionWidget : GlanceAppWidget() {
             val scene = state?.scene ?: WidgetScene.FREE
             val palette = WidgetPalette.of(scene)
             val openApp = actionStartActivity(Intent(context, MainActivity::class.java))
-            // The illustration is shown whole, flush with the top, right and bottom edges.
-            val artWidth = minOf(size.height * ART_RATIO, size.width * 0.5f)
-            val textWidth = size.width - artWidth + 12.dp
             val bold = FontWeight.Bold
-            Box(GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(ImageProvider(palette.surface)).clickable(openApp),
-                contentAlignment = Alignment.BottomEnd) {
-                Image(ImageProvider(palette.art), null, GlanceModifier.width(artWidth).height(artWidth / ART_RATIO),
-                    contentScale = ContentScale.Fit)
-                // Box children inherit BottomEnd, so the text gets its own start-aligned container.
-                Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
-                Column(GlanceModifier.fillMaxHeight().width(textWidth)
-                    .padding(start = 16.dp, top = if (expanded) 14.dp else 10.dp, bottom = if (expanded) 14.dp else 10.dp)) {
+            val iconSize = if (expanded) 36.dp else 30.dp
+            Column(GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(ImageProvider(palette.surface)).clickable(openApp)
+                .padding(start = 16.dp, end = 10.dp, top = if (expanded) 12.dp else 8.dp, bottom = if (expanded) 12.dp else 8.dp)) {
+                // Header: who is shown, with the actions on the right.
+                Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
                     Text(person?.let { if (it.id == data?.owner) "Mi estado" else it.displayName } ?: "FindMe",
-                        GlanceModifier.clickable(actionStartActivity(config)),
+                        GlanceModifier.defaultWeight().clickable(actionStartActivity(config)),
                         style = TextStyle(color = ColorProvider(palette.primary), fontSize = if (expanded) 17.sp else 14.sp, fontWeight = bold), maxLines = 1)
-                    Spacer(GlanceModifier.defaultWeight())
-                    Box(GlanceModifier.background(ImageProvider(palette.chip))
-                        .padding(start = 10.dp, end = 11.dp, top = 2.dp, bottom = 4.dp)) {
-                        Text(state?.label ?: if (data == null) "Sin sesión" else "Sin persona",
-                            style = TextStyle(color = ColorProvider(palette.accent), fontSize = if (expanded) 13.sp else 11.sp, fontWeight = bold), maxLines = 1)
-                    }
-                    Text(state?.title ?: if (data == null) "Abre FindMe" else "Elige una persona",
-                        style = TextStyle(color = ColorProvider(palette.primary), fontSize = if (expanded) 30.sp else 21.sp, fontWeight = bold),
-                        maxLines = 1)
-                    if (expanded) {
-                        Text(state?.detail ?: if (data == null) "Inicia sesión para ver tu estado" else "Toca ⋮ para configurar",
-                            style = TextStyle(color = ColorProvider(palette.secondary), fontSize = 13.sp, fontWeight = bold), maxLines = 2)
-                    }
-                    Spacer(GlanceModifier.defaultWeight())
-                    Row(GlanceModifier.fillMaxWidth().background(ImageProvider(R.drawable.widget_card))
-                        .padding(horizontal = 10.dp, vertical = if (expanded) 8.dp else 4.dp),
-                        verticalAlignment = Alignment.Vertical.CenterVertically) {
-                        Image(ImageProvider(R.drawable.widget_ic_calendar), null, GlanceModifier.size(if (expanded) 24.dp else 18.dp),
-                            colorFilter = ColorFilter.tint(ColorProvider(palette.secondary)))
-                        Spacer(GlanceModifier.width(8.dp))
-                        Box(GlanceModifier.width(1.dp).height(if (expanded) 30.dp else 18.dp).background(palette.divider)) {}
-                        Spacer(GlanceModifier.width(8.dp))
-                        Column(GlanceModifier.defaultWeight()) {
-                            if (expanded) Text("Próxima actividad",
-                                style = TextStyle(color = ColorProvider(palette.primary), fontSize = 13.sp, fontWeight = bold), maxLines = 1)
-                            Text(state?.next ?: "Configura tu widget",
-                                style = TextStyle(color = ColorProvider(palette.secondary), fontSize = if (expanded) 12.sp else 11.sp, fontWeight = bold),
-                                maxLines = if (expanded) 2 else 1)
+                    Image(ImageProvider(R.drawable.widget_ic_refresh), "Actualizar",
+                        GlanceModifier.size(iconSize).padding(6.dp).clickable(actionRunCallback<RefreshConnectionWidget>()),
+                        colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
+                    Image(ImageProvider(R.drawable.widget_ic_more), "Configurar",
+                        GlanceModifier.size(iconSize).padding(6.dp).clickable(actionStartActivity(config)),
+                        colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
+                }
+                // Status on the left, the whole illustration on the right, both above the next-activity card.
+                Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+                    Column(GlanceModifier.defaultWeight()) {
+                        Box(GlanceModifier.background(ImageProvider(palette.chip))
+                            .padding(start = 10.dp, end = 11.dp, top = 2.dp, bottom = 4.dp)) {
+                            Text(state?.label ?: if (data == null) "Sin sesión" else "Sin persona",
+                                style = TextStyle(color = ColorProvider(palette.accent), fontSize = if (expanded) 13.sp else 11.sp, fontWeight = bold), maxLines = 1)
+                        }
+                        Text(state?.title ?: if (data == null) "Abre FindMe" else "Elige una persona",
+                            style = TextStyle(color = ColorProvider(palette.primary), fontSize = if (expanded) 30.sp else 21.sp, fontWeight = bold),
+                            maxLines = 1)
+                        if (expanded) {
+                            Text(state?.detail ?: if (data == null) "Inicia sesión para ver tu estado" else "Toca ⋮ para configurar",
+                                style = TextStyle(color = ColorProvider(palette.secondary), fontSize = 13.sp, fontWeight = bold), maxLines = 2)
                         }
                     }
+                    Image(ImageProvider(palette.art), null, GlanceModifier.fillMaxHeight().width(size.width * 0.42f),
+                        contentScale = ContentScale.Fit)
                 }
-                }
-                // Actions float over the top-right corner of the illustration.
-                Box(GlanceModifier.fillMaxSize().padding(top = 4.dp, end = 4.dp), contentAlignment = Alignment.TopEnd) {
-                    Row {
-                        Image(ImageProvider(R.drawable.widget_ic_refresh), "Actualizar",
-                            GlanceModifier.size(if (expanded) 38.dp else 32.dp).padding(7.dp).clickable(actionRunCallback<RefreshConnectionWidget>()),
-                            colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
-                        Image(ImageProvider(R.drawable.widget_ic_more), "Configurar",
-                            GlanceModifier.size(if (expanded) 38.dp else 32.dp).padding(7.dp).clickable(actionStartActivity(config)),
-                            colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
+                Spacer(GlanceModifier.height(if (expanded) 8.dp else 4.dp))
+                Row(GlanceModifier.fillMaxWidth().background(ImageProvider(R.drawable.widget_card))
+                    .padding(horizontal = 12.dp, vertical = if (expanded) 8.dp else 4.dp),
+                    verticalAlignment = Alignment.Vertical.CenterVertically) {
+                    Image(ImageProvider(R.drawable.widget_ic_calendar), null, GlanceModifier.size(if (expanded) 24.dp else 18.dp),
+                        colorFilter = ColorFilter.tint(ColorProvider(palette.secondary)))
+                    Spacer(GlanceModifier.width(10.dp))
+                    Box(GlanceModifier.width(1.dp).height(if (expanded) 30.dp else 18.dp).background(palette.divider)) {}
+                    Spacer(GlanceModifier.width(10.dp))
+                    Column(GlanceModifier.defaultWeight()) {
+                        if (expanded) Text("Próxima actividad",
+                            style = TextStyle(color = ColorProvider(palette.primary), fontSize = 13.sp, fontWeight = bold), maxLines = 1)
+                        Text(state?.next?.let { if (expanded) it else "Próxima: $it" } ?: "Configura tu widget",
+                            style = TextStyle(color = ColorProvider(palette.secondary), fontSize = if (expanded) 12.sp else 11.sp, fontWeight = bold),
+                            maxLines = 1)
                     }
                 }
             }
@@ -141,8 +135,6 @@ class ConnectionWidget : GlanceAppWidget() {
     }
 }
 
-/** Width / height of the illustrations in drawable-nodpi. */
-private const val ART_RATIO = 956f / 1024f
 
 /** Colors and shapes picked to stay readable over each illustrated background. */
 private data class WidgetPalette(
