@@ -2,6 +2,7 @@ package com.example.findme.data.network
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.realtime.Realtime
@@ -24,7 +25,10 @@ object SupabaseClientProvider {
         ) {
             httpEngine = engine
             install(Postgrest)
-            install(Auth)
+            install(Auth) {
+                // PKCE: email links carry a code that only this installation can redeem.
+                flowType = FlowType.PKCE
+            }
             install(Realtime)
         }
     }

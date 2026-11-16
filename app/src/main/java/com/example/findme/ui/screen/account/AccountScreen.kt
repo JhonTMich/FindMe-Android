@@ -168,6 +168,32 @@ fun AccountContent(state: AccountState, actions: AccountActions,
             }
         }
     }
+    if (state.passwordRecovery && state.signedIn) NewPasswordSheet(state, actions)
+}
+
+/** Shown after a recovery link signs the person in, to choose the new password. */
+@Composable
+private fun NewPasswordSheet(state: AccountState, actions: AccountActions) {
+    var password by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
+    var visible by remember { mutableStateOf(false) }
+    Sheet(actions::cancelPasswordRecovery, "Elige una contraseña nueva", "De 8 a 128 caracteres. La usarás junto con tu nombre de usuario para entrar.") {
+        listOf("Nueva contraseña" to password, "Confirmar contraseña" to confirmation).forEachIndexed { index, (label, value) ->
+            OutlinedTextField(value, { if (index == 0) password = it.take(128) else confirmation = it.take(128) },
+                label = { Text(label) }, singleLine = true, enabled = !state.busy,
+                isError = index == 1 && confirmation.isNotEmpty() && confirmation != password,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                visualTransformation = if (visible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = { IconButton(onClick = { visible = !visible }) {
+                    Icon(if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (visible) "Ocultar contraseña" else "Mostrar contraseña")
+                } }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+        }
+        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        Button(onClick = { actions.setRecoveredPassword(password, confirmation) },
+            enabled = !state.busy && password.length in 8..128 && password == confirmation, modifier = Modifier.fillMaxWidth()) {
+            Text(if (state.busy) "Guardando…" else "Guardar contraseña")
+        }
+    }
 }
 
 @Composable
@@ -226,13 +252,16 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
         return
     }
     val registering = mode == "register"
-    val resending = mode == "resend"
-    BrandWelcome("Tu día, compartido", when { registering -> "Tu gente, más cerca."; resending -> "Confirma tu cuenta."; else -> "Qué bueno verte." },
+    val recovering = mode == "recover"
+    // Recovery reuses the email-only layout of "resend confirmation".
+    val resending = mode == "resend" || recovering
+    BrandWelcome("Tu día, compartido", when { registering -> "Tu gente, más cerca."; recovering -> "Recupera tu acceso."; resending -> "Confirma tu cuenta."; else -> "Qué bueno verte." },
         when { registering -> "Crea tu cuenta y confirma tu correo para empezar."
+            recovering -> "Te enviaremos un enlace al correo de tu cuenta para elegir una contraseña nueva."
             resending -> "Te enviaremos otro enlace al correo con el que empezaste tu registro."
             else -> "Tu horario y tu gente, en un mismo lugar." })
     Panel {
-        SectionHeading(Icons.Default.PersonOutline, when { registering -> "Crea tu cuenta"; resending -> "Recibe otro enlace"; else -> "Inicia sesión" })
+        SectionHeading(Icons.Default.PersonOutline, when { registering -> "Crea tu cuenta"; recovering -> "¿Olvidaste tu contraseña?"; resending -> "Recibe otro enlace"; else -> "Inicia sesión" })
         if (registering) Field(name, { name = it.take(80) }, "Nombre visible", keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
         if (registering || resending) Field(email, { email = it.take(254) }, "Correo electrónico", keyboard = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
         if (!resending) Field(username, { username = it.take(24) }, "Nombre de usuario", keyboard = KeyboardOptions(autoCorrectEnabled = false))
@@ -267,10 +296,17 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
         }
         Button(onClick = {
             when { registering -> actions.register(name, email, username, password, confirmation)
+                recovering -> actions.requestPasswordReset(email)
                 resending -> actions.resendConfirmation(email)
                 else -> actions.login(username, password) }
         }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy && valid) {
-            Text(when { state.busy -> "Un momento…"; registering -> "Registrarme"; resending -> "Enviar confirmación"; else -> "Entrar" })
+            Text(when { state.busy -> "Un momento…"; registering -> "Registrarme"; recovering -> "Enviar enlace"; resending -> "Enviar confirmación"; else -> "Entrar" })
+        }
+        if (mode == "login") TextButton(onClick = { mode = "recover"; password = ""; passwordVisible = false }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text("¿Olvidaste tu contraseña?", color = TextMuted)
+        }
+        if (recovering) TextButton(onClick = { mode = "login" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text("Volver a iniciar sesión", color = MaterialTheme.colorScheme.primary)
         }
         TextButton(onClick = { mode = when (mode) { "login", "resend" -> "register"; else -> "login" }; password = ""; confirmation = ""; passwordVisible = false }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text(when (mode) { "login" -> "Crear cuenta"; "resend" -> "Volver al registro"; else -> "Ya tengo cuenta" }, color = MaterialTheme.colorScheme.primary)

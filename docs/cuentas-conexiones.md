@@ -48,7 +48,7 @@ La migración `20261105202001_retirar_vinculo_anterior.sql` elimina `profiles`, 
 - Configuración independiente de cada instancia de widget, varios botones y opciones de apariencia.
 - Notificaciones push mediante FCM y una función de servidor, con tokens privados, control de envíos repetidos y preferencias del destinatario. Guardar un mensaje en Supabase todavía no envía una notificación Android.
 - Caché persistente por cuenta para consultar sin conexión. La sincronización en primer plano ya usa Realtime y muestra la hora de la última consulta correcta; la caché actual del modelo de cuentas es solo en memoria.
-- Recuperación de contraseña en Android. El retorno desde confirmación de registro ya abre la app, pero no inicia sesión automáticamente.
+- ~~Recuperación de contraseña en Android.~~ Disponible: «¿Olvidaste tu contraseña?» envía un enlace a `findme://auth/reset` con PKCE; requiere añadir esa dirección a **Redirect URLs**.
 - Apodos por conexión, permisos independientes para horario/estado y silenciamiento.
 - Cancelaciones específicas de actividades, actividades nocturnas y reglas de solapamiento.
 
@@ -112,7 +112,7 @@ Cada cuenta nueva empieza sin conexiones. Compartir horarios requiere una invita
 
 El propietario configuró Gmail SMTP desde el panel de Supabase, con contraseña de aplicación y verificación en dos pasos. Ninguna contraseña SMTP se recibió en el chat ni se guardó en el repositorio. El propietario confirmó la recepción del correo y el retorno a FindMe con un registro real.
 
-En **Authentication → Email → SMTP Settings**, configurar un proveedor SMTP y un remitente autorizado por ese proveedor. Mantener **Confirm Email** activado y **Allow new users to sign up** activado. En **URL Configuration**, definir `findme://auth/confirmed` como **Site URL** y añadir exactamente la misma dirección a **Redirect URLs**. El propietario confirmó que guardó ambas opciones. Instalar la nueva compilación antes de pedir el correo: las versiones anteriores no reconocen ese enlace.
+En **Authentication → Email → SMTP Settings**, configurar un proveedor SMTP y un remitente autorizado por ese proveedor. Mantener **Confirm Email** activado y **Allow new users to sign up** activado. En **URL Configuration**, definir `findme://auth/confirmed` como **Site URL** y añadir exactamente la misma dirección a **Redirect URLs**. Para recuperar la contraseña, añadir también `findme://auth/reset` a **Redirect URLs**; sin ella, Auth envía el enlace a la Site URL y la app lo trata como una confirmación de registro. El propietario confirmó que guardó ambas opciones. Instalar la nueva compilación antes de pedir el correo: las versiones anteriores no reconocen ese enlace.
 
 El SMTP integrado de Supabase solo entrega a miembros del equipo del proyecto; esa restricción es independiente de `signup_allowed_emails`. Añadir un correo a la tabla no cambia los destinatarios admitidos por ese servicio. Documentación: https://supabase.com/docs/guides/auth/auth-smtp
 

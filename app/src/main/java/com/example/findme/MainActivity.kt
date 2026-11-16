@@ -155,6 +155,15 @@ class MainActivity : ComponentActivity() {
     private fun receiveConfirmation(intent: Intent?) {
         if (intent?.action == NotificationHelper.OPEN_PEOPLE) { openPeople = true; intent.action = null; return }
         if (intent?.action != Intent.ACTION_VIEW) return
+        com.example.findme.domain.model.RecoveryLink.parse(intent.dataString)?.let { link ->
+            when (link) {
+                is com.example.findme.domain.model.RecoveryLink.Code -> accountViewModel.completePasswordRecovery(link.value)
+                com.example.findme.domain.model.RecoveryLink.Failed -> accountViewModel.recoveryLinkFailed()
+            }
+            // The code is single use; do not keep it in the activity's Intent.
+            intent.data = null
+            return
+        }
         ConfirmationLink.parse(intent.dataString)?.let {
             confirmationLink = it
             // Do not retain callback fragments or tokens in the activity's Intent.
