@@ -61,6 +61,7 @@ jobs:
           node scripts/test_account_schema.mjs
           node scripts/test_registration_schema.mjs
           node scripts/test_message_retention.mjs
+          node scripts/test_migrations_replay.mjs
       - name: Build release and run Android checks
         env:
           RELEASE_VERSION: ${{ steps.metadata.outputs.version }}

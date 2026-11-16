@@ -31,9 +31,9 @@ try {
     grant usage on schema auth to authenticated, anon;
     insert into auth.users values ('${a}'), ('${b}'), ('${c}');
   `);
-  await db.exec(await readFile(new URL('../supabase/account-model.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261030040750_crear_cuentas_horarios_y_conexiones.sql', import.meta.url), 'utf8'));
   await db.exec('create schema extensions');
-  await db.exec(await readFile(new URL('../supabase/migrations/20261105204109_validar_cruces_horarios.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261108224808_validar_cruces_horarios.sql', import.meta.url), 'utf8'));
   await db.exec(`insert into public.account_profiles(id, display_name) values ('${a}','A'),('${b}','B'),('${c}','C');`);
   await asUser(a);
   await check(await count('account_profiles') === 1, 'Only own profile visible before linking');
@@ -44,8 +44,8 @@ try {
   await db.exec(`insert into public.connection_invitations values ('${a}','${'1'.repeat(32)}',now()+interval '1 hour');`);
   await denied(`select public.accept_connection_invitation('${'1'.repeat(32)}')`, 'Cannot accept own invitation');
   await db.exec('reset role');
-  await db.exec(await readFile(new URL('../supabase/upgrades/short-invitations.sql', import.meta.url), 'utf8'));
-  await db.exec(await readFile(new URL('../supabase/upgrades/username-login.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261030052255_acortar_codigos_de_invitacion.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/20261030145253_agregar_usuario_para_inicio_de_sesion.sql', import.meta.url), 'utf8'));
   await asUser(a);
   await db.exec(`update public.account_profiles set username='jhontmich' where id='${a}'`);
   await denied(`update public.account_profiles set username='Bad Name' where id='${a}'`, 'Username syntax is enforced');
