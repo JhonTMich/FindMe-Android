@@ -136,6 +136,30 @@ class AccountRepository {
             put("message", message)
         })
     }
+    suspend fun connectionPreferences() = client.postgrest["connection_preferences"].select {
+        filter { eq("owner_id", userId()) }
+    }.decodeList<ConnectionPreference>()
+
+    suspend fun saveConnectionPreference(preference: ConnectionPreference) {
+        val nickname = preference.nickname?.trim()?.takeIf { it.isNotEmpty() }
+        require(nickname == null || nickname.length <= 40) { "El apodo puede tener hasta 40 caracteres." }
+        require(preference.ownerId == userId())
+        client.postgrest["connection_preferences"].upsert(preference.copy(nickname = nickname)) {
+            onConflict = "connection_id,owner_id"
+        }
+    }
+
+    /** The server stamps the time; only the recipient can change it. */
+    suspend fun markSignalRead(id: String) {
+        client.postgrest["connection_signals"].update(buildJsonObject { put("read_at", Instant.now().toString()) }) {
+            filter { eq("id", id); eq("recipient_id", userId()) }
+        }
+    }
+
+    suspend fun deleteSignal(id: String) {
+        client.postgrest["connection_signals"].delete { filter { eq("id", id); eq("recipient_id", userId()) } }
+    }
+
     suspend fun receivedSignals() = client.postgrest["connection_signals"].select {
         filter { eq("recipient_id", userId()); gt("created_at", Instant.now().minusSeconds(86400).toString()) }
         order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING)

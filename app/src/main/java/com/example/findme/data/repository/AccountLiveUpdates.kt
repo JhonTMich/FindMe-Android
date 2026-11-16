@@ -23,7 +23,7 @@ internal object AccountLiveUpdates {
                 val channel = client.realtime.channel("account-$userId-${UUID.randomUUID()}") {}
                 try {
                     coroutineScope {
-                        listOf("connection_signals", "personal_schedule", "personal_status", "person_connections", "account_profiles", "quick_messages").forEach { source ->
+                        listOf("connection_signals", "personal_schedule", "personal_status", "person_connections", "account_profiles", "quick_messages", "connection_preferences").forEach { source ->
                             val changes = channel.postgresChangeFlow<PostgresAction>(schema = "public") { table = source }
                             launch { changes.collect { trySend(Unit) } }
                         }

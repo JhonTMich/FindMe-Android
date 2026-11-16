@@ -1,6 +1,7 @@
 package com.example.findme.ui.screen.account
 
 import com.example.findme.data.model.AccountProfile
+import com.example.findme.data.model.ConnectionPreference
 import com.example.findme.data.model.QuickMessage
 import com.example.findme.data.model.ScheduleDto
 import com.example.findme.data.local.AccountAlert
@@ -31,6 +32,9 @@ interface AccountActions {
     fun saveMessage(label: String, message: String) {}
     fun deleteMessage(id: String) {}
     fun send(message: QuickMessage) {}
+    fun saveConnectionPreference(preference: ConnectionPreference) {}
+    fun markSignalRead(id: String) {}
+    fun deleteSignal(id: String) {}
     fun changePassword(current: String, new: String, confirmation: String) {}
     fun deleteAccount(password: String) {}
     /** JSON copy of the signed-in account's data, or null when nothing is loaded. */

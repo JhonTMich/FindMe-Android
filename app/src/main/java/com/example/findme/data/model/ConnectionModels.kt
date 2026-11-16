@@ -46,5 +46,17 @@ data class ConnectionSignal(
     @SerialName("sender_id") val senderId: String,
     @SerialName("recipient_id") val recipientId: String,
     val message: String,
-    @SerialName("created_at") val createdAt: String? = null
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("read_at") val readAt: String? = null
+)
+
+/** One person's private choices about one connection. A missing row means these defaults. */
+@Serializable
+data class ConnectionPreference(
+    @SerialName("connection_id") val connectionId: String,
+    @SerialName("owner_id") val ownerId: String,
+    val nickname: String? = null,
+    @SerialName("share_schedule") val shareSchedule: Boolean = true,
+    @SerialName("share_status") val shareStatus: Boolean = true,
+    val muted: Boolean = false
 )

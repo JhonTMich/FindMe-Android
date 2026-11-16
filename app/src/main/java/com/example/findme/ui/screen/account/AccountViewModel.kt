@@ -27,6 +27,7 @@ import com.example.findme.data.repository.AccountLiveUpdates
 import com.example.findme.data.repository.StatusRepository
 import com.example.findme.domain.model.UserCurrentStatus
 import com.example.findme.domain.model.ScheduleSyncGuard
+import com.example.findme.domain.model.ConnectionControls
 import com.example.findme.util.NotificationHelper
 import java.time.Instant
 import java.time.ZoneId
@@ -57,8 +58,12 @@ data class AccountState(
     val personStatuses: List<StatusOverrideDto> = emptyList(),
     val messages: List<QuickMessage> = emptyList(),
     val signals: List<ConnectionSignal> = emptyList(),
-    val invitation: ConnectionInvitation? = null
-)
+    val invitation: ConnectionInvitation? = null,
+    val preferences: List<ConnectionPreference> = emptyList()
+) {
+    /** Nicknames, sharing choices and silenced people, as decided by the signed-in person. */
+    val controls: ConnectionControls get() = ConnectionControls(profile?.id.orEmpty(), connections, preferences)
+}
 
 class AccountViewModel(application: Application) : AndroidViewModel(application), AccountActions {
     private val repository = AccountRepository()
@@ -177,12 +182,14 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             val signalsRequest = async { repository.receivedSignals() }
             val schedulesRequest = async { repository.accessibleSchedules() }
             val statusesRequest = async { repository.accessibleStatuses() }
+            val preferencesRequest = async { repository.connectionPreferences() }
             val connections = connectionsRequest.await()
             val profiles = profilesRequest.await()
             val messages = messagesRequest.await()
             val signals = signalsRequest.await()
             val remoteSchedules = schedulesRequest.await()
             val statuses = statusesRequest.await()
+            val preferences = preferencesRequest.await()
             if (repository.auth.currentUserOrNull()?.id != id) return@coroutineScope
             // An older response must not undo a confirmed save or resurrect a deleted row.
             val ownSchedules = if (scheduleSync.canApplySnapshot(scheduleRevision)) {
@@ -200,13 +207,14 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             _state.update { it.copy(signedIn = true, profile = profile,
                 schedules = ownSchedules, statuses = statuses.filter { it.userId == id },
                 connections = connections, profiles = profiles, messages = messages, signals = signals,
-                selectedPerson = selected, personSchedules = schedules.filter { it.userId == selected?.id },
+                preferences = preferences, selectedPerson = selected, personSchedules = schedules.filter { it.userId == selected?.id },
                 personStatuses = statuses.filter { it.userId == selected?.id }, lastSync = Instant.now(), syncIssue = false) }
-            if (_state.value.settings.messages) newSignals.forEach { signal ->
-                val sender = profiles.find { it.id == signal.senderId }?.displayName ?: "Tu gente"
+            val controls = _state.value.controls
+            if (_state.value.settings.messages) controls.notifiable(newSignals).forEach { signal ->
+                val sender = profiles.find { it.id == signal.senderId }?.let(controls::nameOf) ?: "Tu gente"
                 NotificationHelper.showMessageNotification(getApplication(), signal.id, sender, signal.message)
             }
-            saveCache(AccountSnapshot(id, profile, profiles, schedules, statuses, connections, messages, signals, Instant.now().toString()))
+            saveCache(AccountSnapshot(id, profile, profiles, schedules, statuses, connections, messages, signals, Instant.now().toString(), preferences))
             publishWidgetSnapshot()
             updateStatusNotifications()
         }
@@ -235,6 +243,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         _state.update { it.copy(signedIn = true, initializing = false, profile = cached.profile,
             schedules = cached.schedules.filter { row -> row.userId == id }, statuses = cached.statuses.filter { row -> row.userId == id },
             connections = cached.connections, profiles = cached.profiles, messages = cached.messages, signals = signals,
+            preferences = cached.preferences,
             selectedPerson = selected, personSchedules = cached.schedules.filter { row -> row.userId == selected?.id },
             personStatuses = cached.statuses.filter { row -> row.userId == selected?.id },
             lastSync = runCatching { Instant.parse(cached.syncedAt) }.getOrNull()) }
@@ -280,6 +289,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         if (repository.auth.currentUserOrNull()?.id != own) return
         val activeIds = state.profiles.map { it.id }.toSet()
         knownStatuses.keys.retainAll(activeIds)
+        val controls = state.controls
         state.profiles.filter { it.id != own }.forEach { person ->
             val zone = runCatching { ZoneId.of(person.timezone) }.getOrDefault(ZoneId.systemDefault())
             val now = ZonedDateTime.now(zone)
@@ -292,14 +302,16 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 else -> "schedule"
             }
             val previous = knownStatuses.put(person.id, key)
-            if (previous != null && previous != key) {
+            // A silenced person's changes are still tracked, so unsilencing does not replay them.
+            if (previous != null && previous != key && !controls.isMuted(person.id)) {
+                val name = controls.nameOf(person)
                 when {
                     status is UserCurrentStatus.Override && state.settings.statuses ->
-                        NotificationHelper.showStatusNotification(getApplication(), person.displayName, status.customLocation)
+                        NotificationHelper.showStatusNotification(getApplication(), name, status.customLocation)
                     status is UserCurrentStatus.InClass && state.settings.activities ->
-                        NotificationHelper.showStatusNotification(getApplication(), person.displayName, "Actividad en curso: ${status.currentSchedule.title}")
+                        NotificationHelper.showStatusNotification(getApplication(), name, "Actividad en curso: ${status.currentSchedule.title}")
                     previous.startsWith("status:") && state.settings.statuses ->
-                        NotificationHelper.showStatusNotification(getApplication(), person.displayName, "Vuelve a mostrar su horario.")
+                        NotificationHelper.showStatusNotification(getApplication(), name, "Vuelve a mostrar su horario.")
                 }
             }
         }
@@ -406,6 +418,19 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         _state.update { it.copy(notice = "Mensaje rápido creado.") }
     }
     override fun deleteMessage(id: String) = perform { repository.deleteQuickMessage(id); load() }
+    override fun saveConnectionPreference(preference: ConnectionPreference) = perform {
+        repository.saveConnectionPreference(preference); load()
+        _state.update { it.copy(notice = "Preferencias guardadas.") }
+    }
+    override fun markSignalRead(id: String) = perform(quiet = true) {
+        repository.markSignalRead(id)
+        val now = Instant.now().toString()
+        _state.update { old -> old.copy(signals = old.signals.map { if (it.id == id && it.readAt == null) it.copy(readAt = now) else it }) }
+    }
+    override fun deleteSignal(id: String) = perform {
+        repository.deleteSignal(id)
+        _state.update { old -> old.copy(signals = old.signals.filterNot { it.id == id }, notice = "Mensaje borrado.") }
+    }
     override fun changePassword(current: String, new: String, confirmation: String) = perform {
         require(new == confirmation) { "Las contraseñas no coinciden." }
         val username = requireNotNull(_state.value.profile?.username) { "Elige un nombre de usuario antes de cambiar la contraseña." }
@@ -431,7 +456,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         val recipient = _state.value.selectedPerson ?: return
         perform {
             repository.sendSignal(recipient.id, message.message)
-            _state.update { it.copy(notice = "Mensaje enviado a ${recipient.displayName}. Se conserva durante 24 horas.") }
+            _state.update { it.copy(notice = "Mensaje enviado a ${_state.value.controls.nameOf(recipient)}. Se conserva durante 24 horas.") }
         }
     }
 }
