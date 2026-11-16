@@ -1,0 +1,11 @@
+# Supabase CLI configuration. Only the settings the project depends on are set here;
+# everything else keeps the CLI defaults.
+project_id = "findme"
+
+# Both functions receive requests before a user session exists and authenticate
+# the caller themselves (username/password or an authorized email).
+[functions.username-login]
+verify_jwt = false
+
+[functions.authorized-signup]
+verify_jwt = false
