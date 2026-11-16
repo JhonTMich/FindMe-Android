@@ -43,6 +43,8 @@ data class AccountState(
     val error: String? = null,
     val notice: String? = null,
     val confirmationEmail: String? = null,
+    /** Signed in through a recovery link; the new password has not been chosen yet. */
+    val passwordRecovery: Boolean = false,
     val loginRevision: Int = 0,
     val profile: AccountProfile? = null,
     val schedules: List<ScheduleDto> = emptyList(),
@@ -124,6 +126,28 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    override fun requestPasswordReset(email: String) = perform {
+        require(com.example.findme.domain.model.Registration.isEmail(email)) { "Introduce un correo válido." }
+        repository.requestPasswordReset(email)
+        _state.update { it.copy(notice = "Si ese correo tiene una cuenta, recibirás un enlace para elegir otra contraseña. " +
+            "Ábrelo en este teléfono y revisa también la carpeta de spam.") }
+    }
+    /** Called when the recovery email's link opens the app. */
+    fun completePasswordRecovery(code: String) = perform {
+        repository.exchangeRecoveryCode(code)
+        _state.update { it.copy(signedIn = true, passwordRecovery = true) }
+        // The session listener's refresh is skipped while this action is running, so load here.
+        load()
+    }
+    fun recoveryLinkFailed() {
+        _state.update { it.copy(error = "El enlace para cambiar la contraseña no es válido o venció. Solicita uno nuevo.") }
+    }
+    override fun setRecoveredPassword(password: String, confirmation: String) = perform {
+        require(password == confirmation) { "Las contraseñas no coinciden." }
+        repository.setPassword(password)
+        _state.update { it.copy(passwordRecovery = false, notice = "Contraseña actualizada. Ya puedes usarla para entrar.") }
+    }
+    override fun cancelPasswordRecovery() { _state.update { it.copy(passwordRecovery = false) } }
     override fun login(username: String, password: String) = perform {
         require(com.example.findme.domain.model.Username.isValid(username) && password.isNotBlank()) { "Introduce un usuario válido y tu contraseña." }
         repository.signIn(username, password)

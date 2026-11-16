@@ -44,6 +44,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="findme" android:host="auth" android:path="/confirmed" />
+                <data android:path="/reset" />
             </intent-filter>
         </activity>
 

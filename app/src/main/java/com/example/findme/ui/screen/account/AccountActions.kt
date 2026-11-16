@@ -10,6 +10,9 @@ import com.example.findme.data.local.AppAccent
 interface AccountActions {
     fun refresh() {}
     fun login(username: String, password: String) {}
+    fun requestPasswordReset(email: String) {}
+    fun setRecoveredPassword(password: String, confirmation: String) {}
+    fun cancelPasswordRecovery() {}
     fun register(name: String, email: String, username: String, password: String, confirmation: String) {}
     fun resendConfirmation(email: String) {}
     fun finishRegistration() {}
