@@ -113,6 +113,9 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 val message = when (error.code) {
                     "23505" -> "Ese nombre de usuario ya está ocupado. Elige otro."
                     "23P01" -> "Este horario coincide con otra actividad. Actualiza tu horario y elige otra hora."
+                    "FM001" -> "Llegaste al máximo permitido. Elimina elementos que ya no uses e inténtalo de nuevo."
+                    "FM002" -> "Demasiados intentos seguidos. Espera unos minutos e inténtalo de nuevo."
+                    "FM003" -> "La zona horaria del teléfono no es válida. Revisa la configuración de fecha y hora."
                     else -> "No se pudieron guardar los datos. Inténtalo de nuevo."
                 }
                 _state.update { it.copy(error = message) }
