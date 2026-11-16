@@ -79,13 +79,15 @@ class ConnectionWidget : GlanceAppWidget() {
             val palette = WidgetPalette.of(scene)
             val openApp = actionStartActivity(Intent(context, MainActivity::class.java))
             // The illustration is shown whole, flush with the top, right and bottom edges.
-            val artWidth = minOf(size.height * ART_RATIO, size.width * 0.45f)
+            val artWidth = minOf(size.height * ART_RATIO, size.width * 0.5f)
             val textWidth = size.width - artWidth + 12.dp
             val bold = FontWeight.Bold
             Box(GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(ImageProvider(palette.surface)).clickable(openApp),
                 contentAlignment = Alignment.BottomEnd) {
                 Image(ImageProvider(palette.art), null, GlanceModifier.width(artWidth).height(artWidth / ART_RATIO),
                     contentScale = ContentScale.Fit)
+                // Box children inherit BottomEnd, so the text gets its own start-aligned container.
+                Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
                 Column(GlanceModifier.fillMaxHeight().width(textWidth)
                     .padding(start = 16.dp, top = if (expanded) 14.dp else 10.dp, bottom = if (expanded) 14.dp else 10.dp)) {
                     Text(person?.let { if (it.id == data?.owner) "Mi estado" else it.displayName } ?: "FindMe",
@@ -118,9 +120,10 @@ class ConnectionWidget : GlanceAppWidget() {
                                 style = TextStyle(color = ColorProvider(palette.primary), fontSize = 13.sp, fontWeight = bold), maxLines = 1)
                             Text(state?.next ?: "Configura tu widget",
                                 style = TextStyle(color = ColorProvider(palette.secondary), fontSize = if (expanded) 12.sp else 11.sp, fontWeight = bold),
-                                maxLines = 1)
+                                maxLines = if (expanded) 2 else 1)
                         }
                     }
+                }
                 }
                 // Actions float over the top-right corner of the illustration.
                 Box(GlanceModifier.fillMaxSize().padding(top = 4.dp, end = 4.dp), contentAlignment = Alignment.TopEnd) {
