@@ -10,3 +10,7 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+# Glance creates widget click callbacks by class name from a PendingIntent; keep the no-arg
+# constructor even if a future Glance version stops shipping this rule.
+-keep class * implements androidx.glance.appwidget.action.ActionCallback { <init>(); }
