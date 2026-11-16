@@ -58,6 +58,27 @@ try {
   await check(!(await db.query(`select public.consume_username_login_attempt('${'a'.repeat(64)}') allowed`)).rows[0].allowed, 'Ninth attempt is blocked');
   await db.exec(`update private.username_login_limits set expires_at=now()-interval '1 minute'`);
   await check((await db.query(`select public.consume_username_login_attempt('${'a'.repeat(64)}') allowed`)).rows[0].allowed, 'Limit expires');
+
+  await db.exec('reset role');
+  await db.exec(await readFile(new URL('../supabase/migrations/20261116120000_limitar_intentos_por_cliente.sql', import.meta.url), 'utf8'));
+  await db.exec('set role service_role');
+  const key = (tag, i = 0) => `${tag}${i.toString(16)}`.padStart(64, '0');
+  const attempt = async (user, client) => (await db.query(
+    client ? `select public.consume_username_login_attempt('${user}', '${client}') allowed`
+      : `select public.consume_username_login_attempt('${user}') allowed`)).rows[0].allowed;
+  for (let i = 0; i < 8; i++) await check(await attempt(key('b')), 'Legacy callers keep eight attempts');
+  await check(!(await attempt(key('b'))), 'Legacy callers stay limited per username');
+  for (let i = 0; i < 100; i++) await check(await attempt(key('c', i), key('d', i)), 'No global limit blocks other people');
+  for (let i = 0; i < 8; i++) await check(await attempt(key('e'), key('f')), 'One client gets eight attempts per account');
+  await check(!(await attempt(key('e'), key('f'))), 'Ninth attempt from the same client is blocked');
+  await check(await attempt(key('e'), key('a1')), 'Another client can still sign in to that account');
+  for (let i = 0; i < 40; i++) await check(await attempt(key('a2', i), key('a3')), 'A client gets forty attempts in total');
+  await check(!(await attempt(key('a4'), key('a3'))), 'A noisy client is blocked for every account');
+  for (let i = 0; i < 50; i++) await check(await attempt(key('a5'), key('a6', i)), 'An account accepts fifty distributed attempts');
+  await check(!(await attempt(key('a5'), key('a7'))), 'Distributed guessing against one account is capped');
+  await denied(`select public.consume_username_login_attempt('${key('a8')}', 'not-a-hash')`, 'Client key syntax is enforced');
+  await asUser(b);
+  await denied(`select public.consume_username_login_attempt('${key('a8')}', '${key('a9')}')`, 'Clients still cannot call the limiter');
   await asUser(b);
   await check(await count('connection_invitations') === 0, 'Other invitations are private');
   await check(await count('personal_schedule') === 0, 'Unconnected schedule hidden');

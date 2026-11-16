@@ -26,6 +26,34 @@ test('successful login normalizes username and returns only an authenticated ses
   assert.equal(calls.length, 4);
 });
 
+test('rate limiting is keyed by an HMAC of the client address, never the raw address', async () => {
+  let limiterBody;
+  const handler = createLoginHandler(config, async (url, options) => {
+    if (url.includes('/rpc/')) { limiterBody = JSON.parse(options.body); return json(false); }
+    throw new Error('Should stop at the limiter');
+  });
+  const request = () => new Request('https://example.test', {
+    method: 'POST', body: JSON.stringify({ username: 'jhontmich', password: 'x' }),
+    headers: { 'cf-connecting-ip': '203.0.113.7', 'x-forwarded-for': '198.51.100.1' },
+  });
+  assert.equal((await handler(request())).status, 429);
+  assert.match(limiterBody.client_hash, /^[0-9a-f]{64}$/);
+  assert.equal(JSON.stringify(limiterBody).includes('203.0.113.7'), false);
+  const other = createLoginHandler({ ...config, serviceKey: 'other-secret' }, async (url, options) => {
+    assert.notEqual(JSON.parse(options.body).client_hash, limiterBody.client_hash);
+    return json(false);
+  });
+  assert.equal((await other(request())).status, 429);
+});
+
+test('requests without a client address fall back to the per-username limit', async () => {
+  const handler = createLoginHandler(config, async (url, options) => {
+    assert.deepEqual(Object.keys(JSON.parse(options.body)), ['username_hash']);
+    return json(false);
+  });
+  assert.equal((await handler(login())).status, 429);
+});
+
 test('unknown user and wrong password have the same response without email disclosure', async () => {
   for (const exists of [true, false]) {
     const handler = createLoginHandler(config, async (url) => {

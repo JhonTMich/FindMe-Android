@@ -65,6 +65,15 @@ test('SMTP failure returns no success, password, email or upstream details', asy
   const body = await result.text();
   for (const sensitive of [input.password, input.email, 'sensitive details']) assert.equal(body.includes(sensitive), false);
 });
+test('registration limit uses the client key from the forwarded address', async () => {
+  let limiterBody;
+  const request = new Request('https://example.test', {
+    method: 'POST', body: JSON.stringify(input), headers: { 'x-forwarded-for': '203.0.113.9, 10.0.0.1' },
+  });
+  await createSignupHandler(config, async (url, options) => { limiterBody = JSON.parse(options.body); return json(false); })(request);
+  assert.match(limiterBody.client_hash, /^[0-9a-f]{64}$/);
+  assert.equal(JSON.stringify(limiterBody).includes('203.0.113.9'), false);
+});
 test('rate limit failure stops registration before looking up any email', async () => {
   let calls = 0;
   const result = await createSignupHandler(config, async () => { calls++; return json(false); })(req());
