@@ -75,55 +75,62 @@ class ConnectionWidget : GlanceAppWidget() {
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
                 .setData(Uri.parse("findme://widget/$widgetId"))
             val expanded = LocalSize.current.height >= 220.dp
-            val actionColor = Color(0xFFB2C7EB)
-            val accent = Color(0xFF0B1831)
-            Column(GlanceModifier.fillMaxSize().background(ImageProvider(R.drawable.widget_background)).padding(14.dp)) {
-                Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Text(person?.let { if (it.id == data?.owner) "Mi estado" else it.displayName } ?: "FindMe · Estado actual",
-                        GlanceModifier.defaultWeight().clickable(actionStartActivity(config)),
-                        style = TextStyle(color = ColorProvider(Color(0xFFF8F9FF)), fontSize = 14.sp, fontWeight = FontWeight.Bold), maxLines = 1)
-                    Text("↻", GlanceModifier.clickable(actionRunCallback<RefreshConnectionWidget>()).padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = TextStyle(color = ColorProvider(actionColor), fontSize = 20.sp))
-                    Text("⋮", GlanceModifier.clickable(actionStartActivity(config)).padding(horizontal = 6.dp, vertical = 4.dp),
-                        style = TextStyle(color = ColorProvider(actionColor), fontSize = 20.sp))
-                }
-                Spacer(GlanceModifier.height(8.dp))
-                Column(GlanceModifier.fillMaxWidth().defaultWeight().clickable(actionStartActivity(Intent(context, MainActivity::class.java))).background(ImageProvider(R.drawable.widget_status_background))
-                    .padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Row(verticalAlignment = Alignment.Vertical.CenterVertically) {
-                        Image(ImageProvider(when (state?.kind) {
-                            "activity" -> R.drawable.widget_school
-                            "work" -> R.drawable.widget_work
-                            "shared" -> R.drawable.widget_chat
-                            else -> R.drawable.widget_free
-                        }), contentDescription = null, modifier = GlanceModifier.size(if (expanded) 38.dp else 28.dp))
-                        Spacer(GlanceModifier.width(12.dp))
+            val scene = state?.scene ?: WidgetScene.FREE
+            val palette = WidgetPalette.of(scene)
+            val openApp = actionStartActivity(Intent(context, MainActivity::class.java))
+            Box(GlanceModifier.fillMaxSize().cornerRadius(24.dp)
+                .background(ImageProvider(palette.background), contentScale = ContentScale.Crop)
+                .clickable(openApp)) {
+                Row(GlanceModifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    // The illustration occupies the right half, so all the text lives on the left.
+                    Column(GlanceModifier.fillMaxHeight().defaultWeight()) {
+                        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+                            Text(person?.let { if (it.id == data?.owner) "Mi estado" else it.displayName } ?: "FindMe",
+                                GlanceModifier.defaultWeight().clickable(actionStartActivity(config)),
+                                style = TextStyle(color = ColorProvider(palette.primary), fontSize = 13.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                            Text("↻", GlanceModifier.clickable(actionRunCallback<RefreshConnectionWidget>()).padding(horizontal = 6.dp),
+                                style = TextStyle(color = ColorProvider(palette.accent), fontSize = 18.sp, fontWeight = FontWeight.Bold))
+                            Text("⋮", GlanceModifier.clickable(actionStartActivity(config)).padding(start = 4.dp, end = 2.dp),
+                                style = TextStyle(color = ColorProvider(palette.accent), fontSize = 18.sp, fontWeight = FontWeight.Bold))
+                        }
+                        Spacer(GlanceModifier.defaultWeight())
+                        Text(state?.label ?: if (data == null) "Sin sesión" else "Sin persona",
+                            style = TextStyle(color = ColorProvider(palette.accent), fontSize = 12.sp, fontWeight = FontWeight.Bold), maxLines = 1)
                         Text(state?.title ?: if (data == null) "Abre FindMe" else "Elige una persona",
-                            style = TextStyle(color = ColorProvider(accent), fontSize = if (expanded) 27.sp else 22.sp,
-                                fontWeight = FontWeight.Bold), maxLines = if (expanded) 2 else 1)
+                            style = TextStyle(color = ColorProvider(palette.primary), fontSize = if (expanded) 24.sp else 20.sp,
+                                fontWeight = FontWeight.Bold), maxLines = 2)
+                        Text(state?.detail ?: if (data == null) "Inicia sesión para ver tu estado" else "Toca ⋮ para configurar",
+                            style = TextStyle(color = ColorProvider(palette.secondary), fontSize = 12.sp), maxLines = if (expanded) 2 else 1)
+                        Spacer(GlanceModifier.defaultWeight())
+                        state?.let {
+                            Text("Próxima: ${it.next}",
+                                style = TextStyle(color = ColorProvider(palette.secondary), fontSize = 11.sp, fontWeight = FontWeight.Medium),
+                                maxLines = if (expanded) 2 else 1)
+                        }
+                        data?.let {
+                            val time = java.time.Instant.ofEpochMilli(it.syncedAt).atZone(ZoneId.systemDefault())
+                                .format(DateTimeFormatter.ofPattern("dd/MM HH:mm"))
+                            Text(if (prefs.get(WidgetStore.errorKey) != null) "Sin conexión · $time" else "Actualizado $time",
+                                style = TextStyle(color = ColorProvider(palette.muted), fontSize = 9.sp), maxLines = 1)
+                        }
                     }
-                    if (expanded) {
-                        Spacer(GlanceModifier.height(6.dp))
-                        Text(state?.detail ?: "Inicia sesión y configura tu widget",
-                            style = TextStyle(color = ColorProvider(Color(0xFF243C5C)), fontSize = 12.sp), maxLines = 2)
-                    }
+                    Spacer(GlanceModifier.fillMaxHeight().defaultWeight())
                 }
-                Spacer(GlanceModifier.height(8.dp))
-                Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Image(ImageProvider(R.drawable.widget_calendar), null, GlanceModifier.size(20.dp))
-                    Spacer(GlanceModifier.width(8.dp))
-                    Text("Próxima: ${state?.next ?: "Configura tu estado"}",
-                        style = TextStyle(color = ColorProvider(Color(0xFFF8F9FF)), fontSize = 12.sp), maxLines = 2)
-                }
-                Spacer(GlanceModifier.height(4.dp))
-                    Text(data?.let {
-                        val time = java.time.Instant.ofEpochMilli(it.syncedAt).atZone(ZoneId.systemDefault())
-                            .format(DateTimeFormatter.ofPattern("dd/MM HH:mm"))
-                        if (prefs.get(WidgetStore.errorKey) != null) "Sin conexión · Datos del $time"
-                        else "Datos del $time"
-                    } ?: "Toca ⋮ para configurar",
-                        style = TextStyle(color = ColorProvider(Color(0xFFB6C5DF)), fontSize = if (expanded) 10.sp else 9.sp), maxLines = 1)
             }
+        }
+    }
+}
+
+/** Text colors picked to stay readable over each illustrated background. */
+private data class WidgetPalette(val background: Int, val primary: Color, val secondary: Color, val accent: Color, val muted: Color) {
+    companion object {
+        fun of(scene: WidgetScene) = when (scene) {
+            WidgetScene.WORK -> WidgetPalette(R.drawable.widget_scene_work,
+                Color(0xFF3B2667), Color(0xFF5B4789), Color(0xFF7448C2), Color(0xFF7A6A9E))
+            WidgetScene.UNIVERSITY -> WidgetPalette(R.drawable.widget_scene_university,
+                Color(0xFF0F3558), Color(0xFF34587C), Color(0xFF1C6FBF), Color(0xFF5A7A99))
+            WidgetScene.FREE -> WidgetPalette(R.drawable.widget_scene_free,
+                Color(0xFF5A2A10), Color(0xFF80472A), Color(0xFFC75A1A), Color(0xFF96664A))
         }
     }
 }

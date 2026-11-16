@@ -1,8 +1,15 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/widget_background" android:padding="16dp">
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Mi estado" android:textColor="#F8F9FF" android:textSize="14sp" android:textStyle="bold" />
-<LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:gravity="center_vertical" android:padding="16dp" android:layout_marginVertical="10dp" android:background="@drawable/widget_status_background">
-<ImageView android:layout_width="38dp" android:layout_height="38dp" android:src="@drawable/widget_school" android:contentDescription="@null"/>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="12dp" android:text="En clase" android:textColor="#0B1831" android:textSize="28sp" android:textStyle="bold" />
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
+<ImageView android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/widget_scene_university" android:scaleType="centerCrop" android:contentDescription="@null" />
+<LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:paddingHorizontal="16dp" android:paddingVertical="12dp">
+<LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical">
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Mi estado" android:textColor="#0F3558" android:textSize="13sp" android:textStyle="bold" />
+<Space android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="En clase" android:textColor="#1C6FBF" android:textSize="12sp" android:textStyle="bold" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Cálculo II" android:textColor="#0F3558" android:textSize="20sp" android:textStyle="bold" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Hasta 11:00 a. m. · Aula 2" android:textColor="#34587C" android:textSize="12sp" android:maxLines="1" />
+<Space android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Próxima: Almuerzo · 12:00 p. m." android:textColor="#34587C" android:textSize="11sp" android:maxLines="1" />
 </LinearLayout>
-<TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Próxima actividad: Libre" android:textColor="#F8F9FF" android:textSize="13sp" android:drawableStart="@drawable/widget_calendar" android:drawablePadding="8dp"/>
+<Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
 </LinearLayout>
+</FrameLayout>
