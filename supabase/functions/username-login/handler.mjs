@@ -42,11 +42,14 @@ export function createLoginHandler({ url, serviceKey, anonKey }, request = fetch
       const profiles = await serverRequest(`/rest/v1/account_profiles?select=id&username=eq.${encodeURIComponent(username)}&limit=1`);
       if (!profiles.ok) return reply({ message: 'Servicio no disponible.' }, 503);
       const profile = (await profiles.json())[0];
+      // Make the same Auth lookup for unknown usernames (a nil id that never exists), so the
+      // number of upstream calls and the response time do not reveal which usernames are taken.
+      const user = await serverRequest(`/auth/v1/admin/users/${encodeURIComponent(profile?.id ?? '00000000-0000-0000-0000-000000000000')}`);
+      const userBody = await user.text();
       let email;
       if (profile) {
-        const user = await serverRequest(`/auth/v1/admin/users/${encodeURIComponent(profile.id)}`);
         if (!user.ok) return reply({ message: 'Servicio no disponible.' }, 503);
-        email = (await user.json()).email;
+        email = JSON.parse(userBody).email;
       }
       // Also call Auth for missing usernames, using an address that cannot be registered.
       const session = await request(`${url}/auth/v1/token?grant_type=password`, {

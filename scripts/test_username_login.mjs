@@ -40,6 +40,22 @@ test('unknown user and wrong password have the same response without email discl
   }
 });
 
+test('known and unknown usernames make the same upstream calls', async () => {
+  const paths = {};
+  for (const exists of [true, false]) {
+    paths[exists] = [];
+    const handler = createLoginHandler(config, async (url) => {
+      paths[exists].push(new URL(url).pathname.replace(/\/users\/.*/, '/users/:id'));
+      if (url.includes('/rpc/')) return json(true);
+      if (url.includes('/account_profiles?')) return json(exists ? [{ id: 'own' }] : []);
+      if (url.includes('/admin/')) return exists ? json({ email: 'private@example.test' }) : json({ msg: 'User not found' }, 404);
+      return json({ msg: 'invalid' }, 400);
+    });
+    assert.equal((await handler(login())).status, 401);
+  }
+  assert.deepEqual(paths[true], paths[false]);
+});
+
 test('rate limited request never looks up a user or checks a password', async () => {
   let calls = 0;
   const handler = createLoginHandler(config, async () => { calls++; return json(false); });
