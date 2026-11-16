@@ -4,6 +4,15 @@ const headers ={ 'Content-Type': 'application/json', 'Cache-Control': 'no-store'
 const reply = (body, status = 200, extra = {}) => new Response(JSON.stringify(body), { status, headers: { ...headers, ...extra } });
 const unavailable = () => reply({ message: 'No se pudo completar el registro. Inténtalo más tarde.' }, 503);
 
+const base64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+/** A valid S256 challenge whose verifier is never stored or returned. */
+export async function unusablePkceChallenge() {
+  const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)));
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return { code_challenge: base64url(new Uint8Array(digest)), code_challenge_method: 's256' };
+}
+
 export function createSignupHandler({ url, serviceKey, anonKey }, request = fetch) {
   return async (req) => {
     if (req.method !== 'POST') return reply({ message: 'Método no permitido.' }, 405);
@@ -64,10 +73,13 @@ export function createSignupHandler({ url, serviceKey, anonKey }, request = fetc
       const settings = await settingsResponse.json();
       if (settings.mailer_autoconfirm !== false || settings.disable_signup === true) return unavailable();
       const redirect = encodeURIComponent('findme://auth/confirmed');
+      // Any app can register the findme:// scheme. With PKCE the callback carries only a one-time
+      // code instead of session tokens, and its verifier is discarded here, so nobody can redeem it.
+      const pkce = await unusablePkceChallenge();
       const result = await request(`${url}/auth/v1/${resend ? 'resend' : 'signup'}?redirect_to=${redirect}`, {
         method: 'POST', headers: { apikey: anonKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify(resend ? { type: 'signup', email } : {
-          email, password: body.password, data: { display_name: name, username, timezone: body.timezone },
+        body: JSON.stringify(resend ? { type: 'signup', email, ...pkce } : {
+          email, password: body.password, data: { display_name: name, username, timezone: body.timezone }, ...pkce,
         }), signal: AbortSignal.timeout(15000),
       });
       if (result.status === 429) return reply({ message: 'Espera unos minutos antes de solicitar otro correo.' }, 429);

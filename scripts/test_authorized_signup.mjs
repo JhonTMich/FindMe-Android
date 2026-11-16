@@ -25,9 +25,28 @@ test('registration forwards only self-chosen data to native Auth and requires co
   assert.equal(new URL(mock.calls.at(-1).url).searchParams.get('redirect_to'), 'findme://auth/confirmed');
   assert.deepEqual(await result.json(), { needs_confirmation: true });
   assert.equal(result.headers.get('cache-control'), 'no-store');
-  assert.deepEqual(JSON.parse(mock.calls.at(-1).options.body), {
+  const { code_challenge: challenge, code_challenge_method: method, ...sent } = JSON.parse(mock.calls.at(-1).options.body);
+  assert.deepEqual(sent, {
     email: input.email, password: input.password, data: { username: 'my_user', display_name: input.name, timezone: input.timezone },
   });
+  assertPkce(challenge, method);
+});
+function assertPkce(challenge, method) {
+  // PKCE makes the email callback carry a one-time code instead of session tokens.
+  assert.equal(method, 's256');
+  assert.match(challenge, /^[A-Za-z0-9_-]{43}$/);
+}
+test('each request uses a fresh challenge and never sends or returns the verifier', async () => {
+  const challenges = new Set();
+  for (let i = 0; i < 3; i++) {
+    const mock = server();
+    const result = await createSignupHandler(config, mock.request)(req());
+    const sent = mock.calls.at(-1).options.body;
+    assert.equal(sent.includes('code_verifier'), false);
+    assert.equal((await result.text()).includes('code'), false);
+    challenges.add(JSON.parse(sent).code_challenge);
+  }
+  assert.equal(challenges.size, 3);
 });
 test('missing, disabled, expired and consumed authorizations never reach Auth signup', async () => {
   for (const entry of [null, { enabled: false }, { enabled: true, expires_at: '2000-01-01' }, { enabled: true, used_at: '2026-01-01' }]) {
@@ -45,7 +64,9 @@ test('resend accepts consumed authorization and sends no password', async () => 
   const mock = server({ entry: { enabled: true, used_at: '2026-01-01' } });
   assert.equal((await createSignupHandler(config, mock.request)(req({ action: 'resend', email: input.email }))).status, 200);
   assert.ok(mock.calls.at(-1).url.includes('/resend?'));
-  assert.deepEqual(JSON.parse(mock.calls.at(-1).options.body), { type: 'signup', email: input.email });
+  const { code_challenge: challenge, code_challenge_method: method, ...sent } = JSON.parse(mock.calls.at(-1).options.body);
+  assert.deepEqual(sent, { type: 'signup', email: input.email });
+  assertPkce(challenge, method);
 });
 test('registration refuses a project with email confirmation disabled', async () => {
   const mock = server({ autoConfirm: true });
