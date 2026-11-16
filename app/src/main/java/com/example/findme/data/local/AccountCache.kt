@@ -19,7 +19,9 @@ data class AccountSnapshot(
     val connections: List<PersonConnection>,
     val messages: List<QuickMessage>,
     val signals: List<ConnectionSignal>,
-    val syncedAt: String
+    val syncedAt: String,
+    /** Absent in caches written before per-connection preferences existed. */
+    val preferences: List<ConnectionPreference> = emptyList()
 )
 
 /** Kept on the device only (excluded from backups) and removed when the session ends. */

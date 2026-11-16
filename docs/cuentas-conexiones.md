@@ -163,3 +163,14 @@ Los mensajes dejan de ser accesibles por API al cumplir 24 horas. El borrado fí
 Verificación del servidor: `node scripts/test_message_retention.mjs` comprueba caducidad, borrado físico, permisos, revocación y ausencia de límites nuevos de envío (9 comprobaciones). Se verificaron las seis tablas publicadas, el trabajo activo y una ejecución programada satisfactoria. La recepción Realtime entre dos teléfonos con cuentas reales debe verificarse con el propietario; no se crearon usuarios ficticios para probarla.
 
 Verificación Android de esta entrega: 40 pruebas JVM; 11 pruebas de interfaz de cuentas y una prueba de persistencia por cuenta en emulador, con comprobaciones finales enfocadas del selector de color. Compilación y lint correctos. Se revisó una captura de la vista con el acento menta.
+
+## Preferencias por conexión y bandeja de mensajes — 16 de noviembre de 2026
+
+Migración: `20261116140000_preferencias_por_conexion.sql` (aplicar después de `20261116130000_limites_de_datos.sql`).
+
+- `connection_preferences` guarda, por conexión y por persona, un apodo privado (hasta 40 caracteres), si comparte su horario, si comparte su estado y si silencia los avisos de la otra persona. Sin fila se usan los valores de siempre: comparte todo, sin apodo y sin silenciar. RLS permite a cada persona leer y escribir solo su propio lado, y solo para conexiones en las que participa. Al desvincular, las preferencias se eliminan en cascada.
+- Las políticas `schedule_read` y `status_read` se recrean para consultar `private.connection_shares(dueño, tipo)`, una función `SECURITY DEFINER` que responde solo para quien llama sin exponer la fila del dueño.
+- `connection_signals.read_at`: solo el destinatario puede marcar un mensaje como leído (el servidor fija la hora y conserva la primera) o borrarlo. El remitente y terceros no pueden.
+- Silenciar es local a la app: no se muestran avisos de mensajes ni de cambios de estado o actividad de esa persona, y los mensajes ya leídos en otro dispositivo tampoco avisan.
+
+Prueba: `node scripts/test_connection_preferences.mjs`.

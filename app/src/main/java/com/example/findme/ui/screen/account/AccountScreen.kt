@@ -610,6 +610,8 @@ private fun People(state: AccountState, actions: AccountActions) {
     var connect by rememberSaveable { mutableStateOf(false) }
     var manageMessages by rememberSaveable { mutableStateOf(false) }
     var disconnect by remember { mutableStateOf<PersonConnection?>(null) }
+    var manageConnection by remember { mutableStateOf<PersonConnection?>(null) }
+    val controls = state.controls
     PageHeading("A tu lado", "Tu gente", "Un vistazo a su día. Un mensaje para estar cerca.")
     state.lastSync?.let { updated ->
         Text("Actualizado ${updated.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))}", color = TextMuted, style = MaterialTheme.typography.labelSmall)
@@ -625,7 +627,8 @@ private fun People(state: AccountState, actions: AccountActions) {
                 state.profiles.find { it.id == connection.otherPerson(state.profile?.id.orEmpty()) }?.let { person ->
                     FilterChip(selected = state.selectedPerson?.id == person.id, onClick = { actions.selectPerson(person) }, enabled = !state.busy,
                         colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.primary),
-                        leadingIcon = { Icon(Icons.Default.PersonOutline, null, Modifier.size(18.dp)) }, label = { Text(person.displayName) })
+                        leadingIcon = { Icon(if (controls.isMuted(person.id)) Icons.Default.NotificationsOff else Icons.Default.PersonOutline, null, Modifier.size(18.dp)) },
+                        label = { Text(controls.nameOf(person)) })
                 }
             }
         }
@@ -634,17 +637,12 @@ private fun People(state: AccountState, actions: AccountActions) {
     if (state.signals.isNotEmpty()) Panel {
         SectionHeading(Icons.Default.MarkChatUnread, "Te han escrito", "Mensajes recientes · Últimas 24 horas")
         state.signals.forEach { signal ->
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(state.profiles.find { it.id == signal.senderId }?.displayName ?: "Persona conectada", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
-                Text(signal.message, style = MaterialTheme.typography.bodyMedium)
-                signal.createdAt?.let { timestamp ->
-                    val time = runCatching { java.time.Instant.parse(timestamp).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm · d MMM", Locale.forLanguageTag("es"))) }.getOrNull()
-                    time?.let { Text(it, color = TextMuted, style = MaterialTheme.typography.labelSmall) }
-                }
-            }
+            ReceivedSignalItem(signal, state.profiles.find { it.id == signal.senderId }?.let(controls::nameOf) ?: "Persona conectada",
+                state.busy, actions)
         }
     }
-    state.selectedPerson?.let { person ->
+    state.selectedPerson?.let { selected ->
+        val person = selected.copy(displayName = controls.nameOf(selected))
         HeroStatusCard(sharedStatus(person, state.personSchedules, state.personStatuses))
         Panel {
             SectionHeading(Icons.Default.ChatBubbleOutline, "Un mensaje para ${person.displayName}", "Envía un mensaje sin cambiar tu estado.")
@@ -668,11 +666,17 @@ private fun People(state: AccountState, actions: AccountActions) {
         schedules.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule, false,
             last = index == schedules.lastIndex, displayDay = personDay) }
         state.connections.find { it.otherPerson(state.profile?.id.orEmpty()) == person.id }?.let { connection ->
-            TextButton(onClick = { disconnect = connection }, enabled = !state.busy) { Text("Administrar conexión con ${person.displayName}", color = TextMuted) }
+            TextButton(onClick = { manageConnection = connection }, enabled = !state.busy) { Text("Administrar conexión con ${person.displayName}", color = TextMuted) }
         }
     }
     if (connect) ConnectionSheet(state, actions) { connect = false }
     if (manageMessages) MessageSheet(state, actions) { manageMessages = false }
+    manageConnection?.let { connection ->
+        val person = state.profiles.find { it.id == connection.otherPerson(state.profile?.id.orEmpty()) }
+        val preference = person?.let { controls.forPerson(it.id) }
+        if (person != null && preference != null) ConnectionSettingsSheet(person, preference, state, actions,
+            onDisconnect = { manageConnection = null; disconnect = connection }) { manageConnection = null }
+    }
     disconnect?.let { connection -> Confirm("¿Desvincular persona?", "Ambos dejarán de ver el horario y estado del otro.",
         { disconnect = null }, { actions.disconnect(connection.id); disconnect = null }) }
 }
