@@ -24,24 +24,6 @@ class AccountRepository {
         auth.importSession(UsernameLogin.signIn(username, password))
     }
 
-    /** Auth answers the same way for unknown addresses, so this does not reveal who has an account. */
-    suspend fun requestPasswordReset(email: String) {
-        auth.resetPasswordForEmail(email.trim().lowercase(java.util.Locale.ROOT), redirectUrl = com.example.findme.domain.model.RecoveryLink.REDIRECT)
-    }
-
-    suspend fun exchangeRecoveryCode(code: String) {
-        try { auth.exchangeCodeForSession(code) }
-        catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-        catch (_: Exception) {
-            throw IllegalArgumentException("El enlace ya se usó, venció o se pidió desde otro teléfono. Solicita uno nuevo desde este teléfono.")
-        }
-    }
-
-    suspend fun setPassword(password: String) {
-        require(password.length in 8..128) { "La contraseña debe tener entre 8 y 128 caracteres." }
-        auth.updateUser { this.password = password }
-    }
-
     suspend fun ensureProfile(): AccountProfile {
         val id = userId()
         val existing = client.postgrest["account_profiles"].select { filter { eq("id", id) } }
@@ -137,4 +119,22 @@ class AccountRepository {
         order("created_at", io.github.jan.supabase.postgrest.query.Order.DESCENDING)
         limit(20)
     }.decodeList<ConnectionSignal>()
+
+    /** Auth answers the same way for unknown addresses, so this does not reveal who has an account. */
+    suspend fun requestPasswordReset(email: String) {
+        auth.resetPasswordForEmail(email.trim().lowercase(java.util.Locale.ROOT), redirectUrl = com.example.findme.domain.model.RecoveryLink.REDIRECT)
+    }
+
+    suspend fun exchangeRecoveryCode(code: String) {
+        try { auth.exchangeCodeForSession(code) }
+        catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+        catch (_: Exception) {
+            throw IllegalArgumentException("El enlace ya se usó, venció o se pidió desde otro teléfono. Solicita uno nuevo desde este teléfono.")
+        }
+    }
+
+    suspend fun setPassword(password: String) {
+        require(password.length in 8..128) { "La contraseña debe tener entre 8 y 128 caracteres." }
+        auth.updateUser { this.password = password }
+    }
 }
