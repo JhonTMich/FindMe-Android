@@ -15,13 +15,13 @@ class WidgetLayoutTest {
         "Proyecto de Investigación Aplicada", "Hasta 11:30 p. m. de mañana · Pabellón B, aula 204",
         "Taller de Desarrollo de Aplicaciones Móviles · lun 7:00 p. m.")
 
-    /** Sizes a launcher gives to a 4×3 cell (landscape to large phones). */
-    private val sizes4x3 = listOf(554f to 173f, 276f to 190f, 276f to 220f, 320f to 280f, 276f to 337f)
-    /** Shorter cells the widget no longer allows, kept as a safety net for odd launchers. */
-    private val shorter = listOf(250f to 102f, 276f to 110f, 320f to 150f)
+    /** Sizes a launcher gives to a 4×2 cell (landscape to large phones). */
+    private val sizes4x2 = listOf(250f to 102f, 554f to 112f, 276f to 150f, 276f to 185f, 276f to 220f)
+    /** Taller cells, kept as a safety net for launchers with unusual grids. */
+    private val taller = listOf(276f to 260f, 276f to 337f)
 
     @Test fun everyTextFitsInEverySupportedSize() {
-        for ((w, h) in sizes4x3 + shorter) for (scale in listOf(0.85f, 1f, 1.3f)) for (texts in listOf(short, long)) {
+        for ((w, h) in sizes4x2 + taller) for (scale in listOf(0.85f, 1f, 1.3f)) for (texts in listOf(short, long)) {
             val layout = WidgetLayout.fit(w, h, scale, texts)
             assertTrue("${w}x$h@$scale overflows", layout.contentHeight <= layout.middleHeight + 0.01f)
             assertTrue("${w}x$h@$scale title too small: ${layout.titleSize}", layout.titleSize >= 12f)
