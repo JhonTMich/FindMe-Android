@@ -112,7 +112,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BrandMark(Modifier.size(46.dp))
             Column(Modifier.weight(1f)) {
-                Text("FindMe", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, letterSpacing = (-.7).sp)
+                Text("Near", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, letterSpacing = (-.7).sp)
                 Text(state.profile?.takeUnless { it.needsName }?.let { "Hola, ${it.displayName}" } ?: "Siempre cerca de tu gente", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
             if (state.signedIn) {
@@ -241,7 +241,7 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
         PageHeading("Un paso más", "Revisa tu correo", "Confirma tu dirección antes de iniciar sesión.")
         Panel {
             SectionHeading(Icons.Default.MarkEmailRead, "Tu cuenta, a un paso", pendingEmail)
-            Text("Abre el enlace de confirmación y después vuelve a FindMe. Revisa también la carpeta de spam.", color = TextSecondary)
+            Text("Abre el enlace de confirmación y después vuelve a Near. Revisa también la carpeta de spam.", color = TextSecondary)
             Button(onClick = { mode = "login"; actions.finishRegistration() }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
                 Text("Ya confirmé, iniciar sesión")
             }
@@ -656,7 +656,7 @@ private fun People(state: AccountState, actions: AccountActions) {
             TextButton(onClick = { manageMessages = true }) {
                 Icon(Icons.Default.Tune, null, Modifier.size(17.dp)); Spacer(Modifier.width(8.dp)); Text("Mis mensajes", color = MaterialTheme.colorScheme.primary)
             }
-            Text("Se actualizan automáticamente con FindMe abierta. Se borran después de 24 horas.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+            Text("Se actualizan automáticamente con Near abierta. Se borran después de 24 horas.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
         }
         SectionHeading(Icons.Default.CalendarMonth, "Su semana", "Actividades de ${person.displayName}")
         var personDay by rememberSaveable(person.id) { mutableStateOf(ZonedDateTime.now(person.zone()).dayOfWeek.value) }
@@ -703,11 +703,11 @@ private fun ConnectionSheet(state: AccountState, actions: AccountActions, dismis
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedButton(onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("Código FindMe", display))) } }, modifier = Modifier.weight(1f)) {
+                    OutlinedButton(onClick = { scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("Código Near", display))) } }, modifier = Modifier.weight(1f)) {
                         Icon(Icons.Default.ContentCopy, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Copiar")
                     }
                     Button(onClick = {
-                        context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "Conecta conmigo en FindMe. Mi código es $display. Es válido durante 24 horas.") }, "Compartir invitación"))
+                        context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "Conecta conmigo en Near. Mi código es $display. Es válido durante 24 horas.") }, "Compartir invitación"))
                     }, modifier = Modifier.weight(1f)) { Text("Compartir") }
                 }
             } ?: EmptyPanel(Icons.Default.Key, "Invita a una persona", "Envíale tu código y pídele que lo introduzca en su app.")
@@ -761,8 +761,8 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         AccountSettingsSwitch("Cambios de estado", "Cuando tu gente comparte o cambia su estado.", state.settings.statuses) { actions.setAlert(AccountAlert.Statuses, it) }
         HorizontalDivider(color = DarkCardBorder)
         AccountSettingsSwitch("Mensajes recibidos", "Avisar cuando llega un mensaje nuevo.", state.settings.messages) { actions.setAlert(AccountAlert.Messages, it) }
-        Text("Los avisos y las actualizaciones funcionan mientras FindMe está abierta. Recibirlos con la app cerrada todavía no está disponible.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
-        if (!notificationsAllowed) Text("Android tiene bloqueadas las notificaciones de FindMe.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        Text("Los avisos y las actualizaciones funcionan mientras Near está abierta. Recibirlos con la app cerrada todavía no está disponible.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+        if (!notificationsAllowed) Text("Android tiene bloqueadas las notificaciones de Near.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }) {
             Text("Abrir ajustes de Android")
         }
@@ -785,7 +785,7 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         Text("Los mensajes enviados se conservan durante 24 horas y después se eliminan automáticamente. Tus botones de mensajes rápidos permanecen guardados.", color = TextSecondary)
     }
     Panel {
-        SectionHeading(Icons.Default.SystemUpdate, "Actualizaciones", "FindMe ${BuildConfig.VERSION_NAME}")
+        SectionHeading(Icons.Default.SystemUpdate, "Actualizaciones", "Near ${BuildConfig.VERSION_NAME}")
         Text(updates.message, color = TextSecondary)
         OutlinedButton(onClick = onCheckUpdates, enabled = !updates.checking && !updates.downloading) { Text(if (updates.checking) "Comprobando…" else "Buscar actualizaciones") }
         if (updates.release != null && !updates.downloading) TextButton(onClick = onInstallUpdate) { Text("Actualizar ahora") }
@@ -807,7 +807,7 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         SectionHeading(Icons.Default.PrivacyTip, "Tu privacidad")
         Text("Tu horario y tus estados solo se comparten con las personas que conectes. Puedes retirar la conexión desde Personas.", color = TextSecondary)
         OutlinedButton(onClick = { accountSheet = AccountSheet.Password }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Cambiar contraseña") }
-        OutlinedButton(onClick = { exportLauncher.launch("findme-${state.profile?.username ?: "datos"}.json") },
+        OutlinedButton(onClick = { exportLauncher.launch("near-${state.profile?.username ?: "datos"}.json") },
             enabled = !state.busy && state.profile != null, modifier = Modifier.fillMaxWidth()) { Text("Exportar mis datos") }
         OutlinedButton(onClick = actions::logout, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Cerrar sesión") }
         TextButton(onClick = { accountSheet = AccountSheet.Delete }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {

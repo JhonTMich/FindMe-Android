@@ -3,7 +3,7 @@ from release_metadata import metadata, MAX_VERSION_CODE
 
 class ReleaseMetadataTest(unittest.TestCase):
     def test_tag_controls_name_and_android_version(self):
-        self.assertEqual(metadata("v1.2.3"), {"tag": "v1.2.3", "version": "1.2.3", "version_code": 1002003, "apk_name": "FindMe-1.2.3.apk"})
+        self.assertEqual(metadata("v1.2.3"), {"tag": "v1.2.3", "version": "1.2.3", "version_code": 1002003, "apk_name": "Near-1.2.3.apk"})
     def test_minor_versions_have_zero_patch(self):
         self.assertEqual(metadata("v1.3")["version_code"], metadata("v1.3.0")["version_code"])
     def test_numeric_order_matches_android_order(self):

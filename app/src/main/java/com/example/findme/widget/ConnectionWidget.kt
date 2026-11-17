@@ -84,7 +84,7 @@ class ConnectionWidget : GlanceAppWidget() {
                 .padding(start = 16.dp, end = 10.dp, top = if (expanded) 12.dp else 8.dp, bottom = if (expanded) 12.dp else 8.dp)) {
                 // Header: who is shown, with the actions on the right.
                 Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Text(person?.let { if (it.id == data?.owner) "Mi estado" else it.displayName } ?: "FindMe",
+                    Text(person?.let { if (it.id == data?.owner) "Mi estado" else it.displayName } ?: "Near",
                         GlanceModifier.defaultWeight().clickable(actionStartActivity(config)),
                         style = TextStyle(color = ColorProvider(palette.primary), fontSize = if (expanded) 17.sp else 14.sp, fontWeight = bold), maxLines = 1)
                     Image(ImageProvider(R.drawable.widget_ic_refresh), "Actualizar",
@@ -102,7 +102,7 @@ class ConnectionWidget : GlanceAppWidget() {
                             Text(state?.label ?: if (data == null) "Sin sesión" else "Sin persona",
                                 style = TextStyle(color = ColorProvider(palette.accent), fontSize = if (expanded) 13.sp else 11.sp, fontWeight = bold), maxLines = 1)
                         }
-                        Text(state?.title ?: if (data == null) "Abre FindMe" else "Elige una persona",
+                        Text(state?.title ?: if (data == null) "Abre Near" else "Elige una persona",
                             style = TextStyle(color = ColorProvider(palette.primary), fontSize = if (expanded) 30.sp else 21.sp, fontWeight = bold),
                             maxLines = 1)
                         if (expanded) {

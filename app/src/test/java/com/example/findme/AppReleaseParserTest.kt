@@ -6,8 +6,8 @@ import org.junit.Test
 
 class AppReleaseParserTest {
     private val repository = AppUpdateRepository()
-    private val url = "https://github.com/JhonTMich/FindMe-Android/releases/download/v1.3/FindMe-1.3.apk"
-    private fun asset(name: String = "FindMe-1.3.apk", source: String = url, size: Long = 100, digest: String = "\"sha256:${"ab".repeat(32)}\"") =
+    private val url = "https://github.com/JhonTMich/FindMe-Android/releases/download/v1.3/Near-1.3.apk"
+    private fun asset(name: String = "Near-1.3.apk", source: String = url, size: Long = 100, digest: String = "\"sha256:${"ab".repeat(32)}\"") =
         """{"name":"$name","browser_download_url":"$source","size":$size,"digest":$digest,"state":"uploaded"}"""
     private fun release(assets: String, draft: Boolean = false, prerelease: Boolean = false) =
         """{"tag_name":"v1.3","body":"Patch notes are ignored","html_url":"https://github.com/JhonTMich/FindMe-Android/releases/tag/v1.3","draft":$draft,"prerelease":$prerelease,"assets":[$assets]}"""
@@ -41,6 +41,16 @@ class AppReleaseParserTest {
             try { repository.parseRelease(release(asset(size = size)), "1.2"); fail("Invalid size accepted") }
             catch (_: IllegalStateException) { }
         }
+    }
+    @Test fun keepsWorkingAcrossTheRenameToNear() {
+        val renamed = "https://github.com/JhonTMich/Near/releases/download/v1.3/Near-1.3.apk"
+        assertEquals(renamed, repository.parseRelease(release(asset(source = renamed)), "1.2")!!.apk.url)
+        assertTrue(ReleaseApkPolicy.isTrustedUrl("https://github.com/JhonTMich/FindMe-Android/releases/download/v1.3/FindMe-1.3.apk"))
+        assertFalse(ReleaseApkPolicy.isTrustedUrl("https://github.com/JhonTMich/Nearby/releases/download/v1.3/Near-1.3.apk"))
+        // An older release still named FindMe-VERSION.apk is picked among several APKs.
+        val legacy = repository.parseRelease(release(asset("arm64.apk") + "," + asset("FindMe-1.3.apk")), "1.2")!!
+        assertEquals("FindMe-1.3.apk", legacy.apk.name)
+        assertTrue(ReleaseApkPolicy.LATEST_RELEASE.startsWith("https://api.github.com/repositories/"))
     }
     @Test fun acceptsOnlyValidSha256Digests() {
         val digest = "ab".repeat(32)

@@ -10,7 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.findme.data.model.*
 import com.example.findme.ui.screen.account.*
-import com.example.findme.ui.theme.FindmeTheme
+import com.example.findme.ui.theme.NearTheme
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +31,7 @@ class AccountUiTest {
         invitation = ConnectionInvitation("own", "ABCDEFGH", now.plusHours(24).toInstant().toString()))
 
     private fun show(actions: AccountActions = object : AccountActions {}, snapshot: AccountState = state) {
-        compose.setContent { FindmeTheme { AccountContent(snapshot, actions) } }
+        compose.setContent { NearTheme { AccountContent(snapshot, actions) } }
     }
     private fun screenshot(name: String, composeOnly: Boolean = false) {
         compose.waitForIdle()
@@ -42,7 +42,7 @@ class AccountUiTest {
         val uri = requireNotNull(context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/FindMeTests")
+            put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/NearTests")
         }))
         requireNotNull(context.contentResolver.openOutputStream(uri)).use {
             bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
@@ -52,7 +52,7 @@ class AccountUiTest {
     @Test fun brandScreensAcrossNavigationAndAppearance() {
         val current = mutableStateOf(state)
         compose.setContent {
-            FindmeTheme(accent = current.value.settings.accent) {
+            NearTheme(accent = current.value.settings.accent) {
                 AccountContent(current.value, object : AccountActions {
                     override fun setAccent(accent: com.example.findme.data.local.AppAccent) {
                         current.value = current.value.copy(settings = current.value.settings.copy(accent = accent))
@@ -183,7 +183,7 @@ class AccountUiTest {
                 }
             }
         }
-        compose.setContent { FindmeTheme { AccountContent(snapshot.value, actions) } }
+        compose.setContent { NearTheme { AccountContent(snapshot.value, actions) } }
         compose.onNodeWithText("Horario").performClick()
         compose.onNodeWithText("Añadir").performScrollTo().performClick()
         compose.onNodeWithText("Título").performTextReplacement("Clase nueva")
@@ -267,7 +267,7 @@ class AccountUiTest {
     }
     @Test fun unnamedAccountMustCompleteProfileBeforeOpeningSchedules() {
         var saved = ""
-        compose.setContent { FindmeTheme {
+        compose.setContent { NearTheme {
             AccountContent(state.copy(profile = own.copy(displayName = "Mi cuenta", username = null)), object : AccountActions {
                 override fun saveProfile(name: String, username: String) { saved = name }
             })
@@ -295,7 +295,7 @@ class AccountUiTest {
     }
 
     @Test fun loginUsesOnlyUsernameAndOffersAuthorizedRegistration() {
-        compose.setContent { FindmeTheme { AccountContent(AccountState(initializing = false), object : AccountActions {}) } }
+        compose.setContent { NearTheme { AccountContent(AccountState(initializing = false), object : AccountActions {}) } }
         compose.onNodeWithText("Inicia sesión").assertIsDisplayed()
         compose.onNodeWithText("Nombre de usuario").assertIsDisplayed()
         compose.onNodeWithText("Correo electrónico").assertDoesNotExist()
@@ -304,13 +304,13 @@ class AccountUiTest {
         compose.onNodeWithContentDescription("Mostrar contraseña").performClick()
         compose.onNodeWithContentDescription("Ocultar contraseña").assertIsDisplayed()
         compose.onNodeWithContentDescription("Ocultar contraseña").performClick()
-        compose.onAllNodesWithContentDescription("FindMe").assertCountEquals(1)
+        compose.onAllNodesWithContentDescription("Near").assertCountEquals(1)
         screenshot("blue-login", composeOnly = true)
     }
 
     @Test fun registrationRequiresMatchingPasswordsAndSubmitsUserChoices() {
         var submitted = false
-        compose.setContent { FindmeTheme {
+        compose.setContent { NearTheme {
             AccountContent(AccountState(initializing = false), object : AccountActions {
                 override fun register(name: String, email: String, username: String, password: String, confirmation: String) {
                     assertEquals("Chosen Name", name)
@@ -324,7 +324,7 @@ class AccountUiTest {
         } }
         compose.onNodeWithText("Crear cuenta").performClick()
         compose.onNodeWithText("No recibí mi confirmación").assertExists()
-        compose.onAllNodesWithContentDescription("FindMe").assertCountEquals(1)
+        compose.onAllNodesWithContentDescription("Near").assertCountEquals(1)
         compose.onNodeWithText("Nombre visible").performTextInput("Chosen Name")
         compose.onNodeWithText("Correo electrónico").performTextInput("signup@example.test")
         compose.onNodeWithText("Nombre de usuario").performTextInput("chosen_user")
@@ -338,7 +338,7 @@ class AccountUiTest {
 
     @Test fun confirmationRecoveryBelongsToRegistrationAndCanGoBack() {
         var sentEmail = ""
-        compose.setContent { FindmeTheme {
+        compose.setContent { NearTheme {
             AccountContent(AccountState(initializing = false), object : AccountActions {
                 override fun resendConfirmation(email: String) { sentEmail = email }
             })
@@ -362,7 +362,7 @@ class AccountUiTest {
         // Very late runs cannot have a future start on the same local date.
         org.junit.Assume.assumeTrue(local.plusMinutes(30).toLocalDate() == local.toLocalDate())
         val current = mutableStateOf(state.copy(schedules = listOf(future)))
-        compose.setContent { FindmeTheme { AccountContent(current.value, object : AccountActions {}) } }
+        compose.setContent { NearTheme { AccountContent(current.value, object : AccountActions {}) } }
         compose.onNodeWithText("Próxima en tu horario").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Nada más por hoy").assertDoesNotExist()
         screenshot("blue-today-next", composeOnly = true)
@@ -377,7 +377,7 @@ class AccountUiTest {
     @Test fun confirmationExplainsNextStepAndSupportsResending() {
         var resent = false
         var finished = false
-        compose.setContent { FindmeTheme {
+        compose.setContent { NearTheme {
             AccountContent(AccountState(initializing = false, confirmationEmail = "signup@example.test"), object : AccountActions {
                 override fun resendConfirmation(email: String) { assertEquals("signup@example.test", email); resent = true }
                 override fun finishRegistration() { finished = true }
@@ -394,7 +394,7 @@ class AccountUiTest {
     @Test fun profileRestoresSettingsAndChangesAccent() {
         val current = androidx.compose.runtime.mutableStateOf(state)
         compose.setContent {
-            FindmeTheme(accent = current.value.settings.accent) {
+            NearTheme(accent = current.value.settings.accent) {
                 AccountContent(current.value, object : AccountActions {
                     override fun setAlert(alert: com.example.findme.data.local.AccountAlert, enabled: Boolean) {
                         assertEquals(com.example.findme.data.local.AccountAlert.Messages, alert)
@@ -419,7 +419,7 @@ class AccountUiTest {
 
     @Test fun incomingMessageAppearsWithoutPressingRefresh() {
         val current = androidx.compose.runtime.mutableStateOf(state)
-        compose.setContent { FindmeTheme { AccountContent(current.value, object : AccountActions {}) } }
+        compose.setContent { NearTheme { AccountContent(current.value, object : AccountActions {}) } }
         compose.onNodeWithText("Personas").performClick()
         compose.onNodeWithText("Te han escrito").assertDoesNotExist()
         compose.runOnIdle {

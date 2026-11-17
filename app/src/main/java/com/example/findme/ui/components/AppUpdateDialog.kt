@@ -11,7 +11,7 @@ import com.example.findme.ui.screen.UpdateState
 fun AppUpdateDialog(state: UpdateState, onUpdate: () -> Unit, onLater: () -> Unit, onCancelDownload: () -> Unit) {
     if (!state.showDialog || state.release == null) return
     AlertDialog(onDismissRequest = { if (!state.downloading) onLater() },
-        title = { Text(if (state.downloading) "Actualizando FindMe" else "Actualización disponible") },
+        title = { Text(if (state.downloading) "Actualizando Near" else "Actualización disponible") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(state.message)

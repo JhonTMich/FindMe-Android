@@ -138,7 +138,7 @@ jobs:
           path: unsigned
       - name: Install Android signing tools
         run: "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager 'build-tools;36.0.0'"
-      - name: Sign with the existing FindMe certificate
+      - name: Sign with the existing Near certificate
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -207,8 +207,8 @@ jobs:
               exit 1
             fi
             gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag   \
-            --target "$GITHUB_SHA" --title "FindMe $RELEASE_VERSION"   \
-            --notes "Actualización de FindMe $RELEASE_VERSION." --draft
+            --target "$GITHUB_SHA" --title "Near $RELEASE_VERSION"   \
+            --notes "Actualización de Near $RELEASE_VERSION." --draft
           fi
           gh release upload "$RELEASE_TAG" "dist/$APK_NAME" dist/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease=false --latest

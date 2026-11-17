@@ -14,7 +14,7 @@ Rama: `feature/cuentas-conexiones`.
 - Aceptar una invitación autoriza explícitamente a ambos a consultar horarios y estados. Ninguno puede modificar los datos del otro.
 - Desvinculación con confirmación. Retira el acceso a datos futuros; no puede borrar información que alguien ya haya visto.
 - Mensajes rápidos configurables dentro de «Mis mensajes», separados de los estados. Un campo define el mensaje; la etiqueta del botón se deriva automáticamente. Envían mensajes persistidos que aparecen automáticamente con la app abierta y caducan a las 24 horas.
-- Widget `FindMe · Estado actual` con el estado de tu cuenta o de una persona conectada, próxima actividad y fecha de los últimos datos. La selección se configura al añadir cada widget o tocando su nombre/menú y se vincula a la cuenta activa. Las instancias son independientes; el widget anterior conserva su persona como selección inicial. Usa caché local, sincronización periódica y recálculos al cambiar de actividad o caducar un estado; Android puede retrasar el trabajo en segundo plano.
+- Widget `Near · Estado actual` con el estado de tu cuenta o de una persona conectada, próxima actividad y fecha de los últimos datos. La selección se configura al añadir cada widget o tocando su nombre/menú y se vincula a la cuenta activa. Las instancias son independientes; el widget anterior conserva su persona como selección inicial. Usa caché local, sincronización periódica y recálculos al cambiar de actividad o caducar un estado; Android puede retrasar el trabajo en segundo plano.
 - Perfil y ajustes: avisos de actividades, estados y mensajes por cuenta; acceso a permisos de Android; búsqueda de actualizaciones; acentos azul, hielo y acero guardados en el dispositivo.
 
 ## Preparar Supabase
@@ -101,16 +101,16 @@ La lista tiene RLS y no permite lectura ni modificación desde clientes anónimo
 
 ### Lo que hace la persona
 
-1. Abrir la nueva compilación de FindMe y pulsar **Crear cuenta**.
+1. Abrir la nueva compilación de Near y pulsar **Crear cuenta**.
 2. Escribir el correo autorizado y elegir su propio nombre visible, usuario y contraseña.
-3. Abrir el enlace del correo de confirmación y regresar a FindMe para iniciar sesión con usuario y contraseña.
+3. Abrir el enlace del correo de confirmación y regresar a Near para iniciar sesión con usuario y contraseña.
 4. Desde el registro (no desde Iniciar sesión), pulsar **No recibí mi confirmación** y solicitar otro correo. No necesita proporcionar la contraseña para reenviarlo.
 
 Cada cuenta nueva empieza sin conexiones. Compartir horarios requiere una invitación de Personas aceptada por la otra cuenta.
 
 ### Configuración de correo y retorno a Android
 
-El propietario configuró Gmail SMTP desde el panel de Supabase, con contraseña de aplicación y verificación en dos pasos. Ninguna contraseña SMTP se recibió en el chat ni se guardó en el repositorio. El propietario confirmó la recepción del correo y el retorno a FindMe con un registro real.
+El propietario configuró Gmail SMTP desde el panel de Supabase, con contraseña de aplicación y verificación en dos pasos. Ninguna contraseña SMTP se recibió en el chat ni se guardó en el repositorio. El propietario confirmó la recepción del correo y el retorno a Near con un registro real.
 
 En **Authentication → Email → SMTP Settings**, configurar un proveedor SMTP y un remitente autorizado por ese proveedor. Mantener **Confirm Email** activado y **Allow new users to sign up** activado. En **URL Configuration**, definir `findme://auth/confirmed` como **Site URL** y añadir exactamente la misma dirección a **Redirect URLs**. Para recuperar la contraseña, añadir también `findme://auth/reset` a **Redirect URLs**; sin ella, Auth envía el enlace a la Site URL y la app lo trata como una confirmación de registro. El propietario confirmó que guardó ambas opciones. Instalar la nueva compilación antes de pedir el correo: las versiones anteriores no reconocen ese enlace.
 
@@ -136,7 +136,7 @@ Comprobaciones: 19 casos del esquema de registro, 13 pruebas de las funciones de
 
 La función `authorized-signup` fija `redirect_to=findme://auth/confirmed` tanto para registro como para reenvío. Como cualquier app puede declarar el esquema `findme://`, ambas solicitudes usan el flujo PKCE con un `code_challenge` cuyo verificador se descarta: el enlace de retorno lleva solo un código de un uso que nadie puede canjear, en lugar de tokens de sesión. La confirmación del correo ocurre en Auth antes de redirigir, así que no depende de ese código. Android reconoce únicamente ese esquema, host y ruta. El enlace muestra el acceso o un aviso de enlace fallido; no importa tokens del Intent ni cambia la cuenta activa. La persona entra con usuario y contraseña, que vuelven a validarse con Auth. No se muestran detalles remotos sin validar ni se retienen fragmentos en el Intent de la actividad.
 
-Se verificaron apertura en frío, recepción en la actividad ya abierta y aviso de enlace vencido en emulador, además de pruebas JVM del parser, compilación y lint. El propietario confirmó después que el correo llega y su enlace abre FindMe en el teléfono.
+Se verificaron apertura en frío, recepción en la actividad ya abierta y aviso de enlace vencido en emulador, además de pruebas JVM del parser, compilación y lint. El propietario confirmó después que el correo llega y su enlace abre Near en el teléfono.
 
 
 ## Perfil, avisos y mensajes en vivo — 30 de octubre de 2026

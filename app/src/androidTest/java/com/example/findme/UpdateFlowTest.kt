@@ -9,7 +9,7 @@ import com.example.findme.data.repository.AppRelease
 import com.example.findme.data.repository.ReleaseApk
 import com.example.findme.ui.components.AppUpdateDialog
 import com.example.findme.ui.screen.UpdateState
-import com.example.findme.ui.theme.FindmeTheme
+import com.example.findme.ui.theme.NearTheme
 import com.example.findme.util.ApkUpdateInstaller
 import org.junit.Assert.*
 import org.junit.Rule
@@ -19,20 +19,20 @@ import java.io.File
 class UpdateFlowTest {
     @get:Rule val compose = createComposeRule()
     @Test fun oneDialogOffersUpdateAndShowsDownloadProgressWithoutPatchNotes() {
-        var state by mutableStateOf(UpdateState(release = AppRelease("v1.3", ReleaseApk("FindMe-1.3.apk",
-            "https://github.com/JhonTMich/FindMe-Android/releases/download/v1.3/FindMe-1.3.apk", 100, "ab".repeat(32))),
-            message = "Hay una actualización de FindMe disponible.", showDialog = true))
-        compose.setContent { FindmeTheme {
+        var state by mutableStateOf(UpdateState(release = AppRelease("v1.3", ReleaseApk("Near-1.3.apk",
+            "https://github.com/JhonTMich/FindMe-Android/releases/download/v1.3/Near-1.3.apk", 100, "ab".repeat(32))),
+            message = "Hay una actualización de Near disponible.", showDialog = true))
+        compose.setContent { NearTheme {
             AppUpdateDialog(state, onUpdate = { state = state.copy(downloading = true, progress = .42f, message = "Descargando actualización…") },
                 onLater = { state = state.copy(showDialog = false) }, onCancelDownload = { state = state.copy(showDialog = false) })
         } }
         compose.onNodeWithText("Actualizar").performClick()
-        compose.onNodeWithText("Actualizando FindMe").assertIsDisplayed()
+        compose.onNodeWithText("Actualizando Near").assertIsDisplayed()
         compose.onNodeWithText("42%").assertIsDisplayed()
         compose.onNodeWithText("Actualización disponible").assertDoesNotExist()
         compose.onNodeWithText("Ver actualización").assertDoesNotExist()
         compose.onNodeWithText("Cancelar").performClick()
-        compose.onNodeWithText("Actualizando FindMe").assertDoesNotExist()
+        compose.onNodeWithText("Actualizando Near").assertDoesNotExist()
     }
     @Test fun validatesThePackageVersionAndCertificateBeforeInstallation() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext

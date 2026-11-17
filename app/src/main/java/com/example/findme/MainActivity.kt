@@ -29,7 +29,7 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.findme.ui.components.AppUpdateDialog
 import com.example.findme.ui.screen.UpdateViewModel
-import com.example.findme.ui.theme.FindmeTheme
+import com.example.findme.ui.theme.NearTheme
 import com.example.findme.util.ApkUpdateInstaller
 import com.example.findme.domain.model.ConfirmationLink
 import androidx.compose.material3.AlertDialog
@@ -85,7 +85,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val accent by appSettings.accent.collectAsStateWithLifecycle(initialValue = AppAccent.Indigo)
             val accountState by accountViewModel.state.collectAsStateWithLifecycle()
-            FindmeTheme(accent = accent) {
+            NearTheme(accent = accent) {
                 val updateState by updateViewModel.state.collectAsStateWithLifecycle()
                 // Defer the installer until this activity is visible; consume each request once.
                 LifecycleResumeEffect(updateState.requestInstall) {
@@ -109,7 +109,7 @@ class MainActivity : ComponentActivity() {
                     val close = { explainNotifications = false; promptPreferences.edit().putBoolean(NOTIFICATION_PROMPT_SEEN, true).apply() }
                     AlertDialog(onDismissRequest = close,
                         title = { Text("¿Activar avisos?") },
-                        text = { Text("FindMe te avisa cuando tu gente te envía un mensaje, empieza una actividad o comparte un cambio de planes.") },
+                        text = { Text("Near te avisa cuando tu gente te envía un mensaje, empieza una actividad o comparte un cambio de planes.") },
                         confirmButton = { TextButton(onClick = {
                             close()
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
@@ -120,10 +120,10 @@ class MainActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     confirmationLink?.let { link ->
                         AlertDialog(onDismissRequest = { confirmationLink = null },
-                            title = { Text(if (link == ConfirmationLink.Failed) "Revisa tu confirmación" else "Continúa en FindMe") },
+                            title = { Text(if (link == ConfirmationLink.Failed) "Revisa tu confirmación" else "Continúa en Near") },
                             text = { Text(if (link == ConfirmationLink.Failed)
                                 "El enlace no pudo completarse o ya venció. Solicita otro correo de confirmación."
-                                else "El enlace se abrió en FindMe. Inicia sesión con el usuario y la contraseña que elegiste.") },
+                                else "El enlace se abrió en Near. Inicia sesión con el usuario y la contraseña que elegiste.") },
                             confirmButton = { TextButton(onClick = {
                                 accountViewModel.finishRegistration()
                                 confirmationLink = null

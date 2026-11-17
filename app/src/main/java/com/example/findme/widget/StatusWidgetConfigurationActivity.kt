@@ -13,7 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import com.example.findme.ui.theme.FindmeTheme
+import com.example.findme.ui.theme.NearTheme
 import com.example.findme.ui.components.BrandMark
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -26,7 +26,7 @@ class StatusWidgetConfigurationActivity : ComponentActivity() {
         setResult(RESULT_CANCELED)
         if (id == AppWidgetManager.INVALID_APPWIDGET_ID) { finish(); return }
         setContent {
-            FindmeTheme {
+            NearTheme {
                 var data by remember { mutableStateOf<WidgetData?>(null) }
                 var loading by remember { mutableStateOf(true) }
                 var saving by remember { mutableStateOf(false) }
@@ -38,7 +38,7 @@ class StatusWidgetConfigurationActivity : ComponentActivity() {
                     try {
                         withTimeout(15_000) { WidgetStore.refresh(this@StatusWidgetConfigurationActivity) }
                         data = WidgetStore.data(this@StatusWidgetConfigurationActivity)
-                        if (data == null) error = "Inicia sesión en FindMe y vuelve a añadir el widget."
+                        if (data == null) error = "Inicia sesión en Near y vuelve a añadir el widget."
                     } catch (timeout: kotlinx.coroutines.TimeoutCancellationException) {
                         error = "La consulta tardó demasiado. Inténtalo de nuevo."
                     } catch (cancelled: CancellationException) { throw cancelled }

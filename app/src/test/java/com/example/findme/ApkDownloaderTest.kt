@@ -18,8 +18,8 @@ import org.junit.rules.TemporaryFolder
 class ApkDownloaderTest {
     @get:Rule val temporary = TemporaryFolder()
     private val bytes = "signed apk fixture".toByteArray()
-    private val source = "https://github.com/JhonTMich/FindMe-Android/releases/download/v1.3/FindMe-1.3.apk"
-    private fun apk(size: Long = bytes.size.toLong(), digest: String = hash(bytes)) = ReleaseApk("FindMe-1.3.apk", source, size, digest)
+    private val source = "https://github.com/JhonTMich/FindMe-Android/releases/download/v1.3/Near-1.3.apk"
+    private fun apk(size: Long = bytes.size.toLong(), digest: String = hash(bytes)) = ReleaseApk("Near-1.3.apk", source, size, digest)
     private fun hash(value: ByteArray) = MessageDigest.getInstance("SHA-256").digest(value).joinToString("") { "%02x".format(it) }
     private class Connection(url: URL, private val stream: InputStream, private val code: Int = 200) : HttpURLConnection(url) {
         var disconnected = false

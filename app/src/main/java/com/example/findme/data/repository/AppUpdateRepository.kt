@@ -11,10 +11,14 @@ data class AppRelease(val version: String, val apk: ReleaseApk)
 
 object ReleaseApkPolicy {
     const val MAX_BYTES = 150L * 1024 * 1024
+    // The repository id never changes, so update checks survive a repository rename.
+    const val LATEST_RELEASE = "https://api.github.com/repositories/1429916859/releases/latest"
+    // Downloads are accepted from the owner's repository under its previous and its new names.
+    private val trustedPaths = listOf("FindMe-Android", "Near", "Near-Android").map { "/JhonTMich/$it/releases/download/" }
     fun isTrustedUrl(value: String): Boolean = runCatching {
         val uri = java.net.URI(value)
         uri.scheme == "https" && uri.host == "github.com" && uri.userInfo == null && uri.port == -1 &&
-            uri.path.startsWith("/JhonTMich/FindMe-Android/releases/download/")
+            trustedPaths.any { uri.path.startsWith(it) }
     }.getOrDefault(false)
 }
 
@@ -39,13 +43,12 @@ object ReleaseVersion {
 
 class AppUpdateRepository {
     suspend fun latest(installedVersion: String): AppRelease? = withContext(Dispatchers.IO) {
-        val connection = URL("https://api.github.com/repos/JhonTMich/FindMe-Android/releases/latest")
-            .openConnection() as HttpURLConnection
+        val connection = URL(ReleaseApkPolicy.LATEST_RELEASE).openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
             connection.setRequestProperty("Accept", "application/vnd.github+json")
-            connection.setRequestProperty("User-Agent", "FindMe-Android/$installedVersion")
+            connection.setRequestProperty("User-Agent", "Near-Android/$installedVersion")
             val code = connection.responseCode
             check(code == 200) {
                 if (code == 404) "No hay releases públicos disponibles todavía."
@@ -69,7 +72,9 @@ class AppUpdateRepository {
         }
         val preferred = assets.filter {
             val name = it.getValue("name").jsonPrimitive.content
-            name.equals("FindMe-${version.removePrefix("v").removePrefix("V")}.apk", true) ||
+            val number = version.removePrefix("v").removePrefix("V")
+            // Releases before the rename were published as FindMe-VERSION.apk.
+            name.equals("Near-$number.apk", true) || name.equals("FindMe-$number.apk", true) ||
                 name.contains("universal", true)
         }
         val asset = (if (preferred.size == 1) preferred.single() else assets.singleOrNull())
