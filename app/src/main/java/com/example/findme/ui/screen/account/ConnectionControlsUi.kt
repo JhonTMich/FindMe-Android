@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import com.example.findme.data.model.AccountProfile
 import com.example.findme.data.model.ConnectionPreference
 import com.example.findme.data.model.ConnectionSignal
-import com.example.findme.ui.theme.DarkSurface
+import com.example.findme.ui.theme.AppSurface
 import com.example.findme.ui.theme.TextMuted
 import com.example.findme.ui.theme.TextSecondary
 import java.time.Instant
@@ -69,7 +69,7 @@ internal fun ConnectionSettingsSheet(
     var muted by rememberSaveable(person.id) { mutableStateOf(current.muted) }
     var submitted by remember { mutableStateOf(false) }
     LaunchedEffect(state.notice, state.busy) { if (submitted && !state.busy && state.notice == "Preferencias guardadas.") dismiss() }
-    ModalBottomSheet(onDismissRequest = dismiss, containerColor = DarkSurface,
+    ModalBottomSheet(onDismissRequest = dismiss, containerColor = AppSurface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 22.dp).padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {

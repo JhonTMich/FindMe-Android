@@ -39,9 +39,9 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
         Text("Tu semana", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         Text("${monday.format(DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag("es")))} — ${monday.plusDays(6).format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.forLanguageTag("es")))}",
             color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-        Card(shape = RoundedCornerShape(24.dp), border = BorderStroke(1.dp, DarkCardBorder),
+        Card(shape = RoundedCornerShape(24.dp), border = BorderStroke(1.dp, CardBorder),
             colors = CardDefaults.cardColors(containerColor = Color.Transparent)) {
-            Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(DarkSurface, DarkCardBg))).padding(20.dp),
+            Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(AppSurface, CardBg))).padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -72,13 +72,13 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             (1..7).forEach { day ->
                 val date = monday.plusDays((day - 1).toLong())
-                val dayColor by animateColorAsState(if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primaryContainer else DarkCardBg, tween(250), label = "dayColor$day")
+                val dayColor by animateColorAsState(if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primaryContainer else CardBg, tween(250), label = "dayColor$day")
                 Surface(onClick = { onDaySelected(day) }, modifier = Modifier.weight(1f),
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(14.dp),
                     color = dayColor,
                     contentColor = if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else TextSecondary,
                     border = androidx.compose.foundation.BorderStroke(1.dp,
-                        if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else com.example.findme.ui.theme.DarkCardBorder)) {
+                        if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else com.example.findme.ui.theme.CardBorder)) {
                     Column(Modifier.fillMaxWidth().padding(vertical = 12.dp),
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(6.dp)) {

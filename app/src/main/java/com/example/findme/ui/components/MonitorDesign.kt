@@ -58,12 +58,12 @@ fun ActivityTimelineCard(schedule: ScheduleDto, active: Boolean, last: Boolean =
                 style = MaterialTheme.typography.labelMedium, color = if (active) accent else TextSecondary)
             Spacer(Modifier.height(10.dp))
             Box(Modifier.size(10.dp).background(accent.copy(alpha = .15f), CircleShape).padding(2.dp).background(accent, CircleShape))
-            if (!last) Box(Modifier.padding(top = 7.dp).width(1.dp).weight(1f).background(DarkCardBorder))
+            if (!last) Box(Modifier.padding(top = 7.dp).width(1.dp).weight(1f).background(CardBorder))
         }
         Card(Modifier.weight(1f).padding(bottom = 4.dp).animateContentSize(), shape = RoundedCornerShape(22.dp),
             colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-            border = BorderStroke(1.dp, if (active) accent.copy(alpha = .6f) else DarkCardBorder)) {
-            Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(accent.copy(alpha = if (active) .18f else .08f), DarkCardBg)))
+            border = BorderStroke(1.dp, if (active) accent.copy(alpha = .6f) else CardBorder)) {
+            Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(accent.copy(alpha = if (active) .18f else .08f), CardBg)))
                 .padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(category.icon, null, tint = accent, modifier = Modifier.size(16.dp))
