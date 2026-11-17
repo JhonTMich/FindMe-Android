@@ -95,7 +95,7 @@ fun AccountScreen(viewModel: AccountViewModel, updates: UpdateState = UpdateStat
 fun AccountContent(state: AccountState, actions: AccountActions,
     updates: UpdateState = UpdateState(), onCheckUpdates: () -> Unit = {}, onInstallUpdate: () -> Unit = {}) {
     if (state.initializing) {
-        Box(Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().background(AppBackground), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 BrandMark(Modifier.size(88.dp))
                 CircularProgressIndicator(Modifier.size(24.dp), color = BrandAccent, strokeWidth = 2.dp)
@@ -107,7 +107,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
     LaunchedEffect(state.peopleRevision, state.signedIn) { if (state.peopleRevision > 0 && state.signedIn) tab = "Personas" }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.notice) { state.notice?.let { snackbar.showSnackbar(it) } }
-    Scaffold(containerColor = DarkBackground, snackbarHost = { SnackbarHost(snackbar) }, topBar = {
+    Scaffold(containerColor = AppBackground, snackbarHost = { SnackbarHost(snackbar) }, topBar = {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BrandMark(Modifier.size(46.dp))
@@ -125,8 +125,8 @@ fun AccountContent(state: AccountState, actions: AccountActions,
     }, bottomBar = {
         if (state.signedIn && state.profile?.needsProfile == false) {
             Surface(Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
-                shape = RoundedCornerShape(28.dp), color = DarkSurface,
-                border = BorderStroke(1.dp, DarkCardBorder)) {
+                shape = RoundedCornerShape(28.dp), color = AppSurface,
+                border = BorderStroke(1.dp, CardBorder)) {
                 NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp,
                     windowInsets = WindowInsets(0, 0, 0, 0), modifier = Modifier.height(76.dp)) {
                     listOf(Triple("Mi día", "Hoy", Icons.Default.Today), Triple("Horario", "Horario", Icons.Default.CalendarMonth),
@@ -143,7 +143,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
         }
     }) { padding ->
         Crossfade(tab, modifier = Modifier.fillMaxSize().padding(padding), label = "accountNavigation") { activeTab ->
-            Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(DarkSurface, DarkBackground), endY = 1100f))
+            Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(AppSurface, AppBackground), endY = 1100f))
                 .verticalScroll(rememberScrollState()).imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 state.error?.let { error -> Panel {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -207,9 +207,9 @@ private fun PageHeading(eyebrow: String, title: String, subtitle: String) {
 
 @Composable
 private fun Panel(content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), border = BorderStroke(1.dp, DarkCardBorder),
-        colors = CardDefaults.cardColors(containerColor = DarkCardBg)) {
-        Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(DarkCardBg, DarkSurface)))
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), border = BorderStroke(1.dp, CardBorder),
+        colors = CardDefaults.cardColors(containerColor = CardBg)) {
+        Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(CardBg, AppSurface)))
             .padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
     }
 }
@@ -436,7 +436,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
                 StatusPill(schedule.modality.replaceFirstChar(Char::titlecase), TextSecondary)
             }
             if (schedule.location.isNotBlank()) Text(schedule.location, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-            HorizontalDivider(color = DarkCardBorder)
+            HorizontalDivider(color = CardBorder)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = { editing = schedule; showEditor = true }, enabled = !state.busy) {
                     Icon(Icons.Default.Edit, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Editar", color = MaterialTheme.colorScheme.primary)
@@ -581,7 +581,7 @@ private fun ScheduleField(label: String, value: String, onClick: () -> Unit, dro
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, DarkCardBorder),
+        border = BorderStroke(1.dp, CardBorder),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp)
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -757,9 +757,9 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
     Panel {
         SectionHeading(Icons.Default.NotificationsNone, "Notificaciones", "Elige qué avisos recibir de tu gente.")
         AccountSettingsSwitch("Inicio de actividades", "Cuando una persona conectada comienza una actividad.", state.settings.activities) { actions.setAlert(AccountAlert.Activities, it) }
-        HorizontalDivider(color = DarkCardBorder)
+        HorizontalDivider(color = CardBorder)
         AccountSettingsSwitch("Cambios de estado", "Cuando tu gente comparte o cambia su estado.", state.settings.statuses) { actions.setAlert(AccountAlert.Statuses, it) }
-        HorizontalDivider(color = DarkCardBorder)
+        HorizontalDivider(color = CardBorder)
         AccountSettingsSwitch("Mensajes recibidos", "Avisar cuando llega un mensaje nuevo.", state.settings.messages) { actions.setAlert(AccountAlert.Messages, it) }
         Text("Los avisos y las actualizaciones funcionan mientras Near está abierta. Recibirlos con la app cerrada todavía no está disponible.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
         if (!notificationsAllowed) Text("Android tiene bloqueadas las notificaciones de Near.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -910,7 +910,7 @@ private fun Sheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = dismiss,
-        containerColor = DarkSurface,
+        containerColor = AppSurface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         sheetGesturesEnabled = gesturesEnabled,
         dragHandle = if (gesturesEnabled) { { BottomSheetDefaults.DragHandle() } } else null
@@ -933,8 +933,8 @@ private fun Field(value: String, change: (String) -> Unit, label: String, placeh
     OutlinedTextField(value, change, label = { Text(label) }, placeholder = { placeholder?.let { Text(it, color = TextMuted) } },
         keyboardOptions = keyboard, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = DarkCardBorder, focusedLabelColor = MaterialTheme.colorScheme.primary,
-            focusedContainerColor = DarkBackground.copy(alpha = .5f), unfocusedContainerColor = DarkBackground.copy(alpha = .35f)))
+            unfocusedBorderColor = CardBorder, focusedLabelColor = MaterialTheme.colorScheme.primary,
+            focusedContainerColor = AppBackground.copy(alpha = .5f), unfocusedContainerColor = AppBackground.copy(alpha = .35f)))
 }
 
 @Composable
@@ -947,6 +947,6 @@ private fun <T> Choices(values: List<T>, selected: T, change: (T) -> Unit, label
 
 @Composable
 private fun Confirm(title: String, message: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(title) }, text = { Text(message) }, containerColor = DarkCardBg,
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(title) }, text = { Text(message) }, containerColor = CardBg,
         confirmButton = { TextButton(onClick = onConfirm) { Text("Confirmar") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
 }

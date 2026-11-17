@@ -23,7 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.findme.ui.theme.DarkCardBg
+import com.example.findme.ui.theme.CardBg
 import java.time.LocalTime
 import kotlin.math.abs
 import kotlinx.coroutines.launch
@@ -42,7 +42,7 @@ internal fun ScheduleTimePicker(title: String, initial: LocalTime, dismiss: () -
         Surface(
             Modifier.padding(horizontal = 12.dp).widthIn(max = 360.dp).fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
-            color = DarkCardBg
+            color = CardBg
         ) {
             Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(title, style = MaterialTheme.typography.titleLarge)

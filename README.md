@@ -113,7 +113,7 @@ La versión 1.3 incorpora cuentas con registro por correos autorizados, acceso c
 
 ## Identidad visual
 
-La interfaz usa el nuevo símbolo de Near: azul noche, azul acero y blanco suave. Acceso, navegación, estados, categorías, horarios, ajustes y widgets comparten esta paleta sin acentos fluorescentes. En **Perfil → Apariencia** se puede elegir Azul, Hielo o Acero; las preferencias guardadas conservan sus identificadores anteriores para mantener la compatibilidad.
+La interfaz usa un tema claro y cálido tomado del icono de Near: fondo crema, tarjetas blancas, texto azul noche y coral como acento. Acceso, navegación, estados, categorías, horarios y ajustes comparten esta paleta; los widgets conservan su diseño ilustrado. En **Perfil → Apariencia** se puede elegir Coral, Menta o Lavanda; las preferencias guardadas conservan sus identificadores anteriores para mantener la compatibilidad.
 
 El símbolo de la cabecera reutiliza los trazados del icono adaptativo, sin el margen de seguridad del launcher. La cabecera muestra un único logo. La recuperación del correo de confirmación se ofrece desde el registro y desde la pantalla posterior a crear la cuenta. En **Hoy**, una tarjeta presenta la siguiente actividad que empieza en la fecha y zona del perfil, o «Nada más por hoy», y permite abrir Horario.
 
