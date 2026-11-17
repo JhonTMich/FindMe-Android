@@ -352,7 +352,7 @@ class AccountUiTest {
         compose.onNodeWithText("Enviar confirmación").performScrollTo().performClick()
         assertEquals("signup@example.test", sentEmail)
         compose.onNodeWithText("Volver al registro").performScrollTo().performClick()
-        compose.onNodeWithText("Crea tu cuenta").assertIsDisplayed()
+        compose.onNodeWithText("Tu gente, más cerca.").assertIsDisplayed()
     }
 
     @Test fun todayShowsOnlyTheNextActivityOrTheEndOfTheDay() {
