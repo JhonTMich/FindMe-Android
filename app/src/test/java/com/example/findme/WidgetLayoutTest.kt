@@ -32,12 +32,12 @@ class WidgetLayoutTest {
         val compact = WidgetLayout.fit(276f, 150f, 1f, short)
         assertEquals(1, compact.titleLines)
         assertEquals("Prácticas", compact.title)
-        assertTrue(compact.titleSize >= 22f)
+        assertTrue(compact.titleSize >= 20f)
         val tall = WidgetLayout.fit(276f, 220f, 1f, short)
         assertTrue(tall.roomy)
         assertTrue(tall.titleSize >= compact.titleSize)
         assertNotNull(tall.detail)
-        assertEquals("Próxima actividad", tall.nextLabel)
+        assertNotNull(tall.nextLabel)
     }
 
     @Test fun phone4x2KeepsEveryLine() {
@@ -47,19 +47,26 @@ class WidgetLayoutTest {
         assertEquals("Prácticas", layout.title)
         assertTrue(layout.titleSize >= 22f)
         assertNotNull(layout.detail)
-        assertEquals("Próxima actividad", layout.nextLabel)
         assertTrue(layout.contentHeight <= layout.middleHeight + 0.01f)
-        // The illustration spans header and status, so it is well above the old ~67dp.
-        assertTrue("art ${layout.artWidth}", layout.artWidth >= 95f)
+        // The illustration is anchored to the corner and takes almost the whole height.
+        assertTrue("art ${layout.artWidth}", layout.artWidth >= 160f)
+        assertEquals(359f, layout.columnWidth + layout.artWidth, 0.01f)
     }
 
-    @Test fun phone4x2WrapsLongTitlesAndKeepsDetail() {
-        for (title in listOf("Redes de Computadoras", "Proyecto de Investigación Aplicada")) {
+    @Test fun nextActivityIsSplitInsteadOfLosingItsTime() {
+        val layout = WidgetLayout.fit(359f, 190f, 1f, short)
+        assertEquals("Próxima: IoT", layout.nextLabel)
+        assertEquals("mañana 7:00 a. m.", layout.next)
+    }
+
+    @Test fun phone4x2WrapsLongTitlesInsteadOfCuttingThem() {
+        for (title in listOf("Redes de Computadoras", "Prácticas para Preprofesionales", "Proyecto de Investigación Aplicada",
+            "Seminario de Tesis en Ingeniería de Sistemas")) {
             val layout = WidgetLayout.fit(359f, 190f, 1f, short.copy(title = title))
             assertEquals(title, layout.title)
-            assertEquals(2, layout.titleLines)
-            assertTrue(layout.titleSize >= 18f)
-            assertNotNull(layout.detail)
+            assertTrue(layout.titleLines in 2..3)
+            assertTrue(layout.titleSize >= 15f)
+            assertNotNull(layout.nextLabel)
             assertTrue(layout.contentHeight <= layout.middleHeight + 0.01f)
         }
     }
@@ -76,7 +83,6 @@ class WidgetLayoutTest {
         assertNull(tiny.nextLabel)
         assertTrue(tiny.next.startsWith("Taller"))
         assertTrue(tiny.next.endsWith("…"))
-        assertEquals("Próxima: IoT · 7:00 a. m.", WidgetLayout.fit(359f, 150f, 1f, short.copy(next = "IoT · 7:00 a. m.")).next)
         assertFalse(tiny.roomy)
     }
 
@@ -88,6 +94,6 @@ class WidgetLayoutTest {
 
     @Test fun hintIsNotPrefixedAsAnActivity() {
         val layout = WidgetLayout.fit(276f, 120f, 1f, short.copy(next = "Configura tu widget", nextIsActivity = false))
-        assertEquals("Configura tu widget", layout.next)
+        assertEquals("Configura tu widget", listOfNotNull(layout.nextLabel, layout.next).joinToString(" "))
     }
 }

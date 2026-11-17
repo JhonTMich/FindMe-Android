@@ -87,23 +87,38 @@ class ConnectionWidget : GlanceAppWidget() {
                     nextIsActivity = state != null))
             val openApp = actionStartActivity(Intent(context, MainActivity::class.java))
             val bold = FontWeight.Bold
-            Column(GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(ImageProvider(palette.surface)).clickable(openApp)
-                .padding(start = layout.paddingStart.dp, end = layout.paddingEnd.dp,
-                    top = layout.paddingVertical.dp, bottom = layout.paddingVertical.dp)) {
-                // Who is shown and their status on the left; the illustration takes the whole height down to
-                // the card on the right, so the spare room sits beside the art instead of under the status.
-                Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.Vertical.Top) {
-                    Column(GlanceModifier.defaultWeight()) {
-                        Text(layout.header, GlanceModifier.fillMaxWidth().clickable(actionStartActivity(config)),
-                            style = TextStyle(color = ColorProvider(palette.secondary), fontSize = layout.headerSize.sp, fontWeight = bold), maxLines = 1)
+            val normal = FontWeight.Normal
+            // The illustration is anchored to the bottom-right corner and takes almost the whole height;
+            // the texts and the next-activity card live in a column on its left.
+            Box(GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(ImageProvider(palette.surface)).clickable(openApp),
+                contentAlignment = Alignment.BottomEnd) {
+                if (layout.artWidth > 0f) {
+                    Image(ImageProvider(palette.art), null, GlanceModifier.width(layout.artWidth.dp).height(layout.artHeight.dp),
+                        contentScale = ContentScale.Fit)
+                }
+                Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
+                    Column(GlanceModifier.width(layout.columnWidth.dp).fillMaxHeight()
+                        .padding(start = layout.paddingStart.dp, end = 4.dp, top = layout.paddingTop.dp, bottom = layout.paddingBottom.dp)) {
+                        // Who is shown, with refresh and settings right beside it.
+                        Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
+                            Text(layout.header, GlanceModifier.defaultWeight().clickable(actionStartActivity(config)),
+                                style = TextStyle(color = ColorProvider(palette.primary), fontSize = layout.headerSize.sp, fontWeight = bold), maxLines = 1)
+                            Image(ImageProvider(R.drawable.widget_ic_refresh), "Actualizar",
+                                GlanceModifier.size(layout.iconSize.dp).padding(layout.iconPadding.dp)
+                                    .clickable(actionRunCallback<RefreshConnectionWidget>()),
+                                colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
+                            Image(ImageProvider(R.drawable.widget_ic_more), "Configurar",
+                                GlanceModifier.size(layout.iconSize.dp).padding(layout.iconPadding.dp).clickable(actionStartActivity(config)),
+                                colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
+                        }
                         Spacer(GlanceModifier.height(layout.headerGap.dp))
                         val label = layout.label
                         if (label != null) {
                             Box(GlanceModifier.background(ImageProvider(palette.chip))
-                                .padding(start = 10.dp, end = 11.dp, top = 2.dp, bottom = 4.dp)) {
-                                Text(label, style = TextStyle(color = ColorProvider(palette.accent), fontSize = layout.chipSize.sp, fontWeight = bold), maxLines = 1)
+                                .padding(start = 10.dp, end = 10.dp, top = 3.dp, bottom = 3.dp)) {
+                                Text(label, style = TextStyle(color = ColorProvider(Color.White), fontSize = layout.chipSize.sp, fontWeight = bold), maxLines = 1)
                             }
-                            Spacer(GlanceModifier.height(4.dp))
+                            Spacer(GlanceModifier.height(5.dp))
                         }
                         Text(layout.title,
                             style = TextStyle(color = ColorProvider(palette.primary), fontSize = layout.titleSize.sp, fontWeight = bold),
@@ -112,41 +127,26 @@ class ConnectionWidget : GlanceAppWidget() {
                         if (detail != null) {
                             Spacer(GlanceModifier.height(2.dp))
                             Text(detail,
-                                style = TextStyle(color = ColorProvider(palette.secondary), fontSize = layout.detailSize.sp, fontWeight = bold),
+                                style = TextStyle(color = ColorProvider(palette.primary), fontSize = layout.detailSize.sp, fontWeight = normal),
                                 maxLines = layout.detailLines)
                         }
+                        Spacer(GlanceModifier.defaultWeight())
+                        Row(GlanceModifier.fillMaxWidth().background(ImageProvider(R.drawable.widget_card))
+                            .padding(horizontal = 10.dp, vertical = layout.cardPadding.dp),
+                            verticalAlignment = Alignment.Vertical.CenterVertically) {
+                            Image(ImageProvider(R.drawable.widget_ic_calendar), null, GlanceModifier.size(layout.calendarSize.dp),
+                                colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
+                            Spacer(GlanceModifier.width(8.dp))
+                            Column(GlanceModifier.defaultWeight()) {
+                                val nextLabel = layout.nextLabel
+                                if (nextLabel != null) Text(nextLabel,
+                                    style = TextStyle(color = ColorProvider(palette.primary), fontSize = layout.nextLabelSize.sp, fontWeight = bold), maxLines = 1)
+                                Text(layout.next,
+                                    style = TextStyle(color = ColorProvider(palette.primary), fontSize = layout.nextSize.sp, fontWeight = normal),
+                                    maxLines = 1)
+                            }
+                        }
                     }
-                    if (layout.artWidth > 0f) {
-                        Spacer(GlanceModifier.width(6.dp))
-                        Image(ImageProvider(palette.art), null, GlanceModifier.fillMaxHeight().width(layout.artWidth.dp),
-                            contentScale = ContentScale.Fit)
-                    }
-                }
-                Spacer(GlanceModifier.height(layout.gap.dp))
-                Row(GlanceModifier.fillMaxWidth().background(ImageProvider(R.drawable.widget_card))
-                    .padding(start = 12.dp, end = 4.dp, top = layout.cardPadding.dp, bottom = layout.cardPadding.dp),
-                    verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Image(ImageProvider(R.drawable.widget_ic_calendar), null, GlanceModifier.size(layout.calendarSize.dp),
-                        colorFilter = ColorFilter.tint(ColorProvider(palette.secondary)))
-                    Spacer(GlanceModifier.width(10.dp))
-                    Box(GlanceModifier.width(1.dp).height(if (layout.nextLabel != null) 30.dp else 18.dp).background(palette.divider)) {}
-                    Spacer(GlanceModifier.width(10.dp))
-                    Column(GlanceModifier.defaultWeight()) {
-                        val nextLabel = layout.nextLabel
-                        if (nextLabel != null) Text(nextLabel,
-                            style = TextStyle(color = ColorProvider(palette.primary), fontSize = layout.nextLabelSize.sp, fontWeight = bold), maxLines = 1)
-                        Text(layout.next,
-                            style = TextStyle(color = ColorProvider(palette.secondary), fontSize = layout.nextSize.sp, fontWeight = bold),
-                            maxLines = 1)
-                    }
-                    // Actions live in the card so the illustration can use the top-right corner.
-                    Image(ImageProvider(R.drawable.widget_ic_refresh), "Actualizar",
-                        GlanceModifier.size(layout.iconSize.dp).padding(layout.iconPadding.dp)
-                            .clickable(actionRunCallback<RefreshConnectionWidget>()),
-                        colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
-                    Image(ImageProvider(R.drawable.widget_ic_more), "Configurar",
-                        GlanceModifier.size(layout.iconSize.dp).padding(layout.iconPadding.dp).clickable(actionStartActivity(config)),
-                        colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
                 }
             }
         }
