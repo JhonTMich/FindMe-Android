@@ -4,24 +4,24 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/widget_surface_work">
 <ImageView android:layout_width="wrap_content" android:layout_height="match_parent" android:layout_gravity="bottom|end" android:layout_marginTop="10dp" android:adjustViewBounds="true" android:src="@drawable/widget_art_work" android:scaleType="fitEnd" android:contentDescription="@null" />
 <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal">
-<LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1.15" android:orientation="vertical" android:paddingStart="16dp" android:paddingEnd="4dp" android:paddingVertical="10dp">
+<LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1.15" android:orientation="vertical" android:paddingStart="16dp" android:paddingEnd="4dp" android:paddingVertical="8dp">
 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
 <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Mi estado" android:textColor="#33205C" android:textSize="16sp" android:textStyle="bold" android:maxLines="1" />
-<ImageView android:layout_width="28dp" android:layout_height="28dp" android:padding="5dp" android:src="@drawable/widget_ic_refresh" android:tint="#33205C" android:contentDescription="@null" />
-<ImageView android:layout_width="28dp" android:layout_height="28dp" android:padding="5dp" android:src="@drawable/widget_ic_more" android:tint="#33205C" android:contentDescription="@null" />
+<ImageView android:layout_width="26dp" android:layout_height="26dp" android:padding="5dp" android:src="@drawable/widget_ic_refresh" android:tint="#33205C" android:contentDescription="@null" />
+<ImageView android:layout_width="26dp" android:layout_height="26dp" android:padding="5dp" android:src="@drawable/widget_ic_more" android:tint="#33205C" android:contentDescription="@null" />
 </LinearLayout>
 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/widget_chip_work" android:paddingHorizontal="10dp" android:paddingVertical="3dp" android:text="Trabajando" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" android:maxLines="1" />
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="En el trabajo" android:textColor="#33205C" android:textSize="23sp" android:textStyle="bold" android:maxLines="1" />
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="En el trabajo" android:textColor="#33205C" android:textSize="22sp" android:textStyle="bold" android:maxLines="1" />
 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Hasta 5:00 p. m." android:textColor="#33205C" android:textSize="12.5sp" android:maxLines="1" />
-<Space android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/widget_card" android:paddingHorizontal="10dp" android:paddingVertical="6dp">
+<FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" />
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:background="@drawable/widget_card" android:paddingHorizontal="10dp" android:paddingVertical="5dp">
 <ImageView android:layout_width="22dp" android:layout_height="22dp" android:src="@drawable/widget_ic_calendar" android:tint="#33205C" android:contentDescription="@null" />
 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="8dp" android:orientation="vertical">
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Próxima actividad" android:textColor="#33205C" android:textSize="13sp" android:textStyle="bold" android:maxLines="1" />
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tiempo libre · 5:00 p. m." android:textColor="#33205C" android:textSize="12.5sp" android:maxLines="1" android:ellipsize="end" />
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Próxima: IoT" android:textColor="#33205C" android:textSize="13sp" android:textStyle="bold" android:maxLines="1" />
+<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="mañana 7:00 a. m." android:textColor="#33205C" android:textSize="12.5sp" android:maxLines="1" android:ellipsize="end" />
 </LinearLayout>
 </LinearLayout>
 </LinearLayout>
-<Space android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+<FrameLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
 </LinearLayout>
 </FrameLayout>
