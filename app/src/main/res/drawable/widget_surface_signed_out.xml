@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sin sesión: azul claro como el fondo de la ilustración, con una mancha más intensa en las esquinas
+     superior derecha e inferior izquierda. Every layer keeps the 24dp corners. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="linear" android:angle="300"
+                android:startColor="#DCE3F3" android:centerColor="#D4DEF1" android:endColor="#CAD6EC" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:centerX="1.0" android:centerY="0.0" android:gradientRadius="120dp"
+                android:startColor="#66B4C4E4" android:endColor="#00B4C4E4" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:centerX="0.0" android:centerY="1.0" android:gradientRadius="110dp"
+                android:startColor="#59B4C4E4" android:endColor="#00B4C4E4" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <stroke android:width="1dp" android:color="#8CFFFFFF" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+</layer-list>
