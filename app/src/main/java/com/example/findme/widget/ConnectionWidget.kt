@@ -90,21 +90,13 @@ class ConnectionWidget : GlanceAppWidget() {
             Column(GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(ImageProvider(palette.surface)).clickable(openApp)
                 .padding(start = layout.paddingStart.dp, end = layout.paddingEnd.dp,
                     top = layout.paddingVertical.dp, bottom = layout.paddingVertical.dp)) {
-                // Header: who is shown, with the actions on the right.
-                Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Text(layout.header, GlanceModifier.defaultWeight().clickable(actionStartActivity(config)),
-                        style = TextStyle(color = ColorProvider(palette.primary), fontSize = layout.headerSize.sp, fontWeight = bold), maxLines = 1)
-                    Image(ImageProvider(R.drawable.widget_ic_refresh), "Actualizar",
-                        GlanceModifier.size(layout.iconSize.dp).padding(6.dp).clickable(actionRunCallback<RefreshConnectionWidget>()),
-                        colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
-                    Image(ImageProvider(R.drawable.widget_ic_more), "Configurar",
-                        GlanceModifier.size(layout.iconSize.dp).padding(6.dp).clickable(actionStartActivity(config)),
-                        colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
-                }
-                // Status on the left, right under the header; the illustration fills the rest of the height
-                // on the right, so the spare room sits beside the art instead of between header and status.
+                // Who is shown and their status on the left; the illustration takes the whole height down to
+                // the card on the right, so the spare room sits beside the art instead of under the status.
                 Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.Vertical.Top) {
-                    Column(GlanceModifier.defaultWeight().padding(top = 2.dp)) {
+                    Column(GlanceModifier.defaultWeight()) {
+                        Text(layout.header, GlanceModifier.fillMaxWidth().clickable(actionStartActivity(config)),
+                            style = TextStyle(color = ColorProvider(palette.primary), fontSize = layout.headerSize.sp, fontWeight = bold), maxLines = 1)
+                        Spacer(GlanceModifier.height(layout.headerGap.dp))
                         val label = layout.label
                         if (label != null) {
                             Box(GlanceModifier.background(ImageProvider(palette.chip))
@@ -132,7 +124,7 @@ class ConnectionWidget : GlanceAppWidget() {
                 }
                 Spacer(GlanceModifier.height(layout.gap.dp))
                 Row(GlanceModifier.fillMaxWidth().background(ImageProvider(R.drawable.widget_card))
-                    .padding(horizontal = 12.dp, vertical = layout.cardPadding.dp),
+                    .padding(start = 12.dp, end = 4.dp, top = layout.cardPadding.dp, bottom = layout.cardPadding.dp),
                     verticalAlignment = Alignment.Vertical.CenterVertically) {
                     Image(ImageProvider(R.drawable.widget_ic_calendar), null, GlanceModifier.size(layout.calendarSize.dp),
                         colorFilter = ColorFilter.tint(ColorProvider(palette.secondary)))
@@ -147,6 +139,14 @@ class ConnectionWidget : GlanceAppWidget() {
                             style = TextStyle(color = ColorProvider(palette.secondary), fontSize = layout.nextSize.sp, fontWeight = bold),
                             maxLines = 1)
                     }
+                    // Actions live in the card so the illustration can use the top-right corner.
+                    Image(ImageProvider(R.drawable.widget_ic_refresh), "Actualizar",
+                        GlanceModifier.size(layout.iconSize.dp).padding(layout.iconPadding.dp)
+                            .clickable(actionRunCallback<RefreshConnectionWidget>()),
+                        colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
+                    Image(ImageProvider(R.drawable.widget_ic_more), "Configurar",
+                        GlanceModifier.size(layout.iconSize.dp).padding(layout.iconPadding.dp).clickable(actionStartActivity(config)),
+                        colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
                 }
             }
         }
