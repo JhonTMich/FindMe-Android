@@ -21,6 +21,8 @@ interface AccountActions {
     fun saveProfile(name: String, username: String) {}
     fun setAlert(alert: AccountAlert, enabled: Boolean) {}
     fun setAccent(accent: AppAccent) {}
+    fun setReminders(enabled: Boolean) {}
+    fun setReminderMinutes(minutes: Int) {}
     fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {}
     fun deleteSchedule(id: String) {}
     fun setStatus(text: String, minutes: Long) {}

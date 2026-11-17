@@ -11,53 +11,50 @@ import com.example.findme.R
 
 object NotificationHelper {
     const val OPEN_PEOPLE = "com.example.findme.OPEN_PEOPLE"
-    private const val MESSAGES_CHANNEL = "findme_messages"
+    const val OPEN_SCHEDULE = "com.example.findme.OPEN_SCHEDULE"
 
-    private const val CHANNEL_ID = "findme_status_channel"
-    private const val CHANNEL_NAME = "Actualizaciones de Estado"
+    /** One Android channel per kind, so each can also be silenced from the system settings. */
+    enum class Channel(val id: String, val title: String, val description: String) {
+        Activities("near_activities", "Actividades de tu gente", "Cuando una persona conectada comienza una actividad."),
+        Statuses("near_statuses", "Estados de tu gente", "Cuando tu gente comparte, cambia o quita su estado."),
+        Messages("near_messages", "Mensajes de tu gente", "Mensajes rápidos que recibes."),
+        Reminders("near_reminders", "Recordatorios de tus actividades", "Un aviso antes de que empiece cada actividad de tu horario.")
+    }
 
     fun createNotificationChannel(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
-                description = "Notificaciones de cambios de estado del usuario"
-            }
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-            notificationManager?.createNotificationChannel(channel)
-            notificationManager?.createNotificationChannel(NotificationChannel(MESSAGES_CHANNEL, "Mensajes de tu gente", NotificationManager.IMPORTANCE_HIGH))
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        Channel.entries.forEach { channel ->
+            manager.createNotificationChannel(NotificationChannel(channel.id, channel.title, NotificationManager.IMPORTANCE_HIGH)
+                .apply { description = channel.description })
         }
     }
 
-    /** Opens the People tab, where both messages and status changes are shown. */
-    private fun openPeople(context: Context): PendingIntent {
-        val intent = Intent(context, com.example.findme.MainActivity::class.java).apply { action = OPEN_PEOPLE }
-        return PendingIntent.getActivity(context, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    private fun open(context: Context, action: String): PendingIntent {
+        val intent = Intent(context, com.example.findme.MainActivity::class.java).apply { this.action = action }
+        return PendingIntent.getActivity(context, action.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     }
 
-    fun showMessageNotification(context: Context, id: String, sender: String, message: String) {
-        val pending = openPeople(context)
-        val notification = NotificationCompat.Builder(context, MESSAGES_CHANNEL)
-            .setSmallIcon(R.drawable.ic_notification).setContentTitle(sender).setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message)).setContentIntent(pending)
-            .setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH).build()
-        try { (context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager)?.notify(id.hashCode(), notification) }
+    /** Status and activity changes of one person replace each other instead of piling up. */
+    fun personId(personId: String) = "person:$personId".hashCode()
+    fun messageId(messageId: String) = "message:$messageId".hashCode()
+
+    fun show(context: Context, channel: Channel, id: Int, title: String, text: String) {
+        createNotificationChannel(context)
+        val notification = NotificationCompat.Builder(context, channel.id)
+            .setSmallIcon(R.drawable.ic_notification).setContentTitle(title).setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setContentIntent(open(context, if (channel == Channel.Reminders) OPEN_SCHEDULE else OPEN_PEOPLE))
+            .setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(if (channel == Channel.Messages) NotificationCompat.CATEGORY_MESSAGE else if (channel == Channel.Reminders) NotificationCompat.CATEGORY_REMINDER else NotificationCompat.CATEGORY_STATUS)
+            .build()
+        try { (context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager)?.notify(id, notification) }
         catch (_: SecurityException) { }
     }
 
-    fun showStatusNotification(context: Context, title: String, message: String) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
-        
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setContentIntent(openPeople(context))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .build()
-            
-        try {
-            notificationManager.notify(System.currentTimeMillis().toInt(), notification)
-        } catch (_: Exception) {}
-    }
+    fun showMessageNotification(context: Context, id: String, sender: String, message: String) =
+        show(context, Channel.Messages, messageId(id), sender, message)
+
+    fun showStatusNotification(context: Context, personId: String, title: String, message: String, activity: Boolean = false) =
+        show(context, if (activity) Channel.Activities else Channel.Statuses, personId(personId), title, message)
 }
