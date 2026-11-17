@@ -27,7 +27,9 @@ data class WidgetLayout(
     val paddingVertical: Float,
     val paddingStart: Float,
     val paddingEnd: Float,
+    /** Refresh and settings buttons, at the right end of the next-activity card. */
     val iconSize: Float,
+    val iconPadding: Float,
     val headerSize: Float,
     val header: String,
     val chipSize: Float,
@@ -40,8 +42,10 @@ data class WidgetLayout(
     val detailLines: Int,
     /** Null hides the detail line. */
     val detail: String?,
-    /** 0 hides the illustration. */
+    /** 0 hides the illustration, which spans from the top edge down to the card, beside header and status. */
     val artWidth: Float,
+    /** Space between the header line and the status block. */
+    val headerGap: Float,
     val gap: Float,
     val cardPadding: Float,
     val calendarSize: Float,
@@ -60,7 +64,10 @@ data class WidgetLayout(
         private const val ART_RATIO = 574f / 614f
         /** Average advance of a bold Roboto glyph as a fraction of its size; slightly generous on purpose. */
         private const val CHAR_WIDTH = 0.56f
-        private const val LINE_HEIGHT = 1.2f
+        /** Height of one text line as a fraction of its size, measured on device (TextView font padding included). */
+        private const val LINE_HEIGHT = 1.34f
+        /** The title only shrinks to make room for the detail line while it stays at least this big (sp). */
+        private const val MIN_TITLE_WITH_DETAIL = 22f
         /** From this height on (dp) the 4×2 widget uses its full arrangement; below it (landscape cells) it tightens. */
         const val ROOMY_HEIGHT = 160f
         private const val CHIP_PADDING = 6f
@@ -75,22 +82,26 @@ data class WidgetLayout(
             fun charsPerLine(widthDp: Float, sp: Float) = max(1, floor(widthDp / (sp * scale * CHAR_WIDTH)).toInt())
 
             val roomy = height >= ROOMY_HEIGHT
-            val paddingVertical = when { roomy -> 14f; height < 120f -> 6f; else -> 9f }
+            val paddingVertical = when { roomy -> 12f; height < 120f -> 6f; else -> 9f }
             val paddingStart = 16f
             val paddingEnd = 10f
-            val iconSize = if (roomy) 36f else 30f
+            val iconSize = if (roomy) 32f else 26f
+            val iconPadding = if (roomy) 6f else 5f
             val headerSize = if (roomy) 16f else 14f
-            val gap = if (roomy) 8f else 5f
-            val cardPadding = if (roomy) 8f else 5f
+            val headerGap = if (roomy) 4f else 2f
+            val gap = if (roomy) 6f else 5f
+            val cardPadding = if (roomy) 6f else 4f
             val calendarSize = if (roomy) 22f else 18f
             val nextLabelSize = 13f
             val nextSize = if (roomy) 12.5f else 11.5f
 
             val innerWidth = width - paddingStart - paddingEnd
-            val headerHeight = max(iconSize, line(headerSize))
-            val cardHeight = 2 * cardPadding +
-                if (roomy) line(nextLabelSize) + line(nextSize) else max(line(nextSize), calendarSize)
-            val middleHeight = max(0f, height - 2 * paddingVertical - headerHeight - gap - cardHeight)
+            val headerHeight = line(headerSize)
+            val cardHeight = 2 * cardPadding + max(iconSize,
+                if (roomy) line(nextLabelSize) + line(nextSize) else max(line(nextSize), calendarSize))
+            // Header + status sit on the left of this block; the illustration takes its full height on the right.
+            val topHeight = max(0f, height - 2 * paddingVertical - gap - cardHeight)
+            val middleHeight = max(0f, topHeight - headerHeight - headerGap)
 
             // Chip: shrink, then hide, until a minimal title still fits under it.
             val minTitle = if (roomy) 18f else 15f
@@ -111,22 +122,25 @@ data class WidgetLayout(
                 titleRoom >= 2 * line(minTitle) -> 2
                 else -> 1
             }
-            val keepDetail = if (texts.detail != null && roomy) line(detailSize) + DETAIL_SPACING else 0f
+            // Room kept for one detail line ("Hasta 1:00 p. m."): the title gives up size for it, but
+            // only while it stays at [MIN_TITLE_WITH_DETAIL]; below that the detail is dropped instead.
+            val keepDetail = if (texts.detail != null) line(detailSize) + DETAIL_SPACING else 0f
             val candidates = buildList {
                 for (s in steps(maxTitle, comfortable)) add(s to 1)
                 for (s in steps(maxTitle - 4f, minTitle)) add(s to 2)
                 if (maxTitleLines == 3) for (s in steps(maxTitle - 8f, minTitle)) add(s to 3)
                 for (s in steps(comfortable, minTitle)) add(s to 1)
             }
-            fun artFor(fraction: Float) = min(innerWidth * fraction, middleHeight * ART_RATIO).let { if (it < 44f) 0f else it }
+            fun artFor(fraction: Float) = min(innerWidth * fraction, topHeight * ART_RATIO).let { if (it < 44f) 0f else it }
             fun textWidthFor(art: Float) = innerWidth - art - if (art > 0f) 6f else 0f
             fun fits(textWidth: Float, size: Float, lines: Int, reserve: Float) =
                 wrap(texts.title, charsPerLine(textWidth, size)).size <= lines && lines * line(size) + reserve <= titleRoom
             val choice = ART_FRACTIONS.asSequence().flatMap { fraction ->
                 val art = artFor(fraction)
                 val textWidth = textWidthFor(art)
-                listOf(keepDetail, 0f).asSequence().flatMap { reserve ->
-                    candidates.asSequence().filter { (s, l) -> fits(textWidth, s, l, if (l > 1) reserve else 0f) }
+                listOf(keepDetail, 0f).distinct().asSequence().flatMap { reserve ->
+                    candidates.asSequence().filter { (s, _) -> reserve == 0f || s >= MIN_TITLE_WITH_DETAIL }
+                        .filter { (s, l) -> fits(textWidth, s, l, reserve) }
                         .map { (s, l) -> Triple(art, s, l) }
                 }
             }.firstOrNull()
@@ -150,8 +164,8 @@ data class WidgetLayout(
                 if (usedDetailLines > 0) DETAIL_SPACING + usedDetailLines * line(detailSize) else 0f
 
             // Header and next-activity card are single lines that lose their tail when needed.
-            val header = fitText(texts.header, charsPerLine(innerWidth - 2 * iconSize - 4f, headerSize), 1)
-            val cardTextWidth = innerWidth - 24f - calendarSize - 21f
+            val header = fitText(texts.header, charsPerLine(textWidth, headerSize), 1)
+            val cardTextWidth = innerWidth - 16f - calendarSize - 21f - 2 * iconSize
             val nextChars = charsPerLine(cardTextWidth, nextSize)
             // On 4×2 the card has no caption, so "Próxima:" leads the line unless it would push the activity out.
             val prefixed = "Próxima: ${texts.next}"
@@ -160,11 +174,11 @@ data class WidgetLayout(
 
             return WidgetLayout(
                 roomy = roomy, paddingVertical = paddingVertical, paddingStart = paddingStart, paddingEnd = paddingEnd,
-                iconSize = iconSize, headerSize = headerSize, header = header,
+                iconSize = iconSize, iconPadding = iconPadding, headerSize = headerSize, header = header,
                 chipSize = chipSize, label = label,
                 titleSize = titleSize, titleLines = titleLines, title = title,
                 detailSize = detailSize, detailLines = usedDetailLines, detail = detail,
-                artWidth = artWidth, gap = gap, cardPadding = cardPadding, calendarSize = calendarSize,
+                artWidth = artWidth, headerGap = headerGap, gap = gap, cardPadding = cardPadding, calendarSize = calendarSize,
                 nextLabel = if (roomy) "Próxima actividad" else null, nextLabelSize = nextLabelSize,
                 nextSize = nextSize, next = next,
                 contentHeight = min(contentHeight, middleHeight), middleHeight = middleHeight

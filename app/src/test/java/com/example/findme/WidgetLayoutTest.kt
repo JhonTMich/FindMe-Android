@@ -40,6 +40,19 @@ class WidgetLayoutTest {
         assertEquals("Próxima actividad", tall.nextLabel)
     }
 
+    @Test fun phone4x2KeepsEveryLine() {
+        // POCO Launcher's 4×2 cell on a 1220×2712 phone.
+        val layout = WidgetLayout.fit(359f, 190f, 1f, short)
+        assertNotNull(layout.label)
+        assertEquals("Prácticas", layout.title)
+        assertTrue(layout.titleSize >= 22f)
+        assertNotNull(layout.detail)
+        assertEquals("Próxima actividad", layout.nextLabel)
+        assertTrue(layout.contentHeight <= layout.middleHeight + 0.01f)
+        // The illustration spans header and status, so it is well above the old ~67dp.
+        assertTrue("art ${layout.artWidth}", layout.artWidth >= 95f)
+    }
+
     @Test fun longTitleShrinksOrWrapsInsteadOfBeingCut() {
         val tall = WidgetLayout.fit(276f, 260f, 1f, long)
         assertEquals("Proyecto de Investigación Aplicada", tall.title)
@@ -52,7 +65,7 @@ class WidgetLayoutTest {
         assertNull(tiny.nextLabel)
         assertTrue(tiny.next.startsWith("Taller"))
         assertTrue(tiny.next.endsWith("…"))
-        assertEquals("Próxima: IoT · 7:00 a. m.", WidgetLayout.fit(276f, 150f, 1f, short.copy(next = "IoT · 7:00 a. m.")).next)
+        assertEquals("Próxima: IoT · 7:00 a. m.", WidgetLayout.fit(359f, 150f, 1f, short.copy(next = "IoT · 7:00 a. m.")).next)
         assertFalse(tiny.roomy)
     }
 
