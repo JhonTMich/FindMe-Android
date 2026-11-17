@@ -65,6 +65,9 @@ data class AccountState(
     val controls: ConnectionControls get() = ConnectionControls(profile?.id.orEmpty(), connections, preferences)
 }
 
+private const val SAVE_FAILED = "No se pudieron guardar los datos. Inténtalo de nuevo."
+private const val LOAD_FAILED = "No se pudieron cargar tus datos. Inténtalo de nuevo en unos minutos."
+
 class AccountViewModel(application: Application) : AndroidViewModel(application), AccountActions {
     private val repository = AccountRepository()
     private val preferences = AccountSettingsRepository(application)
@@ -110,7 +113,8 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    private fun perform(quiet: Boolean = false, action: suspend () -> Unit) {
+    /** [failure] is shown for unexpected server errors; reads must not claim that something failed to save. */
+    private fun perform(quiet: Boolean = false, failure: String = SAVE_FAILED, action: suspend () -> Unit) {
         if (_state.value.busy) {
             // Say why nothing happened instead of dropping the tap silently. A refresh is simply skipped.
             if (!quiet) _state.update { it.copy(notice = "Espera a que termine la operación en curso e inténtalo de nuevo.") }
@@ -130,8 +134,10 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                     "FM001" -> "Llegaste al máximo permitido. Elimina elementos que ya no uses e inténtalo de nuevo."
                     "FM002" -> "Demasiados intentos seguidos. Espera unos minutos e inténtalo de nuevo."
                     "FM003" -> "La zona horaria del teléfono no es válida. Revisa la configuración de fecha y hora."
-                    else -> "No se pudieron guardar los datos. Inténtalo de nuevo."
+                    else -> failure
                 }
+                // Only the code: the full error carries the request URL with account ids.
+                if (message == failure) android.util.Log.w("AccountViewModel", "Server rejected the request (code ${error.code})")
                 _state.update { it.copy(error = message) }
             }
             catch (error: Exception) {
@@ -148,7 +154,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             "Ábrelo en este teléfono y revisa también la carpeta de spam.") }
     }
     /** Called when the recovery email's link opens the app. */
-    fun completePasswordRecovery(code: String) = perform {
+    fun completePasswordRecovery(code: String) = perform(failure = LOAD_FAILED) {
         repository.exchangeRecoveryCode(code)
         _state.update { it.copy(signedIn = true, passwordRecovery = true) }
         // The session listener's refresh is skipped while this action is running, so load here.
@@ -163,7 +169,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         _state.update { it.copy(passwordRecovery = false, notice = "Contraseña actualizada. Ya puedes usarla para entrar.") }
     }
     override fun cancelPasswordRecovery() { _state.update { it.copy(passwordRecovery = false) } }
-    override fun login(username: String, password: String) = perform {
+    override fun login(username: String, password: String) = perform(failure = LOAD_FAILED) {
         require(com.example.findme.domain.model.Username.isValid(username) && password.isNotBlank()) { "Introduce un usuario válido y tu contraseña." }
         repository.signIn(username, password)
         if (repository.auth.currentUserOrNull() == null) {
@@ -182,14 +188,14 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             val signalsRequest = async { repository.receivedSignals() }
             val schedulesRequest = async { repository.accessibleSchedules() }
             val statusesRequest = async { repository.accessibleStatuses() }
-            val preferencesRequest = async { repository.connectionPreferences() }
+            val preferencesRequest = async { optionalPreferences() }
             val connections = connectionsRequest.await()
             val profiles = profilesRequest.await()
             val messages = messagesRequest.await()
             val signals = signalsRequest.await()
             val remoteSchedules = schedulesRequest.await()
             val statuses = statusesRequest.await()
-            val preferences = preferencesRequest.await()
+            val preferences = preferencesRequest.await() ?: _state.value.preferences
             if (repository.auth.currentUserOrNull()?.id != id) return@coroutineScope
             // An older response must not undo a confirmed save or resurrect a deleted row.
             val ownSchedules = if (scheduleSync.canApplySnapshot(scheduleRevision)) {
@@ -218,6 +224,19 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             publishWidgetSnapshot()
             updateStatusNotifications()
         }
+    }
+
+    /**
+     * Nicknames, sharing and silence are an add-on to the account. If the server cannot answer
+     * (for example, before its migration is applied), keep the last known values and load the rest.
+     */
+    private suspend fun optionalPreferences(): List<ConnectionPreference>? = try {
+        repository.connectionPreferences()
+    } catch (cancelled: CancellationException) { throw cancelled }
+    catch (error: Exception) {
+        val code = (error as? io.github.jan.supabase.postgrest.exception.PostgrestRestException)?.code ?: error.javaClass.simpleName
+        android.util.Log.w("AccountViewModel", "Connection preferences unavailable ($code); loading without them")
+        null
     }
 
     private suspend fun saveCache(snapshot: AccountSnapshot) {
@@ -324,7 +343,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
     }
     override fun setAccent(accent: AppAccent) { viewModelScope.launch { preferences.setAccent(accent) } }
 
-    override fun refresh() = perform(quiet = true) { load() }
+    override fun refresh() = perform(quiet = true, failure = LOAD_FAILED) { load() }
     override fun register(name: String, email: String, username: String, password: String, confirmation: String) = perform {
         com.example.findme.domain.model.Registration.error(name, email, username, password, confirmation)?.let { throw IllegalArgumentException(it) }
         com.example.findme.data.repository.AuthorizedSignup.register(name, email, username, password)
