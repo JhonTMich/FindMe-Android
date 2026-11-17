@@ -9,8 +9,12 @@ import com.example.findme.domain.model.activeWindow
 import com.example.findme.domain.model.formatScheduleTime
 import java.time.ZonedDateTime
 
-/** The three illustrated scenes the widget can show; each one matches an activity category of the app. */
-enum class WidgetScene { UNIVERSITY, WORK, FREE }
+/**
+ * The illustrated scenes the widget can show. UNIVERSITY, WORK and FREE match the activity categories of
+ * the app; STREET ("En calle") is an occasional state the person turns on while on the way somewhere, so
+ * it never comes from a schedule (see [streetStatus]).
+ */
+enum class WidgetScene { UNIVERSITY, WORK, FREE, STREET }
 
 data class WidgetStatus(
     val title: String,
@@ -45,7 +49,21 @@ private fun ScheduleDto.label() = when (scene()) {
     WidgetScene.WORK -> "Trabajando"
     WidgetScene.FREE -> "Tiempo libre"
     WidgetScene.UNIVERSITY -> if (modality == "virtual") "En clase virtual" else "En clase"
+    WidgetScene.STREET -> "En calle"
 }
+
+/**
+ * "En calle": on the way to [destination] (e.g. the next activity), so the widget does not jump from
+ * "Libre" straight to "Trabajando". It is activated by hand, not registered like the other states;
+ * the switch that turns it on (its own widget or an app action) does not exist yet.
+ */
+fun streetStatus(destination: String?, next: String): WidgetStatus = WidgetStatus(
+    title = "En camino",
+    detail = destination?.takeIf { it.isNotBlank() }?.let { "Hacia $it" } ?: "Saliendo",
+    next = next,
+    scene = WidgetScene.STREET,
+    label = "En calle"
+)
 
 fun widgetStatus(name: String, schedules: List<ScheduleDto>, statuses: List<StatusOverrideDto>, now: ZonedDateTime): WidgetStatus {
     val state = StatusRepository.calculateStatus(name, schedules, statuses, now.dayOfWeek.value, now)

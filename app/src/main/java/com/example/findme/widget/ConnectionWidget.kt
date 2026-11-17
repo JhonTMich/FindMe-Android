@@ -167,6 +167,8 @@ private data class WidgetPalette(
                 Color(0xFF0C2E4E), Color(0xFF2C5073), Color(0xFF0F5799), Color(0x661C6FBF))
             WidgetScene.FREE -> WidgetPalette(R.drawable.widget_surface_free, R.drawable.widget_art_free, R.drawable.widget_chip_free,
                 Color(0xFF45200B), Color(0xFF6E3B20), Color(0xFF9E420A), Color(0x66C75A1A))
+            WidgetScene.STREET -> WidgetPalette(R.drawable.widget_surface_street, R.drawable.widget_art_street, R.drawable.widget_chip_street,
+                Color(0xFF1F3A16), Color(0xFF3F5C33), Color(0xFF3E7F2E), Color(0x664C963D))
         }
     }
 }
