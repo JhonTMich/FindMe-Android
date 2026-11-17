@@ -57,12 +57,13 @@ jobs:
       - name: Verify account authentication and database policies
         run: |
           npm install --prefix build/schema-check --no-save --ignore-scripts @electric-sql/pglite@0.3.14
-          node --test scripts/test_username_login.mjs scripts/test_authorized_signup.mjs scripts/test_delete_account.mjs
+          node --test scripts/test_username_login.mjs scripts/test_authorized_signup.mjs scripts/test_delete_account.mjs scripts/test_send_push.mjs
           node scripts/test_account_schema.mjs
           node scripts/test_registration_schema.mjs
           node scripts/test_message_retention.mjs
           node scripts/test_migrations_replay.mjs
           node scripts/test_connection_preferences.mjs
+          node scripts/test_push_notifications.mjs
       - name: Build release and run Android checks
         env:
           RELEASE_VERSION: ${{ steps.metadata.outputs.version }}
