@@ -61,7 +61,7 @@ fun BrandWelcome(eyebrow: String, title: String, subtitle: String) {
 fun ProfileAvatar(name: String, modifier: Modifier = Modifier) {
     Box(modifier.size(50.dp).background(
         Brush.linearGradient(listOf(BrandBlue, BrandSlate)), CircleShape)
-        .padding(2.dp).background(DarkSurface, CircleShape), contentAlignment = Alignment.Center) {
+        .padding(2.dp).background(AppSurface, CircleShape), contentAlignment = Alignment.Center) {
         Text(name.take(1).uppercase(), color = TextPrimary, style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold)
     }

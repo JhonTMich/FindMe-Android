@@ -35,14 +35,14 @@ fun HeroStatusCard(status: UserCurrentStatus, modifier: Modifier = Modifier) {
     }
     Card(modifier.fillMaxWidth().animateContentSize(), shape = RoundedCornerShape(28.dp),
         border = BorderStroke(1.dp, accent.copy(alpha = .28f)), colors = CardDefaults.cardColors(containerColor = Color.Transparent)) {
-        Box(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(DarkSurface, Color(0xFF203451), DarkCardBg)))) {
+        Box(Modifier.fillMaxWidth().background(Brush.linearGradient(HeroGradient))) {
             BrandContour(Modifier.matchParentSize().alpha(.10f).offset(x = 110.dp, y = (-20).dp))
             Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     ProfileAvatar(status.displayName)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text("ESTADO ACTUAL", style = MaterialTheme.typography.labelSmall, color = TextSecondary, letterSpacing = 1.5.sp)
-                        Text(status.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(status.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
                 }
                 StatusPill(when (status) {
@@ -59,7 +59,7 @@ fun HeroStatusCard(status: UserCurrentStatus, modifier: Modifier = Modifier) {
                     is UserCurrentStatus.Error -> "Estado no disponible"
                     else -> "Sin actividad en curso"
                 }
-                Text(title, fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.6).sp, color = Color.White)
+                Text(title, fontSize = 28.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.6).sp, color = TextPrimary)
                 Text(when (status) {
                     is UserCurrentStatus.InClass -> listOf(status.currentSchedule.location,
                         "Termina en ${formatDurationMinutes(status.remainingMinutes)}").filter { it.isNotBlank() }.joinToString(" · ")
@@ -71,7 +71,7 @@ fun HeroStatusCard(status: UserCurrentStatus, modifier: Modifier = Modifier) {
                 if (status is UserCurrentStatus.InClass) {
                     val progress by animateFloatAsState(status.progress.coerceIn(0f, 1f), tween(800), label = "activityProgress")
                     LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(5.dp),
-                        color = accent, trackColor = Color.White.copy(alpha = .1f))
+                        color = accent, trackColor = TextPrimary.copy(alpha = .12f))
                 }
             }
         }

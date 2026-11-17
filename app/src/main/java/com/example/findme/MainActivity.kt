@@ -79,8 +79,8 @@ class MainActivity : ComponentActivity() {
         receiveConfirmation(intent)
         com.example.findme.util.NotificationHelper.createNotificationChannel(this)
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+            statusBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
         )
         setContent {
             val accent by appSettings.accent.collectAsStateWithLifecycle(initialValue = AppAccent.Indigo)

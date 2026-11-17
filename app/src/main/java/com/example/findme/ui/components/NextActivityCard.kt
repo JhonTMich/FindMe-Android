@@ -19,7 +19,7 @@ import com.example.findme.ui.theme.*
 @Composable
 fun NextActivityCard(next: ScheduleDto?, onOpenSchedule: () -> Unit) {
     Surface(onClick = onOpenSchedule, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp),
-        color = DarkCardBg, border = BorderStroke(1.dp, DarkCardBorder)) {
+        color = CardBg, border = BorderStroke(1.dp, CardBorder)) {
         Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             AccentIcon(if (next == null) Icons.Default.CheckCircleOutline else Icons.Default.Schedule, BrandAccent)
