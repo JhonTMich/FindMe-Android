@@ -27,27 +27,26 @@ Firebase (Spark) y Supabase.
   `register_push_token`/`unregister_push_token`, audiencia y disparadores.
 - `supabase/migrations/20261117210100_programar_avisos_push.sql`: `pg_net`, `pg_cron` y el trabajo
   `near-push-due-events` (cada minuto).
+- `supabase/migrations/20261117220000_secreto_avisos_push.sql`: genera en Vault el secreto compartido y
+  la URL de la función.
 - `supabase/functions/send-push`: firma con la cuenta de servicio de Firebase y envía por la API v1 de FCM.
 
 ## Despliegue (una vez)
 
-1. **Migraciones**: aplicar las dos migraciones en orden (SQL Editor o `supabase db push`).
-2. **Función**: desplegar `send-push` con `verify_jwt = false` (ya está en `supabase/config.toml`):
-   `npx supabase functions deploy send-push --project-ref ymqsgxmpqushzghkoncg`.
-3. **Secreto compartido**: generar uno, por ejemplo
-   `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
-4. **Secretos de la función** (Edge Functions → Secrets):
-   - `PUSH_WEBHOOK_SECRET`: el secreto del paso 3.
-   - `FCM_SERVICE_ACCOUNT`: el JSON completo de la cuenta de servicio de Firebase
-     (Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada).
-     **Nunca** se guarda en el repositorio.
-5. **Vault** (SQL Editor), con el mismo secreto del paso 3:
-   ```sql
-   select vault.create_secret('https://ymqsgxmpqushzghkoncg.supabase.co/functions/v1/send-push', 'near_push_url');
-   select vault.create_secret('<secreto del paso 3>', 'near_push_secret');
-   ```
+Ya desplegado en el proyecto `ymqsgxmpqushzghkoncg` (FindMeDB) el 17 nov 2026, salvo la clave de Firebase.
 
-Mientras falte cualquiera de los dos secretos de Vault, la base de datos no envía nada (no falla).
+1. **Migraciones**: `npx supabase db push --remote` (aplica `..._notificaciones_push.sql`,
+   `..._programar_avisos_push.sql` y `..._secreto_avisos_push.sql`).
+2. **Función**: `npx supabase functions deploy send-push --remote=ymqsgxmpqushzghkoncg --use-api`
+   (`verify_jwt = false` viene de `supabase/config.toml`).
+3. **Secreto compartido**: lo genera la propia base de datos en Vault (`near_push_secret`, junto con la
+   URL `near_push_url`); la función lo lee con la clave de servicio mediante `push_webhook_secret()`.
+   No hay que crearlo ni copiarlo. `PUSH_WEBHOOK_SECRET` es opcional y solo lo reemplazaría.
+4. **Clave de Firebase**: en Supabase → Edge Functions → Secrets, crear `FCM_SERVICE_ACCOUNT` con el JSON
+   completo de la cuenta de servicio (Firebase → Configuración del proyecto → Cuentas de servicio →
+   Generar nueva clave privada). **Nunca** se guarda en el repositorio.
+
+Mientras falte la clave de Firebase, la función responde 503 y no se envía nada; nada falla en la app.
 
 ## Límites conocidos
 
