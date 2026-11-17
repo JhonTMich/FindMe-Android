@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Only 4×2 and 4×3: the width is fixed at four cells (resizeMode is vertical only) and the height
+    goes from two cells (minResizeHeight) to three (maxResizeHeight, Android 12+). Launchers round
+    these dp values up to whole cells, so they sit between the 2- and 3-row heights of common grids.
+-->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="250dp"
-    android:minHeight="80dp"
-    android:minResizeWidth="250dp"
-    android:minResizeHeight="80dp"
+    android:minWidth="210dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="210dp"
+    android:minResizeHeight="110dp"
+    android:maxResizeHeight="260dp"
     android:targetCellWidth="4"
     android:targetCellHeight="2"
     android:configure="com.example.findme.widget.StatusWidgetConfigurationActivity"
@@ -12,5 +18,5 @@
     android:previewLayout="@layout/widget_status_preview"
     android:initialLayout="@layout/widget_status_preview"
     android:updatePeriodMillis="0"
-    android:resizeMode="horizontal|vertical"
+    android:resizeMode="vertical"
     android:widgetCategory="home_screen" />
