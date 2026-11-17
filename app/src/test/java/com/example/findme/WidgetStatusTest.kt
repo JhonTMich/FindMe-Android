@@ -51,7 +51,7 @@ class WidgetStatusTest {
     @Test fun emptyScheduleShowsFreeWithoutInventingAnActivity() {
         val state = widgetStatus("Yo", emptyList(), emptyList(), now)
         assertEquals("Libre", state.title)
-        assertEquals("Libre · sin actividades programadas", state.next)
+        assertEquals("Libre · de relajo", state.next)
     }
 
     @Test fun eachStateUsesTheSceneOfItsCategory() {

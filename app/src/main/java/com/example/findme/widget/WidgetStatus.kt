@@ -80,7 +80,7 @@ fun widgetStatus(name: String, schedules: List<ScheduleDto>, statuses: List<Stat
             if (start.toLocalDate() == now.toLocalDate().plusDays(1)) "mañana " else
                 start.format(java.time.format.DateTimeFormatter.ofPattern("EEE ", java.util.Locale.forLanguageTag("es")))
         "${schedule.title} · $day${formatScheduleTime(schedule.startTime)}"
-    } ?: "Libre · de relajog"
+    } ?: "Libre · de relajo"
     return when (state) {
         is UserCurrentStatus.InClass -> {
             val schedule = state.currentSchedule
