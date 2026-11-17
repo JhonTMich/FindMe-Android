@@ -9,7 +9,8 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "com.example.findme"
+        // Registered in Firebase (project near-c8d8c); the Kotlin namespace stays com.example.findme.
+        applicationId = "com.example.near"
         minSdk = 26
         targetSdk = 35
         versionCode = providers.gradleProperty("releaseVersionCode").orNull?.toInt() ?: 1005000
@@ -65,6 +66,10 @@ dependencies {
 
     // DataStore Preferences
     implementation(libs.datastore.preferences)
+
+    // Firebase Cloud Messaging (configured from res/values/firebase.xml, no google-services plugin)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
