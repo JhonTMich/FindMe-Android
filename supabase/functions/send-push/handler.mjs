@@ -55,9 +55,25 @@ export function createSendPushHandler({ url, serviceKey, secret, serviceAccount 
     signal: AbortSignal.timeout(10000),
   });
 
+  // Without an explicit secret, use the one the database generated in Vault (see the migration).
+  let stored = null; // { value, until }
+  async function expectedSecret() {
+    if (secret) return secret;
+    if (stored && stored.until > now()) return stored.value;
+    if (!url || !serviceKey) return null;
+    const response = await rest('rpc/push_webhook_secret', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    }).catch(() => null);
+    const value = response?.ok ? await response.json().catch(() => null) : null;
+    if (typeof value !== 'string' || value.length < 32) return null;
+    stored = { value, until: now() + 10 * 60_000 };
+    return value;
+  }
+
   return async (req) => {
     if (req.method !== 'POST') return reply({ message: 'Método no permitido.' }, 405);
-    if (!sameSecret(req.headers.get('x-push-secret'), secret)) return reply({ message: 'No autorizado.' }, 401);
+    const given = req.headers.get('x-push-secret');
+    if (!given || !sameSecret(given, await expectedSecret())) return reply({ message: 'No autorizado.' }, 401);
     let account;
     try { account = JSON.parse(serviceAccount ?? ''); } catch { account = null; }
     if (!url || !serviceKey || !account?.private_key || !account?.client_email || !account?.project_id) {

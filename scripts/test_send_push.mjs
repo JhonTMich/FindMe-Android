@@ -88,3 +88,13 @@ test('does nothing when nobody has a device', async () => {
   assert.deepEqual(await (await handler(services)(post({ type: 'activity', recipients: [a] }))).json(), { sent: 0, removed: 0 });
   assert.ok(!services.calls.some((call) => call.url.includes('fcm.googleapis.com')));
 });
+
+test('without an explicit secret it checks against the one generated in Vault', async () => {
+  const vaultSecret = 'f'.repeat(64);
+  const services = fakeServices();
+  const request = async (url, init) => url.endsWith('/rest/v1/rpc/push_webhook_secret')
+    ? Response.json(vaultSecret) : services.request(url, init);
+  const send = createSendPushHandler({ url: 'https://db.example.test', serviceKey: 'service', serviceAccount: account }, request);
+  assert.equal((await send(post({ type: 'message', recipients: [a] }, 's3cret'))).status, 401);
+  assert.equal((await send(post({ type: 'message', recipients: [a] }, vaultSecret))).status, 200);
+});
