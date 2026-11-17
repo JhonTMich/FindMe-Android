@@ -62,7 +62,7 @@ fun widgetStatus(name: String, schedules: List<ScheduleDto>, statuses: List<Stat
             if (start.toLocalDate() == now.toLocalDate().plusDays(1)) "mañana " else
                 start.format(java.time.format.DateTimeFormatter.ofPattern("EEE ", java.util.Locale.forLanguageTag("es")))
         "${schedule.title} · $day${formatScheduleTime(schedule.startTime)}"
-    } ?: "Libre · sin actividades programadas"
+    } ?: "Libre · de relajog"
     return when (state) {
         is UserCurrentStatus.InClass -> {
             val schedule = state.currentSchedule
@@ -76,6 +76,6 @@ fun widgetStatus(name: String, schedules: List<ScheduleDto>, statuses: List<Stat
         is UserCurrentStatus.Override -> WidgetStatus(state.customLocation,
             state.customMessage?.takeIf { it.isNotBlank() } ?: "Estado compartido", next,
             sceneForSharedStatus("${state.customLocation} ${state.customMessage.orEmpty()}"), "Estado compartido", shared = true)
-        else -> WidgetStatus("Libre", "Sin actividad en este momento", next, WidgetScene.FREE, "Tiempo libre")
+        else -> WidgetStatus("Libre", "Sin actividad", next, WidgetScene.FREE, "Tiempo libre")
     }
 }
