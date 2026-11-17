@@ -1,23 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Peeking cat. Scaled to 80% so the head stays inside the adaptive icon safe zone;
+     the band is drawn last because the cat peeks from behind it. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="360"
-    android:viewportHeight="360">
-  <group android:scaleX="0.67"
-      android:scaleY="0.67"
-      android:translateX="59.4"
-      android:translateY="59.4">
-      <!-- Background with transparent outer corners -->
-      <path android:fillColor="#0B1831"
-          android:pathData="M90,7 H270 A83,83 0,0 1,353 90 V270 A83,83 0,0 1,270 353 H90 A83,83 0,0 1,7 270 V90 A83,83 0,0 1,90 7 Z" />
-      <group android:translateX="-6" android:translateY="-11">
-          <path android:fillColor="#8298BF"
-              android:pathData="M102,213 C120,205 139,190 156,180 C171,210 189,233 218,238 C239,243 264,234 280,225 C261,249 230,261 204,259 C165,256 132,239 102,213 Z"/>
-          <path android:fillColor="#F8FAFF"
-              android:pathData="M61,207 C82,174 131,132 179,120 C230,107 283,126 307,174 C283,151 251,139 219,142 C185,143 152,159 124,179 C92,201 73,213 61,207 Z"/>
-          <path android:fillColor="#FFFFFF"
-              android:pathData="M281,186.5 A23.5,23.5 0,1 1,234 186.5 A23.5,23.5 0,1 1,281 186.5 Z"/>
-      </group>
-  </group>
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="1024" android:viewportHeight="1024">
+    <group android:pivotX="505" android:pivotY="706" android:scaleX="0.8" android:scaleY="0.8"
+        android:translateX="7" android:translateY="-86">
+        <path android:fillColor="#FFF4E6" android:pathData="M155,706 C158,661 174,625 205,582 C190,521 183,423 204,388 C219,357 239,354 268,368 C311,386 357,418 397,453 C469,428 552,428 623,453 C672,417 730,378 766,369 C796,361 814,373 822,407 C837,461 827,532 809,583 C833,620 850,664 855,706 L855,730 H155 Z" />
+        <path android:fillColor="#FF8A65" android:pathData="M235,545 C226,509 226,446 236,420 C242,405 251,404 264,411 C294,427 321,451 343,472 C301,495 268,518 235,545 Z" />
+        <path android:fillColor="#FF8A65" android:pathData="M675,477 C704,450 739,424 766,413 C782,406 789,414 792,430 C795,466 790,514 780,550 C747,522 713,498 675,477 Z" />
+        <path android:fillColor="#0B1220" android:pathData="M356,611 C377,611 394,628 394,649 C394,670 377,687 356,687 C335,687 318,670 318,649 C318,628 335,611 356,611 Z M665,611 C686,611 703,628 703,649 C703,670 686,687 665,687 C644,687 627,670 627,649 C627,628 644,611 665,611 Z" />
+    </group>
+    <path android:fillColor="#1E2A44" android:pathData="M0,620 H1024 V1024 H0 Z" />
 </vector>

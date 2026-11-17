@@ -13,7 +13,7 @@ import com.example.findme.data.model.ScheduleDto
 import com.example.findme.domain.model.UserCurrentStatus
 import com.example.findme.ui.components.HeroStatusCard
 import com.example.findme.ui.components.WeeklyScheduleHeader
-import com.example.findme.ui.theme.FindmeTheme
+import com.example.findme.ui.theme.NearTheme
 import org.junit.Rule
 import org.junit.Test
 import java.io.File
@@ -30,7 +30,7 @@ class MonitorUiTest {
         }
     }
     @Test fun freeTimeDoesNotClaimAConfirmedLocation() {
-        compose.setContent { FindmeTheme { Surface(Modifier.fillMaxSize().background(com.example.findme.ui.theme.DarkBackground).safeDrawingPadding()) {
+        compose.setContent { NearTheme { Surface(Modifier.fillMaxSize().background(com.example.findme.ui.theme.DarkBackground).safeDrawingPadding()) {
             Column(Modifier.padding(20.dp)) {
                 HeroStatusCard(UserCurrentStatus.FreeTime("Persona vinculada", 1, emptyList()))
             }
@@ -41,7 +41,7 @@ class MonitorUiTest {
     }
     @Test fun weeklySelectorExposesAllSevenDays() {
         var selected = 1
-        compose.setContent { FindmeTheme { Surface(Modifier.fillMaxSize().background(com.example.findme.ui.theme.DarkBackground).safeDrawingPadding()) {
+        compose.setContent { NearTheme { Surface(Modifier.fillMaxSize().background(com.example.findme.ui.theme.DarkBackground).safeDrawingPadding()) {
             Column(Modifier.padding(20.dp)) {
                 WeeklyScheduleHeader(emptyList<ScheduleDto>(), 1, { selected = it })
             }
@@ -56,7 +56,7 @@ class MonitorUiTest {
         val activity = ScheduleDto(id = "visual", dayOfWeek = java.time.LocalDate.now().dayOfWeek.value,
             startTime = now.minusMinutes(30).toString(), endTime = now.plusMinutes(45).toString(),
             title = "Diseño y desarrollo de aplicaciones", location = "Aula 302 · Campus universitario", category = "university", modality = "Presencial")
-        compose.setContent { FindmeTheme { Surface(Modifier.fillMaxSize().background(com.example.findme.ui.theme.DarkBackground).safeDrawingPadding()) {
+        compose.setContent { NearTheme { Surface(Modifier.fillMaxSize().background(com.example.findme.ui.theme.DarkBackground).safeDrawingPadding()) {
             androidx.compose.foundation.lazy.LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item { androidx.compose.material3.Text("Su día, a tu alcance", style = androidx.compose.material3.MaterialTheme.typography.headlineMedium, color = com.example.findme.ui.theme.TextPrimary) }
                 item { HeroStatusCard(UserCurrentStatus.InClass("Alex", activity, 45, .6f, 1, listOf(activity))) }

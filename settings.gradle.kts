@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "findme"
+rootProject.name = "Near"
 include(":app")

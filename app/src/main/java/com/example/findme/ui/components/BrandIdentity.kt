@@ -25,7 +25,7 @@ import com.example.findme.ui.theme.*
 
 @Composable
 fun BrandMark(modifier: Modifier = Modifier) {
-    Image(painterResource(R.drawable.findme_mark), contentDescription = "FindMe",
+    Image(painterResource(R.drawable.near_mark), contentDescription = "Near",
         modifier = modifier.clip(RoundedCornerShape(18.dp)))
 }
 

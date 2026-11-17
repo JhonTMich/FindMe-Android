@@ -35,14 +35,14 @@ object ApkUpdateInstaller {
         val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
         val archive = context.packageManager.getPackageArchiveInfo(file.absolutePath, flags)
             ?: error("El archivo descargado no es una actualización válida.")
-        check(archive.packageName == context.packageName) { "El archivo descargado no corresponde a FindMe." }
+        check(archive.packageName == context.packageName) { "El archivo descargado no corresponde a Near." }
         val versionCode = if (Build.VERSION.SDK_INT >= 28) archive.longVersionCode else archive.versionCode.toLong()
         check(versionCode > installedVersionCode && ReleaseVersion.equivalent(archive.versionName.orEmpty(), expectedVersion)) {
             "La versión descargada no corresponde a esta actualización."
         }
         val installed = context.packageManager.getPackageInfo(context.packageName, flags)
         check(UpdateSignerPolicy.accepts(signers(archive), signers(installed))) {
-            "La firma de la actualización no coincide con FindMe."
+            "La firma de la actualización no coincide con Near."
         }
     }
 

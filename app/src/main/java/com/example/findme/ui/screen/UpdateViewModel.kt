@@ -48,7 +48,7 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
                 // Up to date: an APK left from the update that was just installed is no longer needed.
                 if (release == null) withContext(Dispatchers.IO) { ApkDownloader.clear(updatesDirectory()) }
                 _state.value = UpdateState(release = release,
-                    message = if (release == null) "Tienes la versión más reciente." else "Hay una actualización de FindMe disponible.",
+                    message = if (release == null) "Tienes la versión más reciente." else "Hay una actualización de Near disponible.",
                     showDialog = release != null)
             } catch (cancelled: CancellationException) {
                 throw cancelled
@@ -83,10 +83,10 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     fun requestInstallation() {
         if (_state.value.downloadedApk?.isFile == true) _state.update { it.copy(requestInstall = true) }
     }
-    fun permissionRequested() { _state.update { it.copy(showDialog = false, message = "Autoriza a FindMe para instalar la actualización.") } }
+    fun permissionRequested() { _state.update { it.copy(showDialog = false, message = "Autoriza a Near para instalar la actualización.") } }
     fun installerOpened() { _state.update { it.copy(showDialog = false, message = "Confirma la actualización en Android.") } }
     fun installationUnavailable() { _state.update { it.copy(showDialog = true, requestInstall = false,
-        message = "Permite que FindMe instale actualizaciones e intenta otra vez.") } }
+        message = "Permite que Near instale actualizaciones e intenta otra vez.") } }
     fun installationCancelled() { _state.update { it.copy(showDialog = false, requestInstall = false,
         message = "La instalación no se completó. Puedes intentarlo otra vez.") } }
     fun cancelDownload() {

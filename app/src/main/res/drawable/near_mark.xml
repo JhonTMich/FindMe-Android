@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+
+    <!-- Midnight-blue background -->
+    <path
+        android:fillColor="#0B1220"
+        android:pathData="M0,0 H1024 V1024 H0 Z" />
+
+    <!-- Cream silhouette: head and ears -->
+    <path
+        android:fillColor="#FFF4E6"
+        android:pathData="M155,706 C158,661 174,625 205,582 C190,521 183,423 204,388 C219,357 239,354 268,368 C311,386 357,418 397,453 C469,428 552,428 623,453 C672,417 730,378 766,369 C796,361 814,373 822,407 C837,461 827,532 809,583 C833,620 850,664 855,706 L855,730 H155 Z" />
+
+    <!-- Left ear interior -->
+    <path
+        android:fillColor="#FF8A65"
+        android:pathData="M235,545 C226,509 226,446 236,420 C242,405 251,404 264,411 C294,427 321,451 343,472 C301,495 268,518 235,545 Z" />
+
+    <!-- Right ear interior -->
+    <path
+        android:fillColor="#FF8A65"
+        android:pathData="M675,477 C704,450 739,424 766,413 C782,406 789,414 792,430 C795,466 790,514 780,550 C747,522 713,498 675,477 Z" />
+
+    <!-- Eyes -->
+    <path
+        android:fillColor="#0B1220"
+        android:pathData="M356,611 C377,611 394,628 394,649 C394,670 377,687 356,687 C335,687 318,670 318,649 C318,628 335,611 356,611 Z M665,611 C686,611 703,628 703,649 C703,670 686,687 665,687 C644,687 627,670 627,649 C627,628 644,611 665,611 Z" />
+
+    <!-- Slate-blue foreground band -->
+    <path
+        android:fillColor="#1E2A44"
+        android:pathData="M0,706 H1024 V1024 H0 Z" />
+
+</vector>

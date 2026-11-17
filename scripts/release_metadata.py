@@ -18,7 +18,7 @@ def metadata(tag: str, previous_tag: str | None = None) -> dict:
         raise ValueError("The tag exceeds Android versionCode limits.")
     if previous_tag and code <= metadata(previous_tag)["version_code"]:
         raise ValueError("The new tag must be newer than the latest published release.")
-    return {"tag": tag, "version": tag[1:], "version_code": code, "apk_name": f"FindMe-{tag[1:]}.apk"}
+    return {"tag": tag, "version": tag[1:], "version_code": code, "apk_name": f"Near-{tag[1:]}.apk"}
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)

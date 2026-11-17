@@ -15,7 +15,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Findme">
+        android:theme="@style/Theme.Near">
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -32,7 +32,7 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:label="@string/app_name"
-            android:theme="@style/Theme.Findme"
+            android:theme="@style/Theme.Near"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -49,14 +49,14 @@
         </activity>
 
         <activity android:name=".widget.StatusWidgetConfigurationActivity"
-            android:exported="true" android:theme="@style/Theme.Findme">
+            android:exported="true" android:theme="@style/Theme.Near">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
 
         <receiver android:name=".widget.ConnectionWidgetReceiver"
-            android:exported="true" android:label="FindMe · Estado actual">
+            android:exported="true" android:label="Near · Estado actual">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

@@ -27,7 +27,7 @@ class ApkDownloader(
             connection.connectTimeout = 15_000
             connection.readTimeout = 20_000
             connection.setRequestProperty("Accept", "application/octet-stream")
-            connection.setRequestProperty("User-Agent", "FindMe-Android")
+            connection.setRequestProperty("User-Agent", "Near-Android")
             if (connection.responseCode != 200 || connection.url.protocol != "https") {
                 throw IOException("No se pudo descargar la actualización.")
             }

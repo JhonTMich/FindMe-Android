@@ -41,7 +41,7 @@ private val BrandColors = darkColorScheme(
 )
 
 @Composable
-fun FindmeTheme(
+fun NearTheme(
     darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
     accent: AppAccent = AppAccent.Indigo,
