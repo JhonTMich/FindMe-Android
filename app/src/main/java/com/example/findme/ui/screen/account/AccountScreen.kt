@@ -800,7 +800,24 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         AccountSettingsSwitch("Cambios de estado", "Cuando tu gente comparte o cambia su estado.", state.settings.statuses) { actions.setAlert(AccountAlert.Statuses, it) }
         HorizontalDivider(color = CardBorder)
         AccountSettingsSwitch("Mensajes recibidos", "Avisar cuando llega un mensaje nuevo.", state.settings.messages) { actions.setAlert(AccountAlert.Messages, it) }
-        Text("Los avisos y las actualizaciones funcionan mientras Near está abierta. Recibirlos con la app cerrada todavía no está disponible.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+        HorizontalDivider(color = CardBorder)
+        AccountSettingsSwitch("Antes de tus actividades", "Un recordatorio antes de que empiece cada actividad de tu horario.", state.settings.reminders) { actions.setReminders(it) }
+        if (state.settings.reminders) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                com.example.findme.data.local.REMINDER_CHOICES.forEach { minutes ->
+                    FilterChip(selected = state.settings.reminderMinutes == minutes, onClick = { actions.setReminderMinutes(minutes) },
+                        label = { Text(if (minutes >= 60) "${minutes / 60} h antes" else "$minutes min antes", maxLines = 1, style = MaterialTheme.typography.labelMedium) })
+                }
+            }
+            val exact = remember(state.settings.reminders) { com.example.findme.reminders.ActivityReminders.exactAllowed(context) }
+            if (!exact && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                Text("Android puede retrasar el recordatorio unos minutos. Permite las alarmas exactas para que llegue a tiempo.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+                TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:${context.packageName}"))) }) {
+                    Text("Permitir alarmas exactas")
+                }
+            }
+        }
+        Text("Los avisos de tu gente llegan aunque Near esté cerrada. En algunos teléfonos (como Xiaomi o POCO) activa el inicio automático de Near y quítale el ahorro de batería para que no se retrasen.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
         if (!notificationsAllowed) Text("Android tiene bloqueadas las notificaciones de Near.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }) {
             Text("Abrir ajustes de Android")
