@@ -35,7 +35,7 @@ class WidgetLayoutTest {
         assertTrue(compact.titleSize >= 22f)
         val tall = WidgetLayout.fit(276f, 220f, 1f, short)
         assertTrue(tall.roomy)
-        assertTrue(tall.titleSize > compact.titleSize)
+        assertTrue(tall.titleSize >= compact.titleSize)
         assertNotNull(tall.detail)
         assertEquals("Próxima actividad", tall.nextLabel)
     }
@@ -51,6 +51,17 @@ class WidgetLayoutTest {
         assertTrue(layout.contentHeight <= layout.middleHeight + 0.01f)
         // The illustration spans header and status, so it is well above the old ~67dp.
         assertTrue("art ${layout.artWidth}", layout.artWidth >= 95f)
+    }
+
+    @Test fun phone4x2WrapsLongTitlesAndKeepsDetail() {
+        for (title in listOf("Redes de Computadoras", "Proyecto de Investigación Aplicada")) {
+            val layout = WidgetLayout.fit(359f, 190f, 1f, short.copy(title = title))
+            assertEquals(title, layout.title)
+            assertEquals(2, layout.titleLines)
+            assertTrue(layout.titleSize >= 18f)
+            assertNotNull(layout.detail)
+            assertTrue(layout.contentHeight <= layout.middleHeight + 0.01f)
+        }
     }
 
     @Test fun longTitleShrinksOrWrapsInsteadOfBeingCut() {

@@ -87,8 +87,9 @@ data class WidgetLayout(
             val paddingEnd = 10f
             val iconSize = if (roomy) 32f else 26f
             val iconPadding = if (roomy) 6f else 5f
-            val headerSize = if (roomy) 16f else 14f
-            val headerGap = if (roomy) 4f else 2f
+            // The header is a small caption above the status, so the activity title leads the widget.
+            val headerSize = if (roomy) 13f else 12f
+            val headerGap = 2f
             val gap = if (roomy) 6f else 5f
             val cardPadding = if (roomy) 6f else 4f
             val calendarSize = if (roomy) 22f else 18f
@@ -105,7 +106,7 @@ data class WidgetLayout(
 
             // Chip: shrink, then hide, until a minimal title still fits under it.
             val minTitle = if (roomy) 18f else 15f
-            var chipSize = if (roomy) 13f else 11.5f
+            var chipSize = if (roomy) 12f else 11.5f
             var label: String? = texts.label
             fun chipBlock() = if (label == null) 0f else line(chipSize) + CHIP_PADDING + CHIP_SPACING
             if (middleHeight - chipBlock() < line(minTitle)) chipSize = 10f
@@ -113,17 +114,18 @@ data class WidgetLayout(
 
             // Title: biggest size on one line, then two lines, then smaller. If it still does not fit,
             // the illustration gives up width before the title is cut.
-            val detailSize = if (roomy) 13f else 12f
+            val detailSize = if (roomy) 12.5f else 12f
             val titleRoom = middleHeight - chipBlock()
-            val maxTitle = if (roomy) 32f else 26f
-            val comfortable = if (roomy) 22f else 19f
+            val maxTitle = 26f
+            val comfortable = if (roomy) 20f else 19f
             val maxTitleLines = when {
                 roomy && titleRoom >= 3 * line(minTitle) -> 3
                 titleRoom >= 2 * line(minTitle) -> 2
                 else -> 1
             }
-            // Room kept for one detail line ("Hasta 1:00 p. m."): the title gives up size for it, but
-            // only while it stays at [MIN_TITLE_WITH_DETAIL]; below that the detail is dropped instead.
+            // Room kept for one detail line ("Hasta 1:00 p. m."): the title gives up size, and then width
+            // from the illustration, for it. A one-line title stays at [MIN_TITLE_WITH_DETAIL] or above and a
+            // wrapped one at [minTitle]; past that the detail is dropped instead.
             val keepDetail = if (texts.detail != null) line(detailSize) + DETAIL_SPACING else 0f
             val candidates = buildList {
                 for (s in steps(maxTitle, comfortable)) add(s to 1)
@@ -135,11 +137,12 @@ data class WidgetLayout(
             fun textWidthFor(art: Float) = innerWidth - art - if (art > 0f) 6f else 0f
             fun fits(textWidth: Float, size: Float, lines: Int, reserve: Float) =
                 wrap(texts.title, charsPerLine(textWidth, size)).size <= lines && lines * line(size) + reserve <= titleRoom
-            val choice = ART_FRACTIONS.asSequence().flatMap { fraction ->
-                val art = artFor(fraction)
-                val textWidth = textWidthFor(art)
-                listOf(keepDetail, 0f).distinct().asSequence().flatMap { reserve ->
-                    candidates.asSequence().filter { (s, _) -> reserve == 0f || s >= MIN_TITLE_WITH_DETAIL }
+            val choice = listOf(keepDetail, 0f).distinct().asSequence().flatMap { reserve ->
+                ART_FRACTIONS.asSequence().flatMap { fraction ->
+                    val art = artFor(fraction)
+                    val textWidth = textWidthFor(art)
+                    candidates.asSequence()
+                        .filter { (s, l) -> reserve == 0f || s >= if (l == 1) MIN_TITLE_WITH_DETAIL else minTitle }
                         .filter { (s, l) -> fits(textWidth, s, l, reserve) }
                         .map { (s, l) -> Triple(art, s, l) }
                 }

@@ -95,7 +95,7 @@ class ConnectionWidget : GlanceAppWidget() {
                 Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.Vertical.Top) {
                     Column(GlanceModifier.defaultWeight()) {
                         Text(layout.header, GlanceModifier.fillMaxWidth().clickable(actionStartActivity(config)),
-                            style = TextStyle(color = ColorProvider(palette.primary), fontSize = layout.headerSize.sp, fontWeight = bold), maxLines = 1)
+                            style = TextStyle(color = ColorProvider(palette.secondary), fontSize = layout.headerSize.sp, fontWeight = bold), maxLines = 1)
                         Spacer(GlanceModifier.height(layout.headerGap.dp))
                         val label = layout.label
                         if (label != null) {
