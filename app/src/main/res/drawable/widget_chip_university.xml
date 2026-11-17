@@ -2,7 +2,7 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:top="2dp" android:left="1dp"><shape android:shape="rectangle"><solid android:color="#7FB4EC"/><corners android:radius="999dp"/></shape></item>
     <item android:bottom="2dp" android:right="1dp"><shape android:shape="rectangle">
-        <gradient android:type="linear" android:angle="0" android:startColor="#C3E2FF" android:endColor="#98C8F8"/>
+        <gradient android:type="linear" android:angle="0" android:startColor="#C9E6FF" android:endColor="#A6D2FB"/>
         <stroke android:width="1dp" android:color="#59FFFFFF"/>
         <corners android:radius="999dp"/></shape></item>
 </layer-list>

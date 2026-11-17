@@ -61,8 +61,8 @@ data class WidgetLayout(
         /** Average advance of a bold Roboto glyph as a fraction of its size; slightly generous on purpose. */
         private const val CHAR_WIDTH = 0.56f
         private const val LINE_HEIGHT = 1.2f
-        /** From this height on (dp) the widget uses the 4×3 arrangement. */
-        const val ROOMY_HEIGHT = 190f
+        /** From this height on (dp) the widget uses its full 4×3 arrangement; below it (landscape cells) it tightens. */
+        const val ROOMY_HEIGHT = 160f
         private const val CHIP_PADDING = 6f
         private const val CHIP_SPACING = 4f
         private const val DETAIL_SPACING = 2f

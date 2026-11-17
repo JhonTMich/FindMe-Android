@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Tiempo libre: durazno cálido que se enciende hacia la esquina inferior. Every layer keeps the 24dp corners so nothing spills outside the rounded card. -->
+<!-- Tiempo libre: durazno; el tono central es el de la ilustración y la esquina inferior se calienta hacia el coral. Every layer keeps the 24dp corners so nothing spills outside the rounded card. -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Diagonal base gradient. -->
+    <!-- Diagonal base gradient; its middle matches the illustration so the art melts into it. -->
     <item>
         <shape android:shape="rectangle">
-            <gradient android:type="linear" android:angle="315"
-                android:startColor="#FFF2E8" android:centerColor="#FDD8BE" android:endColor="#F7B68A" />
+            <gradient android:type="linear" android:angle="300"
+                android:startColor="#FFF4EC" android:centerColor="#FDD4B9" android:endColor="#F8BB93" />
             <corners android:radius="24dp" />
         </shape>
     </item>
@@ -13,15 +13,15 @@
     <item>
         <shape android:shape="rectangle">
             <gradient android:type="radial" android:centerX="0.85" android:centerY="0.0" android:gradientRadius="190dp"
-                android:startColor="#B3FFFFFF" android:endColor="#00FFFFFF" />
+                android:startColor="#80FFFFFF" android:endColor="#00FFFFFF" />
             <corners android:radius="24dp" />
         </shape>
     </item>
-    <!-- Tinted glow that anchors the bottom-left corner. -->
+    <!-- Warm/cool accent glow that anchors the bottom-left corner. -->
     <item>
         <shape android:shape="rectangle">
             <gradient android:type="radial" android:centerX="0.0" android:centerY="1.0" android:gradientRadius="170dp"
-                android:startColor="#4DE0702A" android:endColor="#00FFFFFF" />
+                android:startColor="#40F07E5A" android:endColor="#00FFFFFF" />
             <corners android:radius="24dp" />
         </shape>
     </item>
