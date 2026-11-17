@@ -22,8 +22,10 @@ internal object AccountLiveUpdates {
                 val client = SupabaseClientProvider.client
                 val channel = client.realtime.channel("account-$userId-${UUID.randomUUID()}") {}
                 try {
+                    // connection_preferences is left out on purpose: one unavailable table makes the whole
+                    // channel fail. Own changes reload after saving; other devices sync with the minute poll.
                     coroutineScope {
-                        listOf("connection_signals", "personal_schedule", "personal_status", "person_connections", "account_profiles", "quick_messages", "connection_preferences").forEach { source ->
+                        listOf("connection_signals", "personal_schedule", "personal_status", "person_connections", "account_profiles", "quick_messages").forEach { source ->
                             val changes = channel.postgresChangeFlow<PostgresAction>(schema = "public") { table = source }
                             launch { changes.collect { trySend(Unit) } }
                         }
