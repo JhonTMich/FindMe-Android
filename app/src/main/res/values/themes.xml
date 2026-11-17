@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Near" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:windowBackground">#FFF8F0</item>
-        <item name="android:statusBarColor">#FFF8F0</item>
-        <item name="android:navigationBarColor">#FFF8F0</item>
-        <item name="android:colorAccent">#C8472A</item>
+    <!-- Night-blue window behind the Compose UI (matches AppBackground), light status/nav bar icons. -->
+    <style name="Theme.Near" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowBackground">#1E2140</item>
+        <item name="android:statusBarColor">#1E2140</item>
+        <item name="android:navigationBarColor">#1E2140</item>
+        <item name="android:colorAccent">#8FA6D6</item>
     </style>
 </resources>

@@ -2,29 +2,33 @@ package com.example.findme.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Warm, light palette taken from the peeking-cat icon: cream, coral and the icon's night blue as ink.
-val BrandInk = Color(0xFF1B2540)
-val BrandCream = Color(0xFFFFF8F0)
-val BrandAccent = Color(0xFFC8472A)
-val BrandSky = Color(0xFF0B7F74)
-val BrandSlate = Color(0xFF5457C2)
-val BrandBlue = Color(0xFFE39A2D)
+// Soft night-blue palette taken from the Near icon: the night-blue ledge as background, slate-blue
+// cards, the mascot's cream as ink and the icon's sky blue (lightened) as the main accent.
+val BrandNight = Color(0xFF20233F)
+val BrandIconBlue = Color(0xFF566D91)
+val BrandInk = Color(0xFFFFF5E8)
+val BrandCream = Color(0xFFFFF5E8)
+val BrandAccent = Color(0xFF8FA6D6)
+val BrandSky = Color(0xFF7FD1B9)
+val BrandSlate = Color(0xFFB79BEA)
+val BrandBlue = Color(0xFFF2B36B)
 
-val AppBackground = BrandCream
-val AppSurface = Color(0xFFFFFFFF)
-val CardBg = Color(0xFFFFFFFF)
-val CardBorder = Color(0xFFEADFD2)
-val InnerBg = Color(0xFFFBEFE3)
+val AppBackground = Color(0xFF1E2140)
+val AppSurface = Color(0xFF262A4C)
+val CardBg = Color(0xFF2B3157)
+val CardBorder = Color(0xFF3B4470)
+val InnerBg = Color(0xFF343B66)
 val TextPrimary = BrandInk
-val TextSecondary = Color(0xFF55607A)
-val TextMuted = Color(0xFF6B7489)
+val TextSecondary = Color(0xFFC9CCE0)
+val TextMuted = Color(0xFF9AA0BD)
 
-val AccentContainer = Color(0xFFFFE3D6)
-val SkyContainer = Color(0xFFD3F1EB)
-val SlateContainer = Color(0xFFE5E6FB)
-val HeroGradient = listOf(Color(0xFFFFEADD), Color(0xFFFFDCC9), Color(0xFFFFF1E4))
+val AccentContainer = Color(0xFF34406A)
+val SkyContainer = Color(0xFF224A44)
+val SlateContainer = Color(0xFF3E3366)
+val HeroGradient = listOf(Color(0xFF34406E), Color(0xFF3B3F78), Color(0xFF2B3157))
 
-val StatusGreenText = Color(0xFF1D7A50)
-val AccentUniversity = BrandSlate
-val AccentFree = Color(0xFFB85C12)
-val AccentWork = BrandSky
+val StatusGreenText = Color(0xFF7FD8A0)
+// Same scene colours as the widget: university blue, free orange, work lavender.
+val AccentUniversity = Color(0xFF8FB8F0)
+val AccentFree = BrandBlue
+val AccentWork = BrandSlate
