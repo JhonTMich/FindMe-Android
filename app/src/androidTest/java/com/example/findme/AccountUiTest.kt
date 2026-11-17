@@ -296,12 +296,13 @@ class AccountUiTest {
 
     @Test fun loginUsesOnlyUsernameAndOffersAuthorizedRegistration() {
         compose.setContent { NearTheme { AccountContent(AccountState(initializing = false), object : AccountActions {}) } }
-        compose.onNodeWithText("Inicia sesión").assertIsDisplayed()
-        compose.onNodeWithText("Nombre de usuario").assertIsDisplayed()
+        // The mascot and the arched panel make the form taller than small screens: scroll before checking.
+        compose.onNodeWithText("Entrar").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Nombre de usuario").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Correo electrónico").assertDoesNotExist()
-        compose.onNodeWithText("Crear cuenta").assertIsDisplayed()
+        compose.onNodeWithText("Crear cuenta").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("No recibí mi confirmación").assertDoesNotExist()
-        compose.onNodeWithContentDescription("Mostrar contraseña").performClick()
+        compose.onNodeWithContentDescription("Mostrar contraseña").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Ocultar contraseña").assertIsDisplayed()
         compose.onNodeWithContentDescription("Ocultar contraseña").performClick()
         compose.onAllNodesWithContentDescription("Near").assertCountEquals(1)
@@ -322,12 +323,12 @@ class AccountUiTest {
                 }
             })
         } }
-        compose.onNodeWithText("Crear cuenta").performClick()
+        compose.onNodeWithText("Crear cuenta").performScrollTo().performClick()
         compose.onNodeWithText("No recibí mi confirmación").assertExists()
         compose.onAllNodesWithContentDescription("Near").assertCountEquals(1)
-        compose.onNodeWithText("Nombre visible").performTextInput("Chosen Name")
-        compose.onNodeWithText("Correo electrónico").performTextInput("signup@example.test")
-        compose.onNodeWithText("Nombre de usuario").performTextInput("chosen_user")
+        compose.onNodeWithText("Nombre visible").performScrollTo().performTextInput("Chosen Name")
+        compose.onNodeWithText("Correo electrónico").performScrollTo().performTextInput("signup@example.test")
+        compose.onNodeWithText("Nombre de usuario").performScrollTo().performTextInput("chosen_user")
         compose.onNodeWithText("Contraseña").performScrollTo().performTextInput("local-test-password")
         compose.onNodeWithText("Confirmar contraseña").performScrollTo().performTextInput("wrong-password")
         compose.onNodeWithText("Registrarme").performScrollTo().assertIsNotEnabled()
@@ -344,15 +345,15 @@ class AccountUiTest {
             })
         } }
         compose.onNodeWithText("No recibí mi confirmación").assertDoesNotExist()
-        compose.onNodeWithText("Crear cuenta").performClick()
+        compose.onNodeWithText("Crear cuenta").performScrollTo().performClick()
         compose.onNodeWithText("No recibí mi confirmación").performScrollTo().performClick()
-        compose.onNodeWithText("Correo electrónico").performTextInput("signup@example.test")
+        compose.onNodeWithText("Correo electrónico").performScrollTo().performTextInput("signup@example.test")
         compose.onNodeWithText("Contraseña").assertDoesNotExist()
         screenshot("blue-confirmation-recovery", composeOnly = true)
         compose.onNodeWithText("Enviar confirmación").performScrollTo().performClick()
         assertEquals("signup@example.test", sentEmail)
         compose.onNodeWithText("Volver al registro").performScrollTo().performClick()
-        compose.onNodeWithText("Crea tu cuenta").assertIsDisplayed()
+        compose.onNodeWithText("Tu gente, más cerca.").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun todayShowsOnlyTheNextActivityOrTheEndOfTheDay() {

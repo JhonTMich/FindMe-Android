@@ -74,6 +74,12 @@ import java.util.UUID
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.findme.R
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.layout.layout
+import androidx.compose.foundation.shape.GenericShape
 
 private val days = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo")
 private val hourFormat = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
@@ -255,36 +261,36 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
     val recovering = mode == "recover"
     // Recovery reuses the email-only layout of "resend confirmation".
     val resending = mode == "resend" || recovering
-    BrandWelcome("Tu día, compartido", when { registering -> "Tu gente, más cerca."; recovering -> "Recupera tu acceso."; resending -> "Confirma tu cuenta."; else -> "Qué bueno verte." },
-        when { registering -> "Crea tu cuenta y confirma tu correo para empezar."
-            recovering -> "Te enviaremos un enlace al correo de tu cuenta para elegir una contraseña nueva."
-            resending -> "Te enviaremos otro enlace al correo con el que empezaste tu registro."
-            else -> "Tu horario y tu gente, en un mismo lugar." })
-    Panel {
-        SectionHeading(Icons.Default.PersonOutline, when { registering -> "Crea tu cuenta"; recovering -> "¿Olvidaste tu contraseña?"; resending -> "Recibe otro enlace"; else -> "Inicia sesión" })
-        if (registering) Field(name, { name = it.take(80) }, "Nombre visible", keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
-        if (registering || resending) Field(email, { email = it.take(254) }, "Correo electrónico", keyboard = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
-        if (!resending) Field(username, { username = it.take(24) }, "Nombre de usuario", keyboard = KeyboardOptions(autoCorrectEnabled = false))
-        if (registering) Text("De 3 a 24 letras sin tildes, números o guion bajo. Será tu usuario para entrar.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
-        if (!resending) {
-            OutlinedTextField(password, { password = it.take(128) }, label = { Text("Contraseña") }, singleLine = true, enabled = !state.busy,
-                visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
-                    }
-                }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+    val title = when { registering -> "Tu gente, más cerca."; recovering -> "Recupera tu acceso."; resending -> "Confirma tu cuenta."; else -> "Qué bueno verte." }
+    val subtitle = when { registering -> "Crea tu cuenta y confirma tu correo para empezar."
+        recovering -> "Te enviaremos un enlace al correo de tu cuenta para elegir una contraseña nueva."
+        resending -> "Te enviaremos otro enlace al correo con el que empezaste tu registro."
+        else -> "Tu horario y tu gente, en un mismo lugar." }
+    val passwordToggle: @Composable () -> Unit = {
+        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+            Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña", tint = TextSecondary)
         }
+    }
+    LoginStage {
+        Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = TextPrimary,
+            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Text(subtitle, color = TextSecondary, style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
+        if (registering) Field(name, { name = it.take(80) }, "Nombre visible", leading = Icons.Default.Badge,
+            keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Words))
+        if (registering || resending) Field(email, { email = it.take(254) }, "Correo electrónico", leading = Icons.Default.MailOutline,
+            keyboard = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
+        if (!resending) Field(username, { username = it.take(24) }, "Nombre de usuario", leading = Icons.Default.PersonOutline,
+            keyboard = KeyboardOptions(autoCorrectEnabled = false))
+        if (registering) Text("De 3 a 24 letras sin tildes, números o guion bajo. Será tu usuario para entrar.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+        if (!resending) Field(password, { password = it.take(128) }, "Contraseña", leading = Icons.Default.Lock,
+            keyboard = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+            hidden = !passwordVisible, trailing = passwordToggle, enabled = !state.busy)
         if (registering) {
-            OutlinedTextField(confirmation, { confirmation = it.take(128) }, label = { Text("Confirmar contraseña") }, singleLine = true, enabled = !state.busy,
-                visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
-                trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
-                    }
-                }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
+            Field(confirmation, { confirmation = it.take(128) }, "Confirmar contraseña", leading = Icons.Default.Lock,
+                keyboard = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+                hidden = !passwordVisible, trailing = passwordToggle, enabled = !state.busy,
                 isError = confirmation.isNotEmpty() && password != confirmation)
             Text(if (confirmation.isNotEmpty() && password != confirmation) "Las contraseñas no coinciden." else "Usa entre 8 y 128 caracteres. Confirma tu correo para empezar.",
                 color = if (confirmation.isNotEmpty() && password != confirmation) MaterialTheme.colorScheme.error else TextMuted, style = MaterialTheme.typography.bodySmall)
@@ -299,21 +305,54 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
                 recovering -> actions.requestPasswordReset(email)
                 resending -> actions.resendConfirmation(email)
                 else -> actions.login(username, password) }
-        }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy && valid) {
-            Text(when { state.busy -> "Un momento…"; registering -> "Registrarme"; recovering -> "Enviar enlace"; resending -> "Enviar confirmación"; else -> "Entrar" })
+        }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp).height(52.dp), enabled = !state.busy && valid, shape = RoundedCornerShape(18.dp)) {
+            Text(when { state.busy -> "Un momento…"; registering -> "Registrarme"; recovering -> "Enviar enlace"; resending -> "Enviar confirmación"; else -> "Entrar" },
+                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         }
         if (mode == "login") TextButton(onClick = { mode = "recover"; password = ""; passwordVisible = false }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text("¿Olvidaste tu contraseña?", color = TextMuted)
+            Text("¿Olvidaste tu contraseña?", color = TextSecondary)
         }
         if (recovering) TextButton(onClick = { mode = "login" }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("Volver a iniciar sesión", color = MaterialTheme.colorScheme.primary)
         }
         TextButton(onClick = { mode = when (mode) { "login", "resend" -> "register"; else -> "login" }; password = ""; confirmation = ""; passwordVisible = false }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(when (mode) { "login" -> "Crear cuenta"; "resend" -> "Volver al registro"; else -> "Ya tengo cuenta" }, color = MaterialTheme.colorScheme.primary)
+            Text(when (mode) { "login" -> "Crear cuenta"; "resend" -> "Volver al registro"; else -> "Ya tengo cuenta" },
+                color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
         }
         if (registering) TextButton(onClick = { mode = "resend"; password = ""; confirmation = ""; passwordVisible = false }, enabled = !state.busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("No recibí mi confirmación", color = TextMuted)
         }
+    }
+}
+
+/** Darker panel under the sign-in screens; its top edge arcs like the ledge the mascot peeks over in the icon. */
+private val LoginPanelColor = Color(0xFF181A33)
+private val LedgeShape = GenericShape { size, _ ->
+    val depth = size.width * .08f
+    moveTo(0f, depth)
+    quadraticTo(size.width / 2, -depth, size.width, depth)
+    lineTo(size.width, size.height)
+    lineTo(0f, size.height)
+    close()
+}
+
+/** The mascot peeking over the arched panel: head behind it, paws resting on it, the form inside. */
+@Composable
+private fun LoginStage(content: @Composable ColumnScope.() -> Unit) {
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    // Bleed past the screen's 20dp padding so the panel reaches both edges and the bottom.
+    Box(Modifier.fillMaxWidth().layout { measurable, constraints ->
+        val side = 20.dp.roundToPx()
+        val placeable = measurable.measure(constraints.copy(minWidth = constraints.maxWidth + 2 * side, maxWidth = constraints.maxWidth + 2 * side))
+        layout(constraints.maxWidth, placeable.height - side) { placeable.place(-side, 0) }
+    }) {
+        Image(painterResource(R.drawable.near_mascot_head), null,
+            Modifier.align(Alignment.TopCenter).padding(top = 8.dp).size(176.dp, 128.dp))
+        Column(Modifier.padding(top = 116.dp).fillMaxWidth().heightIn(min = screenHeight - 190.dp)
+            .background(LoginPanelColor, LedgeShape).padding(start = 24.dp, end = 24.dp, top = 48.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        Image(painterResource(R.drawable.near_mascot_paws), null,
+            Modifier.align(Alignment.TopCenter).padding(top = 8.dp).size(176.dp, 128.dp))
     }
 }
 
@@ -929,9 +968,14 @@ private fun Sheet(
 }
 
 @Composable
-private fun Field(value: String, change: (String) -> Unit, label: String, placeholder: String? = null, keyboard: KeyboardOptions = KeyboardOptions.Default) {
+private fun Field(value: String, change: (String) -> Unit, label: String, placeholder: String? = null, keyboard: KeyboardOptions = KeyboardOptions.Default,
+    leading: androidx.compose.ui.graphics.vector.ImageVector? = null, trailing: (@Composable () -> Unit)? = null,
+    hidden: Boolean = false, enabled: Boolean = true, isError: Boolean = false) {
     OutlinedTextField(value, change, label = { Text(label) }, placeholder = { placeholder?.let { Text(it, color = TextMuted) } },
-        keyboardOptions = keyboard, singleLine = true, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth(),
+        leadingIcon = leading?.let { icon -> { Icon(icon, null, tint = TextSecondary) } }, trailingIcon = trailing,
+        visualTransformation = if (hidden) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        keyboardOptions = keyboard, singleLine = true, enabled = enabled, isError = isError,
+        shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = CardBorder, focusedLabelColor = MaterialTheme.colorScheme.primary,
             focusedContainerColor = AppBackground.copy(alpha = .5f), unfocusedContainerColor = AppBackground.copy(alpha = .35f)))

@@ -79,7 +79,7 @@ Después se añaden estos secretos, además de los cuatro anteriores, que deben 
 
 Si falta alguno de los cinco, el workflow falla en vez de firmar a medias. Con `apksigner` 33 o posterior, la clave nueva se aplica en Android 13 y posteriores; los dispositivos anteriores siguen viendo la clave original. Por eso esa clave debe seguir guardándose. Antes de publicar conviene instalar un APK rotado sobre la versión actual en un dispositivo de prueba. La nueva clave y su contraseña se guardan fuera del repositorio, con copia de seguridad cifrada: perderlas impide publicar actualizaciones.
 
-Los PR solo ejecutan comprobaciones y compilación sin acceso a los secretos de firma. La firma y publicación están reservadas a tags integrados en `main`. Se puede consultar el progreso en [Actions](https://github.com/JhonTMich/FindMe-Android/actions/workflows/release.yml).
+Los PR solo ejecutan comprobaciones y compilación sin acceso a los secretos de firma. La firma y publicación están reservadas a tags integrados en `main`. Se puede consultar el progreso en [Actions](https://github.com/JhonTMich/Near/actions/workflows/release.yml).
 
 Si falla una ejecución por una incidencia temporal, puedes volver a ejecutarla desde Actions. Los borradores incompletos se completan antes de publicarse; un release ya publicado no se sobrescribe y requiere un tag nuevo.
 

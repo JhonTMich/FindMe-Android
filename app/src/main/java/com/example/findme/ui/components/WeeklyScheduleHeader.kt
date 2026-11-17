@@ -56,7 +56,7 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
                     (1..7).forEach { day ->
                         val count = allSchedules.count { it.occursOn(day) }
                         val height by animateFloatAsState(if (chartVisible) count.toFloat() / maximum else 0f, tween(700), label = "weekBar$day")
-                        val color by animateColorAsState(if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else BrandBlue.copy(alpha = .5f), tween(250), label = "weekBarColor$day")
+                        val color by animateColorAsState(if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else CardBorder, tween(250), label = "weekBarColor$day")
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("$count", style = MaterialTheme.typography.labelSmall, color = if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else TextMuted)
                             Box(Modifier.height(62.dp).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {

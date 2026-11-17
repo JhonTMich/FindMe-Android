@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Login: the Near mascot's head, eyes and surprise marks, drawn behind the login panel.
+     Same frame as near_mascot_paws so both layers line up when stacked. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="176dp" android:height="128dp"
+    android:viewportWidth="88" android:viewportHeight="64">
+    <group android:translateX="-10" android:translateY="-18">
+        <path android:fillColor="#FFF5E8" android:pathData="M18,77 C18,54 33,34.5 54,34.5 C75,34.5 90,54 90,77 Z" />
+        <path android:fillColor="#20233F" android:pathData="M40.5,61 C39,61 41,55 46,54 C51,52 54,56 53.5,61 C53,66 49,67 46.5,64 C44,61 45,57 45.5,56 C43,57 41,59 40.5,61 Z" />
+        <path android:fillColor="#20233F" android:pathData="M61.5,57.5 C60,57.5 62,51.5 67,50.5 C72,48.5 75,52.5 74.5,57.5 C74,62.5 70,63.5 67.5,60.5 C65,57.5 66,53.5 66.5,52.5 C64,53.5 62,55.5 61.5,57.5 Z" />
+        <path android:strokeColor="#FFF5E8" android:strokeWidth="4" android:strokeLineCap="round"
+            android:fillColor="#00000000" android:pathData="M64,22 L64.5,28 M75,22 L72,29 M84,30 L78,35" />
+    </group>
+</vector>

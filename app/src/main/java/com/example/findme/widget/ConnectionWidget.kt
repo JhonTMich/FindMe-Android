@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.appwidget.AppWidgetManager
 import android.net.Uri
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.sp
@@ -73,6 +74,11 @@ class ConnectionWidget : GlanceAppWidget() {
             val config = Intent(context, StatusWidgetConfigurationActivity::class.java)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
                 .setData(Uri.parse("findme://widget/$widgetId"))
+            // No cached data means nobody is signed in (the cache is cleared on sign-out).
+            if (data == null) {
+                SignedOutWidget(context, LocalSize.current.width.value, LocalSize.current.height.value)
+                return@provideContent
+            }
             val size = LocalSize.current
             val scene = state?.scene ?: WidgetScene.FREE
             val palette = WidgetPalette.of(scene)
@@ -153,6 +159,41 @@ class ConnectionWidget : GlanceAppWidget() {
     }
 }
 
+
+/** Signed out: the searching mascot asks "¿Dónde está tu gente?" and invites to sign in. */
+@Composable
+private fun SignedOutWidget(context: Context, width: Float, height: Float) {
+    val layout = SignedOutLayout.fit(width, height, context.resources.configuration.fontScale)
+    val openApp = actionStartActivity(Intent(context, MainActivity::class.java))
+    val ink = Color(0xFF1F2A44)
+    Box(GlanceModifier.fillMaxSize().cornerRadius(24.dp).background(ImageProvider(R.drawable.widget_surface_signed_out)).clickable(openApp),
+        contentAlignment = Alignment.BottomEnd) {
+        if (layout.artWidth > 0f) {
+            Image(ImageProvider(R.drawable.widget_art_signed_out), null,
+                GlanceModifier.width(layout.artWidth.dp).height(layout.artHeight.dp), contentScale = ContentScale.Fit)
+        }
+        Box(GlanceModifier.fillMaxSize(), contentAlignment = Alignment.TopStart) {
+            Column(GlanceModifier.width(layout.columnWidth.dp).fillMaxHeight()
+                .padding(start = layout.paddingStart.dp, end = 6.dp, top = layout.paddingVertical.dp, bottom = layout.paddingVertical.dp)) {
+                Text("Near", style = TextStyle(color = ColorProvider(ink), fontSize = layout.brandSize.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+                Spacer(GlanceModifier.height(4.dp))
+                Text(layout.title, style = TextStyle(color = ColorProvider(ink), fontSize = layout.titleSize.sp, fontWeight = FontWeight.Bold),
+                    maxLines = layout.titleLines)
+                val body = layout.body
+                if (body != null) {
+                    Spacer(GlanceModifier.height(4.dp))
+                    Text(body, style = TextStyle(color = ColorProvider(Color(0xFF2B3550)), fontSize = layout.bodySize.sp), maxLines = layout.bodyLines)
+                }
+                Spacer(GlanceModifier.defaultWeight())
+                Box(GlanceModifier.height(layout.buttonHeight.dp).background(ImageProvider(R.drawable.widget_button_signed_out))
+                    .padding(horizontal = 16.dp).clickable(openApp), contentAlignment = Alignment.Center) {
+                    Text(SignedOutLayout.BUTTON, style = TextStyle(color = ColorProvider(Color.White), fontSize = layout.buttonSize.sp,
+                        fontWeight = FontWeight.Bold), maxLines = 1)
+                }
+            }
+        }
+    }
+}
 
 /** Colors and shapes picked to stay readable over each illustrated background. */
 private data class WidgetPalette(

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Login: the Near mascot's paws resting on the login panel, drawn above it. The rim uses the
+     panel colour so the paws read against the head. Same frame as near_mascot_head. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="176dp" android:height="128dp"
+    android:viewportWidth="88" android:viewportHeight="64">
+    <group android:translateX="-10" android:translateY="-18">
+        <path android:fillColor="#181A33" android:pathData="M12.5,76 C12.5,69 18.5,67 24,67 C31,67 35,72 35,78 L12.5,78 Z M73,78 C73,72 77,67 84,67 C90,67 96,71 96,77 L96,78 Z" />
+        <path android:fillColor="#FFF5E8" android:pathData="M15,76 C15,72 19,69 24,69 C29,69 33,73 33,77 C33,79 31.5,80 29,80 H19 C16.5,80 15,78 15,76 Z M75,77 C75,73 79,69 84,69 C89,69 93,72 93,76 C93,78 91.5,80 89,80 H79 C76.5,80 75,79 75,77 Z" />
+    </group>
+</vector>
