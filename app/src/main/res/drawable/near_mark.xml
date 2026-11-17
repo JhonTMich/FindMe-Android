@@ -1,38 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Near brand mark used inside the app: the full icon (mascot peeking over the ledge), square;
+     BrandMark rounds its corners. Same art as the launcher icon layers. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="1024"
-    android:viewportHeight="1024">
-
-    <!-- Midnight-blue background -->
-    <path
-        android:fillColor="#0B1220"
-        android:pathData="M0,0 H1024 V1024 H0 Z" />
-
-    <!-- Cream silhouette: head and ears -->
-    <path
-        android:fillColor="#FFF4E6"
-        android:pathData="M155,706 C158,661 174,625 205,582 C190,521 183,423 204,388 C219,357 239,354 268,368 C311,386 357,418 397,453 C469,428 552,428 623,453 C672,417 730,378 766,369 C796,361 814,373 822,407 C837,461 827,532 809,583 C833,620 850,664 855,706 L855,730 H155 Z" />
-
-    <!-- Left ear interior -->
-    <path
-        android:fillColor="#FF8A65"
-        android:pathData="M235,545 C226,509 226,446 236,420 C242,405 251,404 264,411 C294,427 321,451 343,472 C301,495 268,518 235,545 Z" />
-
-    <!-- Right ear interior -->
-    <path
-        android:fillColor="#FF8A65"
-        android:pathData="M675,477 C704,450 739,424 766,413 C782,406 789,414 792,430 C795,466 790,514 780,550 C747,522 713,498 675,477 Z" />
-
-    <!-- Eyes -->
-    <path
-        android:fillColor="#0B1220"
-        android:pathData="M356,611 C377,611 394,628 394,649 C394,670 377,687 356,687 C335,687 318,670 318,649 C318,628 335,611 356,611 Z M665,611 C686,611 703,628 703,649 C703,670 686,687 665,687 C644,687 627,670 627,649 C627,628 644,611 665,611 Z" />
-
-    <!-- Slate-blue foreground band -->
-    <path
-        android:fillColor="#1E2A44"
-        android:pathData="M0,706 H1024 V1024 H0 Z" />
-
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group>
+        <path android:fillColor="#566D91" android:pathData="M0,0 H108 V108 H0 Z" />
+        <!-- Cabeza -->
+        <path android:fillColor="#FFF5E8" android:pathData="M18,77 C18,54 33,34.5 54,34.5 C75,34.5 90,54 90,77 Z" />
+        <!-- Ojos curiosos -->
+        <path android:fillColor="#20233F" android:pathData="M40.5,61 C39,61 41,55 46,54 C51,52 54,56 53.5,61 C53,66 49,67 46.5,64 C44,61 45,57 45.5,56 C43,57 41,59 40.5,61 Z" />
+        <path android:fillColor="#20233F" android:pathData="M61.5,57.5 C60,57.5 62,51.5 67,50.5 C72,48.5 75,52.5 74.5,57.5 C74,62.5 70,63.5 67.5,60.5 C65,57.5 66,53.5 66.5,52.5 C64,53.5 62,55.5 61.5,57.5 Z" />
+        <!-- Borde oscuro -->
+        <path android:fillColor="#20233F" android:pathData="M0,77 H108 V108 H0 Z" />
+        <!-- Patas con contorno del fondo -->
+        <path android:fillColor="#566D91" android:pathData="M12.5,76 C12.5,69 18.5,67 24,67 C31,67 35,72 35,78 L12.5,78 Z M73,78 C73,72 77,67 84,67 C90,67 96,71 96,77 L96,78 Z" />
+        <path android:fillColor="#FFF5E8" android:pathData="M15,76 C15,72 19,69 24,69 C29,69 33,73 33,77 C33,79 31.5,80 29,80 H19 C16.5,80 15,78 15,76 Z M75,77 C75,73 79,69 84,69 C89,69 93,72 93,76 C93,78 91.5,80 89,80 H79 C76.5,80 75,79 75,77 Z" />
+        <!-- Marcas de sorpresa -->
+        <path android:strokeColor="#FFF5E8" android:strokeWidth="4" android:strokeLineCap="round" android:fillColor="#00000000" android:pathData="M64,22 L64.5,28 M75,22 L72,29 M84,30 L78,35" />
+    </group>
 </vector>

@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Near icon background: the icon's blue sky over the night-blue ledge the mascot peeks from.
+     The ledge starts at y = 54 + 23 × 0.74, where the scaled foreground puts the mascot's paws. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
-    android:viewportWidth="1024" android:viewportHeight="1024">
-    <path android:fillColor="#0B1220" android:pathData="M0,0 H1024 V1024 H0 Z" />
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#566D91" android:pathData="M0,0 H108 V108 H0 Z" />
+    <path android:fillColor="#20233F" android:pathData="M0,71.02 H108 V108 H0 Z" />
 </vector>
