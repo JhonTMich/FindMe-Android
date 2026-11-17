@@ -34,7 +34,7 @@ import org.junit.runner.RunWith
 @OptIn(ExperimentalGlanceApi::class)
 @RunWith(AndroidJUnit4::class)
 class StatusWidgetRenderingTest {
-    @Test fun rendersBothSizesAndIndependentPeople() = runBlocking {
+    @Test fun renders4x2AndIndependentPeople() = runBlocking {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         val ownId = AppWidgetId(-100001)
@@ -52,8 +52,8 @@ class StatusWidgetRenderingTest {
             WidgetStore.select(context, manager.getAppWidgetId(ownId), "widget-test-owner", "widget-test-owner")
             WidgetStore.select(context, manager.getAppWidgetId(otherId), "widget-test-owner", "widget-test-person")
             for ((id, size, expected, filename) in listOf(
-                RenderCase(ownId, DpSize(250.dp, 170.dp), "Libre", "widget-compact.png"),
-                RenderCase(otherId, DpSize(320.dp, 220.dp), "En clase", "widget-expanded.png")
+                RenderCase(ownId, DpSize(276.dp, 112.dp), "Libre", "widget-4x2-landscape.png"),
+                RenderCase(otherId, DpSize(276.dp, 200.dp), "En clase", "widget-4x2.png")
             )) {
                 val remoteViews = ConnectionWidget().compose(context, id = id, size = size)
                 instrumentation.runOnMainSync {

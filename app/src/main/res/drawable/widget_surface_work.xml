@@ -1,4 +1,35 @@
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#E8D4FD"/>
-    <corners android:radius="24dp"/>
-</shape>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Trabajo: lavanda; el tono central es el de la ilustración y la esquina inferior se aviva con un toque rosado. Every layer keeps the 24dp corners so nothing spills outside the rounded card. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Diagonal base gradient; its middle matches the illustration so the art melts into it. -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="linear" android:angle="300"
+                android:startColor="#F7F0FF" android:centerColor="#E8D4FD" android:endColor="#D0B3F6" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+    <!-- Soft light behind the header. -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:centerX="0.85" android:centerY="0.0" android:gradientRadius="190dp"
+                android:startColor="#80FFFFFF" android:endColor="#00FFFFFF" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+    <!-- Warm/cool accent glow that anchors the bottom-left corner. -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:type="radial" android:centerX="0.0" android:centerY="1.0" android:gradientRadius="170dp"
+                android:startColor="#40E89BD6" android:endColor="#00FFFFFF" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+    <!-- Thin glassy edge. -->
+    <item>
+        <shape android:shape="rectangle">
+            <stroke android:width="1dp" android:color="#8CFFFFFF" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+</layer-list>

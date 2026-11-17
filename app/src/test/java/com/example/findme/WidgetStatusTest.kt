@@ -4,6 +4,7 @@ import com.example.findme.data.model.ScheduleDto
 import com.example.findme.data.model.StatusOverrideDto
 import com.example.findme.widget.WidgetScene
 import com.example.findme.widget.sceneForSharedStatus
+import com.example.findme.widget.streetStatus
 import com.example.findme.widget.widgetStatus
 import org.junit.Assert.*
 import org.junit.Test
@@ -50,7 +51,7 @@ class WidgetStatusTest {
     @Test fun emptyScheduleShowsFreeWithoutInventingAnActivity() {
         val state = widgetStatus("Yo", emptyList(), emptyList(), now)
         assertEquals("Libre", state.title)
-        assertEquals("Libre · sin actividades programadas", state.next)
+        assertEquals("Libre · de relajo", state.next)
     }
 
     @Test fun eachStateUsesTheSceneOfItsCategory() {
@@ -71,5 +72,16 @@ class WidgetStatusTest {
         val state = widgetStatus("Yo", listOf(lesson), listOf(manual), now)
         assertTrue(state.shared)
         assertEquals(WidgetScene.FREE, state.scene)
+    }
+
+    @Test fun streetStatusIsAnOccasionalSceneOfItsOwn() {
+        val onTheWay = streetStatus("IoT", "IoT · 7:00 a. m.")
+        assertEquals(WidgetScene.STREET, onTheWay.scene)
+        assertEquals("En calle", onTheWay.label)
+        assertEquals("En camino", onTheWay.title)
+        assertEquals("Hacia IoT", onTheWay.detail)
+        assertEquals("Saliendo", streetStatus(" ", "IoT · 7:00 a. m.").detail)
+        // Schedules never produce it: it is only turned on by hand.
+        assertTrue(listOf(lesson).none { widgetStatus("Yo", listOf(it), emptyList(), now).scene == WidgetScene.STREET })
     }
 }

@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Fixed 4×2: the widget cannot be resized. Android 12+ launchers place it with targetCell*, and
+    minWidth/minHeight give the same 4×2 on older launchers (70 × cells − 30 rule).
+
+    Xiaomi's widget picker (App Vault, used by POCO Launcher/HyperOS) only honours targetCell* when
+    they are not below the spans it derives from minResizeWidth/minResizeHeight with its own, very
+    coarse cell formula; otherwise it falls back to minWidth/minHeight, which it rounds up to 3 rows.
+    minResizeHeight defaults to minHeight, so it is set low here to keep the 4×2 target accepted.
+    With resizeMode="none" no launcher lets the user resize to it.
+-->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="250dp"
-    android:minHeight="80dp"
-    android:minResizeWidth="250dp"
-    android:minResizeHeight="80dp"
+    android:minWidth="210dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="210dp"
+    android:minResizeHeight="40dp"
     android:targetCellWidth="4"
     android:targetCellHeight="2"
     android:configure="com.example.findme.widget.StatusWidgetConfigurationActivity"
@@ -12,5 +22,5 @@
     android:previewLayout="@layout/widget_status_preview"
     android:initialLayout="@layout/widget_status_preview"
     android:updatePeriodMillis="0"
-    android:resizeMode="horizontal|vertical"
+    android:resizeMode="none"
     android:widgetCategory="home_screen" />
