@@ -101,9 +101,10 @@ class ConnectionWidget : GlanceAppWidget() {
                         GlanceModifier.size(layout.iconSize.dp).padding(6.dp).clickable(actionStartActivity(config)),
                         colorFilter = ColorFilter.tint(ColorProvider(palette.primary)))
                 }
-                // Status on the left, the illustration on the right, both above the next-activity card.
-                Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.Vertical.CenterVertically) {
-                    Column(GlanceModifier.defaultWeight()) {
+                // Status on the left, right under the header; the illustration fills the rest of the height
+                // on the right, so the spare room sits beside the art instead of between header and status.
+                Row(GlanceModifier.fillMaxWidth().defaultWeight(), verticalAlignment = Alignment.Vertical.Top) {
+                    Column(GlanceModifier.defaultWeight().padding(top = 2.dp)) {
                         val label = layout.label
                         if (label != null) {
                             Box(GlanceModifier.background(ImageProvider(palette.chip))
