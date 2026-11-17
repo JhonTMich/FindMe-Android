@@ -296,7 +296,7 @@ class AccountUiTest {
 
     @Test fun loginUsesOnlyUsernameAndOffersAuthorizedRegistration() {
         compose.setContent { NearTheme { AccountContent(AccountState(initializing = false), object : AccountActions {}) } }
-        compose.onNodeWithText("Inicia sesión").assertIsDisplayed()
+        compose.onNodeWithText("Entrar").assertIsDisplayed()
         compose.onNodeWithText("Nombre de usuario").assertIsDisplayed()
         compose.onNodeWithText("Correo electrónico").assertDoesNotExist()
         compose.onNodeWithText("Crear cuenta").assertIsDisplayed()
