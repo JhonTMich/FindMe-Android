@@ -6,9 +6,18 @@ on:
       - 'v[0-9]*'
   # Every pull request is checked, including those into develop or feature branches.
   pull_request:
+  workflow_dispatch:
+    inputs:
+      candidate_tag:
+        description: Version to build for device testing (for example v1.8)
+        required: true
+        type: string
 
 permissions:
   contents: read
+
+env:
+  ANDROID_APPLICATION_ID: com.example.near
 
 concurrency:
   group: android-release-${{ github.ref }}
@@ -17,6 +26,7 @@ concurrency:
 jobs:
   build:
     name: Build and verify APK
+    if: github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -31,11 +41,11 @@ jobs:
       - name: Only release commits already integrated into main
         if: github.ref_type == 'tag'
         run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
-      - name: Validate tag and compute Android version
+      - name: Compute the version of the release or test APK
         id: metadata
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.candidate_tag || github.ref_name }}
           GH_TOKEN: ${{ github.token }}
         run: |
           previous_tag="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')"
@@ -57,14 +67,17 @@ jobs:
       - name: Verify account authentication and database policies
         run: |
           npm install --prefix build/schema-check --no-save --ignore-scripts @electric-sql/pglite@0.3.14
-          node --test scripts/test_username_login.mjs scripts/test_authorized_signup.mjs scripts/test_delete_account.mjs
+          node --test scripts/test_username_login.mjs scripts/test_authorized_signup.mjs scripts/test_delete_account.mjs scripts/test_send_push.mjs
           node scripts/test_account_schema.mjs
           node scripts/test_registration_schema.mjs
           node scripts/test_message_retention.mjs
           node scripts/test_migrations_replay.mjs
           node scripts/test_connection_preferences.mjs
+          node scripts/test_push_notifications.mjs
+          node scripts/test_schedule_occurrences.mjs
       - name: Build release and run Android checks
         env:
+          NEAR_FIREBASE_CONFIG: ${{ (github.ref_type == 'tag' || github.event_name == 'workflow_dispatch') && secrets.NEAR_FIREBASE_CONFIG || '' }}
           RELEASE_VERSION: ${{ steps.metadata.outputs.version }}
           RELEASE_VERSION_CODE: ${{ steps.metadata.outputs.version_code }}
         run: |
@@ -74,8 +87,12 @@ jobs:
             options+=("-PreleaseVersionName=$RELEASE_VERSION" "-PreleaseVersionCode=$RELEASE_VERSION_CODE")
           fi
           ./gradlew "${options[@]}" :app:assembleRelease :app:testDebugUnitTest :app:lintDebug --no-daemon --console=plain
+      - name: Check the published Android application ID
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/release/app-release-unsigned.apk > "$RUNNER_TEMP/unsigned-metadata.txt"
+          grep -Fq "package: name='$ANDROID_APPLICATION_ID' " "$RUNNER_TEMP/unsigned-metadata.txt"
       - name: Transfer the verified unsigned APK
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: unsigned-apk-${{ github.sha }}
@@ -113,11 +130,21 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: chmod +x gradlew && ./gradlew :app:connectedDebugAndroidTest --no-daemon --console=plain
+          script: |
+            chmod +x gradlew
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon --console=plain
+            adb pull /sdcard/Pictures/NearTests "$RUNNER_TEMP/near-screens"
+      - name: Upload screenshots for visual review
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: near-screens
+          path: ${{ runner.temp }}/near-screens
+          if-no-files-found: error
+          retention-days: 7
 
   publish:
-    name: Sign APK and publish release
-    if: github.event_name == 'push' && github.ref_type == 'tag'
+    name: Sign Android APK
+    if: (github.event_name == 'push' && github.ref_type == 'tag') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop')
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -190,11 +217,20 @@ jobs:
           import os, pathlib, re
           text = pathlib.Path(os.environ['RUNNER_TEMP'], 'apk-metadata.txt').read_text()
           package = re.search(r"^package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'", text).groups()
-          assert package == ('com.example.findme', os.environ['RELEASE_VERSION_CODE'], os.environ['RELEASE_VERSION'])
+          assert package == (os.environ['ANDROID_APPLICATION_ID'], os.environ['RELEASE_VERSION_CODE'], os.environ['RELEASE_VERSION'])
           assert 'application-debuggable' not in text
           PY
           (cd dist && sha256sum "$APK_NAME" > SHA256SUMS.txt)
+      - name: Upload the signed test APK
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: near-candidate-${{ needs.build.outputs.version }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
       - name: Publish a complete release without patch notes
+        if: github.event_name == 'push' && github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}

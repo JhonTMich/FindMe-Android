@@ -72,17 +72,44 @@ class AccountRepository {
             select()
         }.decodeSingle<AccountProfile>()
     }
+    suspend fun incomingConnectionVisibility() =
+        client.postgrest.rpc("incoming_connection_visibility").decodeList<ConnectionVisibility>()
+
     suspend fun connections() = client.postgrest["person_connections"].select().decodeList<PersonConnection>()
     suspend fun schedules(id: String) = client.postgrest["personal_schedule"].select { filter { eq("user_id", id) } }.decodeList<ScheduleDto>()
     suspend fun overrides(id: String) = client.postgrest["personal_status"].select { filter { eq("user_id", id) } }.decodeList<StatusOverrideDto>()
     suspend fun accessibleSchedules() = client.postgrest["personal_schedule"].select().decodeList<ScheduleDto>()
     suspend fun accessibleStatuses() = client.postgrest["personal_status"].select().decodeList<StatusOverrideDto>()
 
-    suspend fun saveSchedules(activities: List<ScheduleDto>) {
+    suspend fun saveSchedules(activities: List<ScheduleDto>): List<ScheduleDto> {
         val ownerId = userId()
         require(activities.isNotEmpty() && activities.all { it.userId == ownerId })
-        client.postgrest["personal_schedule"].upsert(activities)
+        return client.postgrest["personal_schedule"].upsert(activities.map { it.copy(occurrenceExceptions = emptyMap()) }) {
+            select()
+        }.decodeList<ScheduleDto>()
     }
+
+    suspend fun sharedSchedulesForAvailability(contactId: String): SharedSchedules? =
+        client.postgrest.rpc("shared_schedules_for_availability", buildJsonObject {
+            put("contact_id", contactId)
+        }).decodeList<SharedSchedules>().singleOrNull()
+
+    suspend fun changeScheduleOccurrence(id: String, originalDate: String, change: ScheduleException?): ScheduleDto =
+        client.postgrest.rpc("change_schedule_occurrence", buildJsonObject {
+            put("schedule_id", id)
+            put("original_date", originalDate)
+            put("action", when {
+                change == null -> "restore"
+                change.cancelled -> "cancel"
+                else -> "move"
+            })
+            if (change?.date != null) {
+                put("new_date", change.date)
+                put("new_start", change.startTime)
+                put("new_end", change.endTime)
+                put("new_overnight", change.endsNextDay)
+            }
+        }).decodeSingle<ScheduleDto>()
 
     suspend fun deleteSchedule(id: String) {
         client.postgrest["personal_schedule"].delete { filter { eq("id", id); eq("user_id", userId()) } }

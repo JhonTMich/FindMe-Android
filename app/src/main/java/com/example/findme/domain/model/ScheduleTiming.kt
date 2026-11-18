@@ -1,7 +1,9 @@
 package com.example.findme.domain.model
 
 import com.example.findme.data.model.ScheduleDto
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZonedDateTime
 
 private const val DAY_NANOS = 86_400_000_000_000L
@@ -39,15 +41,20 @@ internal fun ScheduleDto.overlaps(other: ScheduleDto): Boolean =
 data class ScheduleWindow(val start: ZonedDateTime, val end: ZonedDateTime)
 
 fun ScheduleDto.activeWindow(now: ZonedDateTime): ScheduleWindow? {
-    val startNanos = runCatching { scheduleTimeNanos(startTime) }.getOrNull() ?: return null
-    val endNanos = runCatching { scheduleTimeNanos(endTime) }.getOrNull() ?: return null
     val date = when {
         dayOfWeek == now.dayOfWeek.value -> now.toLocalDate()
         continuesOn(now.dayOfWeek.value) -> now.toLocalDate().minusDays(1)
         else -> return null
     }
-    val start = date.atStartOfDay().plusNanos(startNanos).atZone(now.zone)
+    val window = windowOn(date, now.zone) ?: return null
+    return window.takeIf { !now.isBefore(it.start) && now.isBefore(it.end) }
+}
+
+internal fun ScheduleDto.windowOn(date: LocalDate, zone: ZoneId): ScheduleWindow? {
+    val startNanos = runCatching { scheduleTimeNanos(startTime) }.getOrNull() ?: return null
+    val endNanos = runCatching { scheduleTimeNanos(endTime) }.getOrNull() ?: return null
+    val start = date.atStartOfDay().plusNanos(startNanos).atZone(zone)
     val end = date.atStartOfDay().plusDays(if (endsNextDay) 1 else 0)
-        .plusNanos(endNanos).atZone(now.zone)
-    return if (!now.isBefore(start) && now.isBefore(end)) ScheduleWindow(start, end) else null
+        .plusNanos(endNanos).atZone(zone)
+    return ScheduleWindow(start, end).takeIf { it.start.isBefore(it.end) }
 }

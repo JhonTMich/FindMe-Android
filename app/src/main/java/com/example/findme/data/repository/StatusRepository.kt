@@ -3,8 +3,9 @@ package com.example.findme.data.repository
 import com.example.findme.data.model.ScheduleDto
 import com.example.findme.data.model.StatusOverrideDto
 import com.example.findme.domain.model.UserCurrentStatus
-import com.example.findme.domain.model.activeWindow
-import com.example.findme.domain.model.schedulesForDay
+import com.example.findme.domain.model.occurrencesOn
+import java.time.DayOfWeek
+import java.time.temporal.TemporalAdjusters
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
@@ -22,7 +23,11 @@ object StatusRepository {
         selectedDayOfWeek: Int,
         nowInLima: ZonedDateTime = ZonedDateTime.now(SYSTEM_ZONE)
     ): UserCurrentStatus {
-        val daySchedules = schedules.schedulesForDay(selectedDayOfWeek)
+        val today = nowInLima.toLocalDate()
+        val selectedDate = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.of(selectedDayOfWeek)))
+        val currentOccurrences = schedules.occurrencesOn(today, nowInLima.zone)
+        val daySchedules = (if (selectedDate == today) currentOccurrences
+            else schedules.occurrencesOn(selectedDate, nowInLima.zone)).map { it.schedule }
 
         // Find an unexpired manual status.
         val activeOverride = overrides
@@ -32,9 +37,7 @@ object StatusRepository {
                 expiresInstant != null && expiresInstant.isAfter(nowInLima.toInstant())
             }
 
-        val active = schedules.schedulesForDay(nowInLima.dayOfWeek.value).firstNotNullOfOrNull { schedule ->
-            schedule.activeWindow(nowInLima)?.let { schedule to it }
-        }
+        val active = currentOccurrences.firstOrNull { !nowInLima.isBefore(it.window.start) && nowInLima.isBefore(it.window.end) }
 
         // Account users can explicitly share a change of plans, even during a scheduled activity.
         if (activeOverride != null) {
@@ -44,7 +47,8 @@ object StatusRepository {
 
         // An activity is active from its start time (inclusive) until its end (exclusive).
         if (active != null) {
-            val (currentSchedule, window) = active
+            val currentSchedule = active.schedule
+            val window = active.window
             val start = window.start
             val end = window.end
             val totalSec = Duration.between(start, end).seconds.coerceAtLeast(1)

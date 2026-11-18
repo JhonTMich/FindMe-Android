@@ -174,3 +174,20 @@ Migración: `20261116140000_preferencias_por_conexion.sql` (aplicar después de 
 - Silenciar es local a la app: no se muestran avisos de mensajes ni de cambios de estado o actividad de esa persona, y los mensajes ya leídos en otro dispositivo tampoco avisan.
 
 Prueba: `node scripts/test_connection_preferences.mjs`.
+
+## Cambios puntuales y disponibilidad
+
+En **Horario**, elige una actividad y usa **Solo esta fecha**. Selecciona su fecha original y cancela
+o reprograma esa ocurrencia. El horario habitual sigue aplicando a las demás fechas. Desde la misma
+opción puedes restaurarlo. Los cambios puntuales aparecen en Hoy, Personas y el widget, y afectan
+a los recordatorios y avisos de inicio. La base de datos comprueba cruces al mover una actividad
+y también al editar una serie que tiene cambios pendientes.
+
+En **Personas**, abre **Ver horas libres en común**. Near consulta ambos horarios cuando las dos
+personas los comparten en esa conexión, y muestra los huecos de al menos 30 minutos de los
+próximos siete días en tu zona horaria. Puedes ver las horas de 08:00 a 22:00 o el día completo.
+La consulta incluye cambios puntuales y turnos nocturnos. La disponibilidad se calcula a partir
+de las actividades programadas y se vuelve a consultar mientras la vista esté abierta.
+
+Antes de distribuir un APK que incluya estas funciones, aplica las migraciones
+`excepciones_de_horario`, `disponibilidad_en_comun` y `visibilidad_de_personas` del lanzamiento.

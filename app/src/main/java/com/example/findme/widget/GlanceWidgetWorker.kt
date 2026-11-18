@@ -7,7 +7,8 @@ import androidx.glance.appwidget.updateAll
 import androidx.work.*
 import com.example.findme.data.local.dataStore
 import com.example.findme.data.repository.StatusRepository
-import com.example.findme.domain.model.activeWindow
+import com.example.findme.domain.model.nextOccurrence
+import com.example.findme.domain.model.occurrencesOn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
@@ -59,14 +60,12 @@ class GlanceWidgetWorker(private val context: Context, params: WorkerParameters)
             val instant = Instant.now()
             val boundaries = data.profiles.flatMap { person ->
                 val now = ZonedDateTime.now(runCatching { ZoneId.of(person.timezone) }.getOrDefault(ZoneId.systemDefault()))
-                data.schedules.filter { it.userId == person.id }.flatMap { row ->
-                    val start = StatusRepository.parseLocalTimeOrNull(row.startTime)?.let { time ->
-                        var date = now.toLocalDate().plusDays(((row.dayOfWeek - now.dayOfWeek.value + 7) % 7).toLong()).atTime(time).atZone(now.zone)
-                        if (!date.isAfter(now)) date = date.plusWeeks(1)
-                        date.toInstant()
-                    }
-                    listOfNotNull(start, row.activeWindow(now)?.end?.toInstant())
-                }
+                val schedules = data.schedules.filter { it.userId == person.id }
+                val starts = schedules.mapNotNull { it.nextOccurrence(now)?.window?.start?.toInstant() }
+                val ends = schedules.occurrencesOn(now.toLocalDate(), now.zone)
+                    .filter { !it.window.start.isAfter(now) && it.window.end.isAfter(now) }
+                    .map { it.window.end.toInstant() }
+                starts + ends
             } + data.statuses.filter { it.isActive }.mapNotNull { StatusRepository.parseIsoToInstant(it.expiresAt) }
             val next = boundaries.filter { it.isAfter(instant) }.minOrNull()
             if (next == null) { work.cancelUniqueWork("WidgetStatusBoundary"); return }

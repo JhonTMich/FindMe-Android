@@ -29,6 +29,7 @@ import com.example.findme.domain.model.UserCurrentStatus
 import com.example.findme.domain.model.ScheduleSyncGuard
 import com.example.findme.domain.model.ConnectionControls
 import com.example.findme.util.NotificationHelper
+import com.example.findme.push.PushAlerts
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -38,6 +39,7 @@ data class AccountState(
     val lastSync: Instant? = null,
     val syncIssue: Boolean = false,
     val peopleRevision: Int = 0,
+    val scheduleRevision: Int = 0,
     val initializing: Boolean = true,
     val signedIn: Boolean = false,
     val busy: Boolean = false,
@@ -55,6 +57,9 @@ data class AccountState(
     val profiles: List<AccountProfile> = emptyList(),
     val selectedPerson: AccountProfile? = null,
     val personSchedules: List<ScheduleDto> = emptyList(),
+    val incomingVisibility: Map<String, ConnectionVisibility> = emptyMap(),
+    val peopleSchedulesFresh: Boolean = false,
+    val peopleStatusesFresh: Boolean = false,
     val personStatuses: List<StatusOverrideDto> = emptyList(),
     val messages: List<QuickMessage> = emptyList(),
     val signals: List<ConnectionSignal> = emptyList(),
@@ -94,6 +99,8 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 }
                 else if (_state.value.profile?.id != user.id) {
                     _state.update { old -> old.copy(initializing = false, signedIn = true) }
+                    // This device receives this account's pushes from now on.
+                    launch { com.example.findme.push.PushTokens.register() }
                     // Show the last successful sync at once, then refresh it from the network.
                     restoreCache(user.id)
                     refresh()
@@ -133,6 +140,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                     "23P01" -> "Este horario coincide con otra actividad. Actualiza tu horario y elige otra hora."
                     "FM001" -> "Llegaste al máximo permitido. Elimina elementos que ya no uses e inténtalo de nuevo."
                     "FM002" -> "Demasiados intentos seguidos. Espera unos minutos e inténtalo de nuevo."
+                    "FM004" -> "La fecha o las horas de esta actividad no son válidas. Revisa la ocurrencia."
                     "FM003" -> "La zona horaria del teléfono no es válida. Revisa la configuración de fecha y hora."
                     else -> failure
                 }
@@ -177,66 +185,112 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         } else load()
     }
 
+    private suspend fun <T> readSection(section: String, read: suspend () -> T): T? = try {
+        read()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (error: Exception) {
+        val code = (error as? io.github.jan.supabase.postgrest.exception.PostgrestRestException)?.code
+            ?: error.javaClass.simpleName
+        android.util.Log.w("AccountViewModel", "Unable to synchronize $section ($code)")
+        null
+    }
+
     private suspend fun load() = snapshotMutex.withLock {
         coroutineScope {
             val id = repository.userId()
             val scheduleRevision = scheduleSync.snapshotRevision()
-            val profile = repository.ensureProfile()
-            val connectionsRequest = async { repository.connections() }
-            val profilesRequest = async { repository.profiles() }
-            val messagesRequest = async { repository.quickMessages() }
-            val signalsRequest = async { repository.receivedSignals() }
-            val schedulesRequest = async { repository.accessibleSchedules() }
-            val statusesRequest = async { repository.accessibleStatuses() }
-            val preferencesRequest = async { optionalPreferences() }
-            val connections = connectionsRequest.await()
-            val profiles = profilesRequest.await()
-            val messages = messagesRequest.await()
-            val signals = signalsRequest.await()
+            val profileRequest = async { readSection("profile", repository::ensureProfile) }
+            val connectionsRequest = async { readSection("connections", repository::connections) }
+            val profilesRequest = async { readSection("people", repository::profiles) }
+            val messagesRequest = async { readSection("quick messages", repository::quickMessages) }
+            val signalsRequest = async { readSection("inbox", repository::receivedSignals) }
+            val schedulesRequest = async { readSection("schedules", repository::accessibleSchedules) }
+            val statusesRequest = async { readSection("statuses", repository::accessibleStatuses) }
+            val visibilityRequest = async { readSection("incoming visibility", repository::incomingConnectionVisibility) }
+            val preferencesRequest = async { readSection("connection preferences", repository::connectionPreferences) }
+            val remoteProfile = profileRequest.await()
+            val remoteConnections = connectionsRequest.await()
+            val remoteProfiles = profilesRequest.await()
+            val remoteMessages = messagesRequest.await()
+            val remoteSignals = signalsRequest.await()
             val remoteSchedules = schedulesRequest.await()
-            val statuses = statusesRequest.await()
-            val preferences = preferencesRequest.await() ?: _state.value.preferences
+            val remoteStatuses = statusesRequest.await()
+            val remotePreferences = preferencesRequest.await()
+            val remoteVisibility = visibilityRequest.await()
             if (repository.auth.currentUserOrNull()?.id != id) return@coroutineScope
-            // An older response must not undo a confirmed save or resurrect a deleted row.
-            val ownSchedules = if (scheduleSync.canApplySnapshot(scheduleRevision)) {
-                remoteSchedules.filter { it.userId == id }
-            } else _state.value.schedules.filter { it.userId == id }
-            val schedules = remoteSchedules.filterNot { it.userId == id } + ownSchedules
-            if (baselineOwner != id) {
-                baselineOwner = id; knownStatuses.clear()
+
+            val old = _state.value
+            val previous = if (old.profile?.id == id) old else null
+            val profile = remoteProfile ?: previous?.profile ?: run {
+                _state.update { it.copy(syncIssue = true) }
+                return@coroutineScope
             }
-            val selected = _state.value.selectedPerson?.let { old -> profiles.find { it.id == old.id && it.id != profile.id } }
-                ?: profiles.firstOrNull { it.id != profile.id }
-            val newSignals = messageNotifications.update(id, signals, _state.value.settings.messages)
+            val connections = remoteConnections ?: previous?.connections.orEmpty()
+            val peopleIds = connections.map { it.otherPerson(id) }.toSet()
+            val profiles = (remoteProfiles ?: previous?.profiles.orEmpty()).filter { it.id in peopleIds } + profile
+            val visibleIds = profiles.mapTo(mutableSetOf()) { it.id }
+            val messages = remoteMessages ?: previous?.messages.orEmpty()
+            val signals = remoteSignals ?: previous?.signals.orEmpty()
+            val preferences = (remotePreferences ?: previous?.preferences.orEmpty())
+                .filter { preference -> connections.any { it.id == preference.connectionId } }
+            val complete = listOf(remoteProfile, remoteConnections, remoteProfiles, remoteMessages,
+                remoteSignals, remoteSchedules, remoteStatuses, remotePreferences).all { it != null }
+            val previousSchedules = if (previous == null) emptyList() else allSchedules
+            val previousStatuses = if (previous == null) emptyList() else allStatuses
+            // An older response must not undo a confirmed save or resurrect a deleted row.
+            val ownSchedules = if (remoteSchedules != null && scheduleSync.canApplySnapshot(scheduleRevision)) {
+                remoteSchedules.filter { it.userId == id }
+            } else previous?.schedules.orEmpty()
+            val schedules = (remoteSchedules ?: previousSchedules)
+                .filter { it.userId != id && it.userId in visibleIds } + ownSchedules
+            val statuses = (remoteStatuses ?: previousStatuses).filter { it.userId in visibleIds }
+            if (baselineOwner != id) {
+                baselineOwner = id
+                knownStatuses.clear()
+            }
+            val selected = previous?.selectedPerson?.let { person -> profiles.find { it.id == person.id && it.id != id } }
+                ?: profiles.firstOrNull { it.id != id }
+            val syncedAt = if (complete) Instant.now() else previous?.lastSync
             allSchedules = schedules
             allStatuses = statuses
             _state.update { it.copy(signedIn = true, profile = profile,
                 schedules = ownSchedules, statuses = statuses.filter { it.userId == id },
                 connections = connections, profiles = profiles, messages = messages, signals = signals,
                 preferences = preferences, selectedPerson = selected, personSchedules = schedules.filter { it.userId == selected?.id },
-                personStatuses = statuses.filter { it.userId == selected?.id }, lastSync = Instant.now(), syncIssue = false) }
-            val controls = _state.value.controls
-            if (_state.value.settings.messages) controls.notifiable(newSignals).forEach { signal ->
-                val sender = profiles.find { it.id == signal.senderId }?.let(controls::nameOf) ?: "Tu gente"
-                NotificationHelper.showMessageNotification(getApplication(), signal.id, sender, signal.message)
+                personStatuses = statuses.filter { it.userId == selected?.id }, lastSync = syncedAt, syncIssue = !complete,
+                incomingVisibility = remoteVisibility.orEmpty().filter { it.personId in peopleIds }.associateBy { it.personId },
+                peopleSchedulesFresh = remoteSchedules != null, peopleStatusesFresh = remoteStatuses != null) }
+            val current = _state.value
+            if (remoteSignals != null && remotePreferences != null && remoteProfiles != null && remoteConnections != null) {
+                val newSignals = messageNotifications.update(id, signals, current.settings.messages)
+                current.controls.notifiable(newSignals).forEach { signal ->
+                    val sender = profiles.find { it.id == signal.senderId }?.let(current.controls::nameOf) ?: "Tu gente"
+                    NotificationHelper.showMessageNotification(getApplication(), signal.id, sender, signal.message)
+                }
             }
-            saveCache(AccountSnapshot(id, profile, profiles, schedules, statuses, connections, messages, signals, Instant.now().toString(), preferences))
-            publishWidgetSnapshot()
-            updateStatusNotifications()
+            if (complete || previous != null) saveCurrentCache()
+            if (remoteSchedules != null && remoteStatuses != null && remoteConnections != null && remoteProfiles != null) {
+                publishWidgetSnapshot()
+            }
+            if (remoteSchedules != null && remoteStatuses != null && remotePreferences != null) updateStatusNotifications()
         }
     }
 
-    /**
-     * Nicknames, sharing and silence are an add-on to the account. If the server cannot answer
-     * (for example, before its migration is applied), keep the last known values and load the rest.
-     */
-    private suspend fun optionalPreferences(): List<ConnectionPreference>? = try {
-        repository.connectionPreferences()
-    } catch (cancelled: CancellationException) { throw cancelled }
-    catch (error: Exception) {
-        val code = (error as? io.github.jan.supabase.postgrest.exception.PostgrestRestException)?.code ?: error.javaClass.simpleName
-        android.util.Log.w("AccountViewModel", "Connection preferences unavailable ($code); loading without them")
-        null
+    private suspend fun refreshAfterSave(notice: String? = null) {
+        val owner = repository.auth.currentUserOrNull()?.id ?: return
+        if (notice != null) _state.update { it.copy(notice = notice) }
+        if (readSection("after saving") { load() } == null && repository.auth.currentUserOrNull()?.id == owner) {
+            _state.update { it.copy(syncIssue = true) }
+        }
+    }
+
+    private suspend fun saveCurrentCache() {
+        val current = _state.value
+        val profile = current.profile ?: return
+        saveCache(AccountSnapshot(profile.id, profile, current.profiles, allSchedules, allStatuses,
+            current.connections, current.messages, current.signals, current.lastSync?.toString().orEmpty(),
+            current.preferences))
     }
 
     private suspend fun saveCache(snapshot: AccountSnapshot) {
@@ -326,22 +380,39 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 val name = controls.nameOf(person)
                 when {
                     status is UserCurrentStatus.Override && state.settings.statuses ->
-                        NotificationHelper.showStatusNotification(getApplication(), name, status.customLocation)
+                        NotificationHelper.showStatusNotification(getApplication(), person.id, name,
+                            PushAlerts.statusText(status.customLocation, status.customMessage))
                     status is UserCurrentStatus.InClass && state.settings.activities ->
-                        NotificationHelper.showStatusNotification(getApplication(), name, "Actividad en curso: ${status.currentSchedule.title}")
+                        NotificationHelper.showStatusNotification(getApplication(), person.id, name,
+                            PushAlerts.activityText(status.currentSchedule.title, status.currentSchedule.location), activity = true)
                     previous.startsWith("status:") && state.settings.statuses ->
-                        NotificationHelper.showStatusNotification(getApplication(), name, "Vuelve a mostrar su horario.")
+                        NotificationHelper.showStatusNotification(getApplication(), person.id, name, PushAlerts.STATUS_ENDED)
                 }
             }
         }
     }
 
     fun openPeople() { _state.update { it.copy(peopleRevision = it.peopleRevision + 1) } }
+    fun openSchedule() { _state.update { it.copy(scheduleRevision = it.scheduleRevision + 1) } }
     override fun setAlert(alert: AccountAlert, enabled: Boolean) {
         val id = repository.auth.currentUserOrNull()?.id ?: return
         viewModelScope.launch { preferences.setAlert(id, alert, enabled) }
     }
     override fun setAccent(accent: AppAccent) { viewModelScope.launch { preferences.setAccent(accent) } }
+    override fun setReminders(enabled: Boolean) {
+        val id = repository.auth.currentUserOrNull()?.id ?: return
+        viewModelScope.launch {
+            preferences.setReminders(id, enabled)
+            com.example.findme.reminders.ActivityReminders.reschedule(getApplication())
+        }
+    }
+    override fun setReminderMinutes(minutes: Int) {
+        val id = repository.auth.currentUserOrNull()?.id ?: return
+        viewModelScope.launch {
+            preferences.setReminderMinutes(id, minutes)
+            com.example.findme.reminders.ActivityReminders.reschedule(getApplication())
+        }
+    }
 
     override fun refresh() = perform(quiet = true, failure = LOAD_FAILED) { load() }
     override fun register(name: String, email: String, username: String, password: String, confirmation: String) = perform {
@@ -365,6 +436,8 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         publishWidgetSnapshot()
     }
     override fun logout() = perform {
+        // While the session still exists, so the server accepts removing this device.
+        com.example.findme.push.PushTokens.unregister()
         repository.auth.signOut()
         _state.value = AccountState(initializing = false)
         com.example.findme.widget.WidgetStore.clear(getApplication())
@@ -380,10 +453,9 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             }
 
             val ownerId = repository.userId()
-            val rows = activities.map { it.copy(userId = ownerId) }
             scheduleSync.beginWrite()
             try {
-                repository.saveSchedules(rows)
+                val rows = repository.saveSchedules(activities.map { it.copy(userId = ownerId) })
                 if (repository.auth.currentUserOrNull()?.id != ownerId) return@perform
 
                 val ids = rows.map { it.id }.toSet()
@@ -394,9 +466,33 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                     notice = if (rows.size == 1) "Actividad guardada." else "Actividad guardada en ${rows.size} días."
                 ) }
             } finally { scheduleSync.finishWrite() }
+            snapshotMutex.withLock { saveCurrentCache() }
             publishWidgetSnapshot()
         }
     }
+    override fun changeScheduleOccurrence(draftId: String, id: String, originalDate: String, change: ScheduleException?) = perform {
+        val ownerId = repository.userId()
+        scheduleSync.beginWrite()
+        try {
+            val updated = repository.changeScheduleOccurrence(id, originalDate, change)
+            if (repository.auth.currentUserOrNull()?.id != ownerId) return@perform
+            allSchedules = allSchedules.map { if (it.id == id) updated else it }
+            _state.update { old -> old.copy(
+                schedules = old.schedules.map { if (it.id == id) updated else it },
+                savedScheduleDraftId = draftId,
+                notice = when {
+                    change == null -> "Actividad semanal restaurada."
+                    change.cancelled -> "Actividad cancelada solo para esa fecha."
+                    else -> "Actividad reprogramada solo para esa fecha."
+                }
+            ) }
+        } finally {
+            scheduleSync.finishWrite()
+        }
+        snapshotMutex.withLock { saveCurrentCache() }
+        publishWidgetSnapshot()
+    }
+
     override fun deleteSchedule(id: String) = perform {
         val ownerId = repository.userId()
         scheduleSync.beginWrite()
@@ -409,37 +505,74 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 notice = "Actividad eliminada."
             ) }
         } finally { scheduleSync.finishWrite() }
+        snapshotMutex.withLock { saveCurrentCache() }
         publishWidgetSnapshot()
     }
     override fun setStatus(text: String, minutes: Long) = perform {
-        repository.setStatus(text, minutes); load()
-        _state.update { it.copy(notice = "Estado actualizado.") }
-        com.example.findme.widget.ConnectionWidget().updateAll(getApplication())
+        repository.setStatus(text, minutes)
+        refreshAfterSave("Estado actualizado.")
     }
     override fun clearStatus() = perform {
-        repository.clearStatus(); load()
-        _state.update { it.copy(notice = "Se muestra tu horario de nuevo.") }
-        com.example.findme.widget.ConnectionWidget().updateAll(getApplication())
+        repository.clearStatus()
+        refreshAfterSave("Se muestra tu horario de nuevo.")
     }
     override fun invite() = perform {
         val invitation = repository.createInvitation()
         _state.update { it.copy(invitation = invitation) }
     }
-    override fun accept(code: String) = perform { repository.acceptInvitation(code); load(); _state.update { it.copy(notice = "Conexión establecida.") } }
-    override fun disconnect(id: String) = perform { repository.disconnect(id); load() }
+    override fun accept(code: String) = perform {
+        repository.acceptInvitation(code)
+        refreshAfterSave("Conexión establecida.")
+    }
+    override fun disconnect(id: String) = perform {
+        val connection = _state.value.connections.find { it.id == id }
+        val owner = repository.userId()
+        repository.disconnect(id)
+        if (repository.auth.currentUserOrNull()?.id != owner) return@perform
+        val removed = connection?.otherPerson(owner)
+        if (removed != null) {
+            allSchedules = allSchedules.filterNot { it.userId == removed }
+            allStatuses = allStatuses.filterNot { it.userId == removed }
+            _state.update { old ->
+                val wasSelected = old.selectedPerson?.id == removed
+                old.copy(connections = old.connections.filterNot { it.id == id },
+                    incomingVisibility = old.incomingVisibility - removed,
+                    profiles = old.profiles.filterNot { it.id == removed },
+                    preferences = old.preferences.filterNot { it.connectionId == id },
+                    selectedPerson = if (wasSelected) null else old.selectedPerson,
+                    personSchedules = if (wasSelected) emptyList() else old.personSchedules,
+                    personStatuses = if (wasSelected) emptyList() else old.personStatuses)
+            }
+            readSection("local cache after disconnecting") { AccountCache.clear(getApplication()) }
+            publishWidgetSnapshot()
+        }
+        refreshAfterSave("Conexión eliminada.")
+    }
+    override suspend fun sharedSchedulesForAvailability(contactId: String): SharedSchedules? {
+        val owner = repository.userId()
+        val result = repository.sharedSchedulesForAvailability(contactId)
+        return result.takeIf { repository.auth.currentUserOrNull()?.id == owner }
+    }
+
     override fun selectPerson(profile: AccountProfile) = perform {
         val schedules = repository.schedules(profile.id)
         val statuses = repository.overrides(profile.id)
         _state.update { it.copy(selectedPerson = profile, personSchedules = schedules, personStatuses = statuses) }
     }
     override fun saveMessage(label: String, message: String) = perform {
-        repository.saveQuickMessage(label, message); load()
-        _state.update { it.copy(notice = "Mensaje rápido creado.") }
+        repository.saveQuickMessage(label, message)
+        refreshAfterSave("Mensaje rápido creado.")
     }
-    override fun deleteMessage(id: String) = perform { repository.deleteQuickMessage(id); load() }
+    override fun deleteMessage(id: String) = perform {
+        repository.deleteQuickMessage(id)
+        _state.update { old -> old.copy(messages = old.messages.filterNot { it.id == id }) }
+        refreshAfterSave("Mensaje rápido eliminado.")
+    }
     override fun saveConnectionPreference(preference: ConnectionPreference) = perform {
-        repository.saveConnectionPreference(preference); load()
-        _state.update { it.copy(notice = "Preferencias guardadas.") }
+        repository.saveConnectionPreference(preference)
+        _state.update { old -> old.copy(preferences = old.preferences
+            .filterNot { it.connectionId == preference.connectionId } + preference) }
+        refreshAfterSave("Preferencias guardadas.")
     }
     override fun markSignalRead(id: String) = perform(quiet = true) {
         repository.markSignalRead(id)

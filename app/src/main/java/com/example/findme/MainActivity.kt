@@ -41,7 +41,7 @@ private const val NOTIFICATION_PROMPT_SEEN = "notification_prompt_seen"
 
 class MainActivity : ComponentActivity() {
     private var confirmationLink by mutableStateOf<ConfirmationLink?>(null)
-    private var openPeople by mutableStateOf(false)
+    private var notificationDestination by mutableStateOf<String?>(null)
     private val appSettings by lazy { AccountSettingsRepository(applicationContext) }
     private val updateViewModel: UpdateViewModel by viewModels()
     private val accountViewModel: AccountViewModel by viewModels()
@@ -129,10 +129,13 @@ class MainActivity : ComponentActivity() {
                                 confirmationLink = null
                             }) { Text("Continuar") } })
                     }
-                    LaunchedEffect(openPeople, accountState.initializing) {
-                        if (openPeople && !accountState.initializing) {
-                            accountViewModel.openPeople()
-                            openPeople = false
+                    LaunchedEffect(notificationDestination, accountState.signedIn) {
+                        if (accountState.signedIn) {
+                            when (notificationDestination) {
+                                NotificationHelper.OPEN_PEOPLE -> accountViewModel.openPeople()
+                                NotificationHelper.OPEN_SCHEDULE -> accountViewModel.openSchedule()
+                            }
+                            notificationDestination = null
                         }
                     }
                     AccountScreen(
@@ -153,7 +156,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun receiveConfirmation(intent: Intent?) {
-        if (intent?.action == NotificationHelper.OPEN_PEOPLE) { openPeople = true; intent.action = null; return }
+        if (intent != null && (intent.action == NotificationHelper.OPEN_PEOPLE ||
+                intent.action == NotificationHelper.OPEN_SCHEDULE)) {
+            notificationDestination = intent.action
+            intent.action = null
+            return
+        }
         if (intent?.action != Intent.ACTION_VIEW) return
         com.example.findme.domain.model.RecoveryLink.parse(intent.dataString)?.let { link ->
             when (link) {

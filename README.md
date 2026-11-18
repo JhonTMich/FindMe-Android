@@ -2,7 +2,7 @@
 
 Aplicación Kotlin con Jetpack Compose para organizar horarios y compartir actividades y estados entre personas conectadas. El registro requiere un correo autorizado. [Configuración de cuentas y conexiones](docs/cuentas-conexiones.md).
 
-Versión actual: **1.5** (`versionCode = 1005000`).
+La versión publicada se puede consultar en [GitHub Releases](https://github.com/JhonTMich/Near/releases/latest).
 
 La versión 1.5 incorpora turnos nocturnos, un widget de estado configurable por persona, la identidad azul del nuevo icono, un acceso más claro y la próxima actividad en Hoy.
 
@@ -29,7 +29,16 @@ Al iniciar una instancia de la app, se consulta `https://api.github.com/reposito
 
 La primera vez Android puede pedir autorizar a Near para instalar aplicaciones; al regresar se continúa con el APK ya descargado. La instalación requiere la confirmación que Android solicita. Si la app está en segundo plano, espera a que vuelva a estar visible para abrir el instalador. No requiere permisos generales de almacenamiento y solo comparte el APK mediante un FileProvider limitado a su carpeta de actualizaciones. Una descarga interrumpida se puede reintentar.
 
-Las instalaciones de la versión 1.2 todavía contienen el flujo anterior. Para habilitar este nuevo actualizador hay que instalar esta corrección una primera vez; las versiones siguientes podrán descargarse desde la app.
+### Pasar de Near 1.7 al nuevo paquete
+
+Near 1.7 se publicó como `com.example.findme`. El siguiente APK usa `com.example.near` y se instala
+una sola vez desde [GitHub Releases](https://github.com/JhonTMich/Near/releases). Inicia sesión con
+tu cuenta de siempre para recuperar los datos sincronizados. Vuelve a configurar los ajustes locales
+y añade los widgets desde la nueva app. Cuando compruebes tu cuenta, puedes desinstalar la app
+antigua. Si necesitas abrir un enlace de confirmación o recuperación durante la transición,
+selecciona la instalación nueva cuando Android te pregunte.
+
+Las actualizaciones posteriores de `com.example.near` se descargan desde Near como de costumbre.
 
 ## Publicar desde la terminal
 
@@ -56,7 +65,7 @@ Los cuatro secretos de firma de este repositorio ya están configurados en GitHu
 | `ANDROID_KEY_ALIAS` | Alias de la clave |
 | `ANDROID_KEY_PASSWORD` | Contraseña de la clave |
 
-Se utiliza el mismo certificado local de desarrollo de los APK publicados hasta ahora para conservar la compatibilidad de actualización. La clave privada no se incorpora al repositorio ni a los artefactos.
+El workflow usa el certificado de firma existente para publicar el APK. Las actualizaciones dentro del paquete `com.example.near` deben mantener una firma compatible. La clave privada no se incorpora al repositorio ni a los artefactos.
 
 ### Rotación a una clave de producción
 
@@ -87,7 +96,7 @@ Referencia: [API de releases de GitHub](https://docs.github.com/en/rest/releases
 
 ## Widget de estado actual
 
-Añade **Near · Estado actual** desde el selector de widgets de Android. Al añadirlo, elige **Mi estado** o una persona conectada. Puedes tener varios widgets con personas distintas y cambiar la selección tocando el nombre o **⋮**. El widget anterior «Mi gente» se actualiza al nuevo diseño y conserva su persona seleccionada; los mensajes rápidos se envían desde Personas.
+Añade **Near · Estado actual** desde el selector de widgets de Android. Al añadirlo, elige **Mi estado** o una persona conectada. Puedes tener varios widgets con personas distintas y cambiar la selección tocando el nombre o **⋮**. La selección del widget se conserva al actualizar dentro del mismo paquete; los mensajes rápidos se envían desde Personas.
 
 Muestra el estado manual vigente o la actividad del horario, la próxima actividad y la fecha de los últimos datos. El tamaño ampliado añade ubicación y hora de fin. El botón **↻** consulta los datos sin abrir la app. Sin conexión se conserva la última información y se siguen calculando las actividades y caducidades con esos datos.
 
@@ -102,19 +111,20 @@ Los cambios sincronizados o guardados en la app actualizan la caché del widget.
 
 Las pruebas de dispositivo requieren un emulador o teléfono conectado. Incluyen ajustes del perfil, confirmación de desvinculación, presentación del estado y selector semanal. Las pruebas unitarias cubren comparación de versiones y límites de las actividades.
 
-## Aspectos pendientes del proyecto
+## Pruebas en teléfonos
 
-- El monitoreo mutuo y la interfaz de la persona monitoreada quedan para una siguiente etapa.
-- Los cambios de estado se observan mientras vive el proceso de la app. Para avisos de esos cambios con la app cerrada se necesita una solución de entrega push.
-- WorkManager no garantiza avisos al segundo exacto; los avisos actuales de actividad son trabajos de una ejecución que se programan al cargar/sincronizar el horario.
-- El código conserva funciones previas de administrador y widgets. La contraseña local de administrador existente no constituye autorización en el servidor; una futura gestión de roles necesita autenticación y políticas de acceso en Supabase.
+Desde [Android release en Actions](https://github.com/JhonTMich/Near/actions/workflows/release.yml), ejecuta
+el workflow sobre `develop` con la versión prevista. El artefacto `near-candidate-*` contiene el APK firmado
+para probarlo en teléfonos. La publicación se hace con el tag de la versión desde `main` tras la prueba.
+La [guía de notificaciones](docs/notificaciones.md) describe qué verificar entre dos teléfonos.
 
-La versión 1.3 incorpora cuentas con registro por correos autorizados, acceso con usuario y contraseña, horarios propios, conexiones mutuas, ajustes de avisos y colores, y mensajes en vivo con la app abierta. Los mensajes enviados caducan a las 24 horas. La configuración del servidor y las limitaciones actuales están en [cuentas y conexiones](docs/cuentas-conexiones.md).
+La [guía de cuentas y conexiones](docs/cuentas-conexiones.md) explica los permisos por contacto,
+los horarios y la disponibilidad. Las alertas dependen de los ajustes de Near y Android.
 
 ## Identidad visual
 
-La interfaz usa un tema claro y cálido tomado del icono de Near: fondo crema, tarjetas blancas, texto azul noche y coral como acento. Acceso, navegación, estados, categorías, horarios y ajustes comparten esta paleta; los widgets conservan su diseño ilustrado. En **Perfil → Apariencia** se puede elegir Coral, Menta o Lavanda; las preferencias guardadas conservan sus identificadores anteriores para mantener la compatibilidad.
+La interfaz usa azul noche, superficies claras de contraste en el acceso y la mascota de Near. Los widgets conservan su diseño ilustrado. **Perfil → Apariencia** permite cambiar el acento de color.
 
 El símbolo de la cabecera reutiliza los trazados del icono adaptativo, sin el margen de seguridad del launcher. La cabecera muestra un único logo. La recuperación del correo de confirmación se ofrece desde el registro y desde la pantalla posterior a crear la cuenta. En **Hoy**, una tarjeta presenta la siguiente actividad que empieza en la fecha y zona del perfil, o «Nada más por hoy», y permite abrir Horario.
 
-La prueba `brandScreensAcrossNavigationAndAppearance` recorre las pantallas y guarda capturas en `Pictures/NearTests` del emulador para revisar la presentación.
+La prueba `brandScreensAcrossNavigationAndAppearance` recorre las pantallas y guarda capturas en `Pictures/NearTests` del emulador. Actions las adjunta como `near-screens` para revisarlas desde el PR.
