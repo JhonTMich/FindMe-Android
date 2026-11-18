@@ -9,3 +9,7 @@ verify_jwt = false
 
 [functions.authorized-signup]
 verify_jwt = false
+
+# Called only by the database (pg_net) with a shared secret, which the function checks itself.
+[functions.send-push]
+verify_jwt = false

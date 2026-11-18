@@ -41,11 +41,14 @@ object WidgetStore {
         }
         ConnectionWidget().updateAll(context)
         GlanceWidgetWorker.enqueueBoundaryUpdate(context)
+        // The reminder before your next activity follows the schedule saved here.
+        com.example.findme.reminders.ActivityReminders.reschedule(context)
     }
 
     suspend fun clear(context: Context) {
         context.dataStore.edit { it.remove(cacheKey); it.remove(errorKey) }
         androidx.work.WorkManager.getInstance(context).cancelUniqueWork("WidgetStatusBoundary")
+        com.example.findme.reminders.ActivityReminders.cancel(context)
         ConnectionWidget().updateAll(context)
     }
 
