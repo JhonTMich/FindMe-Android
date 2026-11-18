@@ -423,13 +423,9 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             }
 
             val ownerId = repository.userId()
-            val rows = activities.map { activity ->
-                val exceptions = currentSchedules.find { it.id == activity.id }?.occurrenceExceptions.orEmpty()
-                activity.copy(userId = ownerId, occurrenceExceptions = exceptions)
-            }
             scheduleSync.beginWrite()
             try {
-                repository.saveSchedules(rows)
+                val rows = repository.saveSchedules(activities.map { it.copy(userId = ownerId) })
                 if (repository.auth.currentUserOrNull()?.id != ownerId) return@perform
 
                 val ids = rows.map { it.id }.toSet()
@@ -463,13 +459,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         } finally {
             scheduleSync.finishWrite()
         }
-        snapshotMutex.withLock {
-            val current = _state.value
-            val profile = current.profile ?: return@withLock
-            saveCache(AccountSnapshot(profile.id, profile, current.profiles, allSchedules, allStatuses,
-                current.connections, current.messages, current.signals, current.lastSync?.toString().orEmpty(),
-                current.preferences))
-        }
+        snapshotMutex.withLock { saveCurrentCache() }
         publishWidgetSnapshot()
     }
 

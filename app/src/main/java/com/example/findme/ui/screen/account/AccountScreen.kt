@@ -550,7 +550,8 @@ private fun ScheduleOccurrenceEditor(
 ) {
     val next = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.of(schedule.dayOfWeek)))
     val originals = (0L..3L).map(next::plusWeeks).let { dates ->
-        if (preferredDate >= today) (dates + preferredDate).distinct().sorted() else dates
+        if (preferredDate >= today || schedule.occurrenceExceptions[preferredDate.toString()]?.date != null)
+            (dates + preferredDate).distinct().sorted() else dates
     }
     var originalText by rememberSaveable { mutableStateOf(originals.firstOrNull { it == preferredDate }?.toString() ?: next.toString()) }
     val original = LocalDate.parse(originalText)
@@ -568,7 +569,7 @@ private fun ScheduleOccurrenceEditor(
             val moveDates = (0L..13L).map { maxOf(today, original.minusDays(6)).plusDays(it) }.let { dates ->
                 (dates + listOfNotNull(existing?.date?.let(LocalDate::parse))).distinct().sorted()
             }
-            var dateText by rememberSaveable { mutableStateOf(existing?.date ?: originalText) }
+            var dateText by rememberSaveable { mutableStateOf(existing?.date ?: maxOf(original, today).toString()) }
             var start by rememberSaveable { mutableStateOf(existing?.startTime ?: schedule.startTime) }
             var end by rememberSaveable { mutableStateOf(existing?.endTime ?: schedule.endTime) }
             var overnight by rememberSaveable { mutableStateOf(existing?.endsNextDay ?: schedule.endsNextDay) }
@@ -816,6 +817,7 @@ private fun People(state: AccountState, actions: AccountActions) {
         var personDay by rememberSaveable(person.id) { mutableStateOf(ZonedDateTime.now(person.zone()).dayOfWeek.value) }
         Choices((1..7).toList(), personDay, { personDay = it }) { days[it - 1].take(3) }
         val personDate = LocalDate.now(person.zone()).with(TemporalAdjusters.nextOrSame(DayOfWeek.of(personDay)))
+        Text(personDate.longDate(), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
         val schedules = state.personSchedules.occurrencesOn(personDate, person.zone()).map { it.schedule }
         if (schedules.isEmpty()) Text("Sin actividades para el ${personDate.longDate()}.", color = TextMuted)
         schedules.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule, false,

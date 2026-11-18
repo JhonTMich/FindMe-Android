@@ -48,7 +48,8 @@ begin
     if not found then raise insufficient_privilege; end if;
 
     select (now() at time zone p.timezone)::date into today from public.account_profiles p where p.id = owner;
-    if original_date is null or original_date < today or original_date > today + 366
+    if original_date is null or original_date > today + 366
+       or (original_date < today and coalesce((activity.occurrence_exceptions->original_key->>'date')::date, original_date) < today)
        or extract(isodow from original_date)::int <> activity.day_of_week
        or action is null or action not in ('cancel', 'move', 'restore') then
         raise exception 'Invalid occurrence date or action' using errcode = 'FM004';
@@ -122,5 +123,44 @@ language sql security invoker set search_path = '' as $$
 $$;
 revoke all on function public.change_schedule_occurrence(uuid, date, text, date, time, time, boolean) from public, anon;
 grant execute on function public.change_schedule_occurrence(uuid, date, text, date, time, time, boolean) to authenticated;
+
+do $migration$
+begin
+    if to_regprocedure('private.push_due_events()') is null then return; end if;
+    execute $function$
+        create or replace function private.push_due_events() returns void
+        language plpgsql security definer set search_path = '' as $body$
+        declare
+            r record;
+        begin
+            for r in
+                select s.id, s.user_id, s.title, s.location, p.display_name
+                from public.personal_schedule s
+                join public.account_profiles p on p.id = s.user_id
+                join pg_catalog.pg_timezone_names z on z.name = p.timezone
+                cross join lateral (select date_trunc('minute', now() at time zone p.timezone) as local_minute) l
+                cross join lateral private.schedule_starts_on(s, l.local_minute::date) o
+                where l.local_minute::date + o.start_time >= l.local_minute
+                  and l.local_minute::date + o.start_time < l.local_minute + interval '1 minute'
+                  and not exists (select 1 from public.personal_status st
+                                  where st.user_id = s.user_id and st.is_active and st.expires_at > now())
+            loop
+                perform private.queue_push('activity', private.push_audience(r.user_id, 'schedule'), jsonb_build_object(
+                    'user_id', r.user_id, 'name', r.display_name, 'schedule_id', r.id,
+                    'title', r.title, 'location', r.location));
+            end loop;
+            for r in
+                select st.user_id, p.display_name from public.personal_status st
+                join public.account_profiles p on p.id = st.user_id
+                where st.is_active and st.expires_at <= now() and st.expires_at > now() - interval '1 minute'
+            loop
+                perform private.queue_push('status_end', private.push_audience(r.user_id, 'status'),
+                    jsonb_build_object('user_id', r.user_id, 'name', r.display_name));
+            end loop;
+        end;
+        $body$;
+    $function$;
+end;
+$migration$;
 
 commit;
