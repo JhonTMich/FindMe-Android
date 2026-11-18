@@ -227,7 +227,7 @@ private fun PageHeading(eyebrow: String, title: String, subtitle: String) {
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         if (eyebrow.isNotBlank()) Text(eyebrow.uppercase(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.5.sp)
         Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+        if (subtitle.isNotBlank()) Text(subtitle, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -411,7 +411,6 @@ private fun profileClock(zone: ZoneId): ZonedDateTime {
 }
 
 @Composable
-@Composable
 private fun contactStatus(person: AccountProfile, state: AccountState): UserCurrentStatus {
     val visibility = state.incomingVisibility[person.id]
         ?: return UserCurrentStatus.Error("Datos desactualizados. Actualiza para ver qué comparte.", person.displayName)
@@ -438,24 +437,42 @@ private fun MyDay(state: AccountState, actions: AccountActions, onOpenSchedule: 
     val now = profileClock(profile?.zone() ?: ZoneId.systemDefault())
     val status = profile?.let { StatusRepository.calculateStatus(it.displayName, state.schedules, state.statuses, now.dayOfWeek.value, now) }
     val next = nextActivityToday(state.schedules, now)
-    PageHeading("Siempre cerca", "Mi día", now.format(DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es"))))
-    status?.let { HeroStatusCard(it) }
-    NextActivityCard(next, onOpenSchedule)
-    Panel {
-        SectionHeading(Icons.Default.EditLocationAlt, "¿Cambiaste de planes?", "Comparte lo que estás haciendo ahora.")
-        Text("Tu estado tiene prioridad sobre el horario hasta que termine o lo quites.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-        Button(onClick = { editStatus = true }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy) {
-            Icon(Icons.Default.Edit, null, Modifier.size(17.dp)); Spacer(Modifier.width(8.dp))
-            Text(if (status is UserCurrentStatus.Override) "Cambiar mi estado" else "Compartir mi estado")
+    PageHeading("", "Mi día", now.format(DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es"))))
+    status?.let { current ->
+        HeroStatusCard(current, heading = "Ahora") {
+            Button(onClick = { editStatus = true }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy) {
+                Icon(Icons.Default.Edit, null, Modifier.size(17.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(if (current is UserCurrentStatus.Override) "Cambiar mi estado" else "Compartir mi estado")
+            }
+            if (current is UserCurrentStatus.Override) TextButton(onClick = actions::clearStatus, enabled = !state.busy) {
+                Text("Volver al horario")
+            }
         }
-        if (status is UserCurrentStatus.Override) TextButton(onClick = actions::clearStatus, enabled = !state.busy) { Text("Volver al horario", color = TextSecondary) }
     }
-    val today = state.schedules.occurrencesOn(now.toLocalDate(), now.zone).map { it.schedule }
-    SectionHeading(Icons.Default.CalendarToday, "Tu agenda de hoy", "${today.size} actividades programadas")
-    if (today.isEmpty()) EmptyPanel(Icons.Default.WbSunny, "Un día a tu ritmo", "Aún no tienes actividades para hoy. Puedes añadirlas en Horario.")
-    today.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule,
-        active = (status as? UserCurrentStatus.InClass)?.currentSchedule?.id == schedule.id,
-        last = index == today.lastIndex, displayDay = now.dayOfWeek.value) }
+    val today = state.schedules.occurrencesOn(now.toLocalDate(), now.zone)
+    if (today.isEmpty()) {
+        Panel {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Image(painterResource(R.drawable.near_mascot_head), null, modifier = Modifier.size(74.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Un día a tu ritmo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Nada más por hoy", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                }
+            }
+            TextButton(onClick = onOpenSchedule) { Text("Ver horario") }
+        }
+    } else {
+        SectionHeading(Icons.Default.Schedule, "Después")
+        NextActivityCard(next, onOpenSchedule)
+        SectionHeading(Icons.Default.CalendarToday, "Agenda de hoy")
+        today.forEachIndexed { index, occurrence ->
+            ActivityTimelineCard(occurrence.schedule,
+                active = status is UserCurrentStatus.InClass && !now.isBefore(occurrence.window.start) &&
+                    now.isBefore(occurrence.window.end) && status.currentSchedule.id == occurrence.schedule.id,
+                last = index == today.lastIndex, displayDay = now.dayOfWeek.value, compact = true)
+        }
+    }
     if (editStatus) StatusEditor(state, actions, status as? UserCurrentStatus.Override) { editStatus = false }
 }
 
