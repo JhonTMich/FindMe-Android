@@ -30,10 +30,11 @@ import java.util.Locale
 
 @Composable
 fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int,
-    onDaySelected: (Int) -> Unit, showDayTitle: Boolean = true) {
+    onDaySelected: (Int) -> Unit, showDayTitle: Boolean = true,
+    today: LocalDate = LocalDate.now(), occurrenceCounts: List<Int>? = null) {
     var chartVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { chartVisible = true }
-    val today = LocalDate.now()
+    fun count(day: Int) = occurrenceCounts?.get(day - 1) ?: allSchedules.count { it.occursOn(day) }
     val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Tu semana", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
@@ -48,13 +49,13 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
                         Text("PANORAMA SEMANAL", style = MaterialTheme.typography.labelSmall, letterSpacing = 1.sp, color = TextSecondary)
                         Text("${allSchedules.size} ${if (allSchedules.size == 1) "actividad" else "actividades"}", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
-                    val activeDays = (1..7).count { day -> allSchedules.any { it.occursOn(day) } }
+                    val activeDays = (1..7).count { count(it) > 0 }
                     StatusPill("$activeDays ${if (activeDays == 1) "día" else "días"}", BrandSky)
                 }
-                val maximum = (1..7).maxOf { day -> allSchedules.count { it.occursOn(day) } }.coerceAtLeast(1)
+                val maximum = (1..7).maxOf { count(it) }.coerceAtLeast(1)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Bottom) {
                     (1..7).forEach { day ->
-                        val count = allSchedules.count { it.occursOn(day) }
+                        val count = count(day)
                         val height by animateFloatAsState(if (chartVisible) count.toFloat() / maximum else 0f, tween(700), label = "weekBar$day")
                         val color by animateColorAsState(if (selectedDayOfWeek == day) MaterialTheme.colorScheme.primary else CardBorder, tween(250), label = "weekBarColor$day")
                         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -89,7 +90,7 @@ fun WeeklyScheduleHeader(allSchedules: List<ScheduleDto>, selectedDayOfWeek: Int
                 }
             }
         }
-        val selectedCount = allSchedules.count { it.occursOn(selectedDayOfWeek) }
+        val selectedCount = count(selectedDayOfWeek)
         Text("$selectedCount ${if (selectedCount == 1) "actividad programada" else "actividades programadas"}",
             style = MaterialTheme.typography.bodySmall, color = TextSecondary)
         if (showDayTitle) Text(DayOfWeek.of(selectedDayOfWeek).getDisplayName(java.time.format.TextStyle.FULL, Locale.forLanguageTag("es"))

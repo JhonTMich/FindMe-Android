@@ -6,6 +6,7 @@ import com.example.findme.data.model.StatusOverrideDto
 import com.example.findme.data.repository.StatusRepository
 import com.example.findme.domain.model.UserCurrentStatus
 import com.example.findme.domain.model.activeWindow
+import com.example.findme.domain.model.nextOccurrence
 import com.example.findme.domain.model.formatScheduleTime
 import java.time.ZonedDateTime
 
@@ -67,15 +68,10 @@ fun streetStatus(destination: String?, next: String): WidgetStatus = WidgetStatu
 
 fun widgetStatus(name: String, schedules: List<ScheduleDto>, statuses: List<StatusOverrideDto>, now: ZonedDateTime): WidgetStatus {
     val state = StatusRepository.calculateStatus(name, schedules, statuses, now.dayOfWeek.value, now)
-    val upcoming = schedules.mapNotNull { schedule ->
-        StatusRepository.parseLocalTimeOrNull(schedule.startTime)?.let { time ->
-            var start = now.toLocalDate().plusDays(((schedule.dayOfWeek - now.dayOfWeek.value + 7) % 7).toLong())
-                .atTime(time).atZone(now.zone)
-            if (!start.isAfter(now)) start = start.plusWeeks(1)
-            schedule to start
-        }
-    }.minByOrNull { it.second }
-    val next = upcoming?.let { (schedule, start) ->
+    val upcoming = schedules.mapNotNull { it.nextOccurrence(now) }.minByOrNull { it.window.start.toInstant() }
+    val next = upcoming?.let { occurrence ->
+        val schedule = occurrence.schedule
+        val start = occurrence.window.start
         val day = if (start.toLocalDate() == now.toLocalDate()) "" else
             if (start.toLocalDate() == now.toLocalDate().plusDays(1)) "mañana " else
                 start.format(java.time.format.DateTimeFormatter.ofPattern("EEE ", java.util.Locale.forLanguageTag("es")))
