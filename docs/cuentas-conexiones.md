@@ -177,7 +177,7 @@ Prueba: `node scripts/test_connection_preferences.mjs`.
 
 ## Cambios puntuales y disponibilidad
 
-En **Horario**, elige una actividad y usa **Solo esta vez**. Selecciona su fecha original y cancela
+En **Horario**, elige una actividad y usa **Solo esta fecha**. Selecciona su fecha original y cancela
 o reprograma esa ocurrencia. El horario habitual sigue aplicando a las demás fechas. Desde la misma
 opción puedes restaurarlo. Los cambios puntuales aparecen en Hoy, Personas y el widget, y afectan
 a los recordatorios y avisos de inicio. La base de datos comprueba cruces al mover una actividad
@@ -190,4 +190,4 @@ La consulta incluye cambios puntuales y turnos nocturnos. La disponibilidad se c
 de las actividades programadas y se vuelve a consultar mientras la vista esté abierta.
 
 Antes de distribuir un APK que incluya estas funciones, aplica las migraciones
-`excepciones_de_horario` y `disponibilidad_en_comun` del lanzamiento.
+`excepciones_de_horario`, `disponibilidad_en_comun` y `visibilidad_de_personas` del lanzamiento.
