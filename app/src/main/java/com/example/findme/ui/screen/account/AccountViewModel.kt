@@ -137,6 +137,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                     "23P01" -> "Este horario coincide con otra actividad. Actualiza tu horario y elige otra hora."
                     "FM001" -> "Llegaste al máximo permitido. Elimina elementos que ya no uses e inténtalo de nuevo."
                     "FM002" -> "Demasiados intentos seguidos. Espera unos minutos e inténtalo de nuevo."
+                    "FM004" -> "La fecha o las horas de esta actividad no son válidas. Revisa la ocurrencia."
                     "FM003" -> "La zona horaria del teléfono no es válida. Revisa la configuración de fecha y hora."
                     else -> failure
                 }
@@ -445,10 +446,9 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             }
 
             val ownerId = repository.userId()
-            val rows = activities.map { it.copy(userId = ownerId) }
             scheduleSync.beginWrite()
             try {
-                repository.saveSchedules(rows)
+                val rows = repository.saveSchedules(activities.map { it.copy(userId = ownerId) })
                 if (repository.auth.currentUserOrNull()?.id != ownerId) return@perform
 
                 val ids = rows.map { it.id }.toSet()
@@ -463,6 +463,29 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             publishWidgetSnapshot()
         }
     }
+    override fun changeScheduleOccurrence(draftId: String, id: String, originalDate: String, change: ScheduleException?) = perform {
+        val ownerId = repository.userId()
+        scheduleSync.beginWrite()
+        try {
+            val updated = repository.changeScheduleOccurrence(id, originalDate, change)
+            if (repository.auth.currentUserOrNull()?.id != ownerId) return@perform
+            allSchedules = allSchedules.map { if (it.id == id) updated else it }
+            _state.update { old -> old.copy(
+                schedules = old.schedules.map { if (it.id == id) updated else it },
+                savedScheduleDraftId = draftId,
+                notice = when {
+                    change == null -> "Actividad semanal restaurada."
+                    change.cancelled -> "Actividad cancelada solo para esa fecha."
+                    else -> "Actividad reprogramada solo para esa fecha."
+                }
+            ) }
+        } finally {
+            scheduleSync.finishWrite()
+        }
+        snapshotMutex.withLock { saveCurrentCache() }
+        publishWidgetSnapshot()
+    }
+
     override fun deleteSchedule(id: String) = perform {
         val ownerId = repository.userId()
         scheduleSync.beginWrite()

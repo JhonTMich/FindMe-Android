@@ -78,11 +78,30 @@ class AccountRepository {
     suspend fun accessibleSchedules() = client.postgrest["personal_schedule"].select().decodeList<ScheduleDto>()
     suspend fun accessibleStatuses() = client.postgrest["personal_status"].select().decodeList<StatusOverrideDto>()
 
-    suspend fun saveSchedules(activities: List<ScheduleDto>) {
+    suspend fun saveSchedules(activities: List<ScheduleDto>): List<ScheduleDto> {
         val ownerId = userId()
         require(activities.isNotEmpty() && activities.all { it.userId == ownerId })
-        client.postgrest["personal_schedule"].upsert(activities)
+        return client.postgrest["personal_schedule"].upsert(activities.map { it.copy(occurrenceExceptions = emptyMap()) }) {
+            select()
+        }.decodeList<ScheduleDto>()
     }
+
+    suspend fun changeScheduleOccurrence(id: String, originalDate: String, change: ScheduleException?): ScheduleDto =
+        client.postgrest.rpc("change_schedule_occurrence", buildJsonObject {
+            put("schedule_id", id)
+            put("original_date", originalDate)
+            put("action", when {
+                change == null -> "restore"
+                change.cancelled -> "cancel"
+                else -> "move"
+            })
+            if (change?.date != null) {
+                put("new_date", change.date)
+                put("new_start", change.startTime)
+                put("new_end", change.endTime)
+                put("new_overnight", change.endsNextDay)
+            }
+        }).decodeSingle<ScheduleDto>()
 
     suspend fun deleteSchedule(id: String) {
         client.postgrest["personal_schedule"].delete { filter { eq("id", id); eq("user_id", userId()) } }

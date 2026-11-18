@@ -60,12 +60,16 @@ import com.example.findme.domain.model.conflictMessage
 import com.example.findme.domain.model.findScheduleConflict
 import com.example.findme.domain.model.formatScheduleTime
 import com.example.findme.domain.model.validateSchedule
-import com.example.findme.domain.model.schedulesForDay
+import com.example.findme.domain.model.occurrencesOn
+import com.example.findme.data.model.ScheduleException
 import com.example.findme.domain.model.timeRangeLabel
 import com.example.findme.domain.model.nextActivityToday
 import com.example.findme.ui.components.*
 import com.example.findme.ui.theme.*
+import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.TemporalAdjusters
 import java.time.LocalTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -427,7 +431,7 @@ private fun MyDay(state: AccountState, actions: AccountActions, onOpenSchedule: 
         }
         if (status is UserCurrentStatus.Override) TextButton(onClick = actions::clearStatus, enabled = !state.busy) { Text("Volver al horario", color = TextSecondary) }
     }
-    val today = state.schedules.schedulesForDay(now.dayOfWeek.value)
+    val today = state.schedules.occurrencesOn(now.toLocalDate(), now.zone).map { it.schedule }
     SectionHeading(Icons.Default.CalendarToday, "Tu agenda de hoy", "${today.size} actividades programadas")
     if (today.isEmpty()) EmptyPanel(Icons.Default.WbSunny, "Un día a tu ritmo", "Aún no tienes actividades para hoy. Puedes añadirlas en Horario.")
     today.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule,
@@ -461,8 +465,19 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
     var editing by remember { mutableStateOf<ScheduleDto?>(null) }
     var showEditor by rememberSaveable { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<ScheduleDto?>(null) }
-    var day by rememberSaveable { mutableStateOf(ZonedDateTime.now(state.profile?.zone() ?: ZoneId.systemDefault()).dayOfWeek.value) }
-    WeeklyScheduleHeader(state.schedules, day, onDaySelected = { day = it }, showDayTitle = false)
+    val zone = state.profile?.zone() ?: ZoneId.systemDefault()
+    val today = LocalDate.now(zone)
+    val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    var day by rememberSaveable { mutableStateOf(today.dayOfWeek.value) }
+    var oneOff by remember { mutableStateOf<Pair<String, LocalDate>?>(null) }
+    val dates = (0L..6L).map(monday::plusDays)
+    val week = remember(state.schedules, monday, zone) {
+        dates.map { state.schedules.occurrencesOn(it, zone) }
+    }
+    val date = dates[day - 1]
+    val distinct = week.flatten().distinctBy { it.schedule.id to it.originalDate }.map { it.schedule }
+    WeeklyScheduleHeader(distinct, day, onDaySelected = { day = it }, showDayTitle = false,
+        today = today, occurrenceCounts = week.map { it.size })
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Text(days[day - 1], style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         FilledTonalButton(onClick = { editing = null; showEditor = true }, enabled = !state.busy,
@@ -470,9 +485,16 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
             Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Añadir")
         }
     }
-    val schedules = state.schedules.schedulesForDay(day)
-    if (schedules.isEmpty()) EmptyPanel(Icons.Default.EventAvailable, "Espacio para tus planes", "Añade una clase, tu trabajo o una actividad personal.")
-    schedules.forEach { schedule ->
+    val occurrences = week[day - 1]
+    val exceptions = state.schedules.mapNotNull { schedule ->
+        schedule.occurrenceExceptions[date.toString()]?.let { schedule to it }
+    }.filter { (_, exception) -> exception.cancelled || exception.date != date.toString() }
+    if (occurrences.isEmpty() && exceptions.isEmpty()) {
+        EmptyPanel(Icons.Default.EventAvailable, "Espacio para tus planes", "Añade una clase, tu trabajo o una actividad personal.")
+    }
+    occurrences.forEach { occurrence ->
+        val schedule = occurrence.schedule
+        val recurring = state.schedules.first { it.id == schedule.id }
         val category = ActivityCategory.fromKey(schedule.category)
         Panel {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -487,18 +509,104 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
                 StatusPill(schedule.modality.replaceFirstChar(Char::titlecase), TextSecondary)
             }
             if (schedule.location.isNotBlank()) Text(schedule.location, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            if (recurring.occurrenceExceptions.containsKey(occurrence.originalDate.toString())) {
+                Text("Horario modificado solo para esta fecha", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
             HorizontalDivider(color = CardBorder)
+            TextButton(onClick = { oneOff = recurring.id to occurrence.originalDate }, enabled = !state.busy) {
+                Text("Solo esta vez")
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = { editing = schedule; showEditor = true }, enabled = !state.busy) {
+                TextButton(onClick = { editing = recurring; showEditor = true }, enabled = !state.busy) {
                     Icon(Icons.Default.Edit, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Editar", color = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = { pendingDelete = schedule }, enabled = !state.busy) { Icon(Icons.Default.DeleteOutline, "Eliminar ${schedule.title}", tint = TextMuted) }
+                IconButton(onClick = { pendingDelete = recurring }, enabled = !state.busy) { Icon(Icons.Default.DeleteOutline, "Eliminar ${schedule.title}", tint = TextMuted) }
             }
+        }
+    }
+    exceptions.forEach { (schedule, exception) ->
+        Panel {
+            Text(schedule.title, fontWeight = FontWeight.Bold)
+            Text(if (exception.cancelled) "Cancelada solo para esta fecha"
+                else "Reprogramada para ${LocalDate.parse(exception.date).longDate()}",
+                color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = { oneOff = schedule.id to date }, enabled = !state.busy) { Text("Cambiar excepción") }
+        }
+    }
+    oneOff?.let { (id, original) ->
+        state.schedules.find { it.id == id }?.let { schedule ->
+            ScheduleOccurrenceEditor(schedule, original, today, state, actions) { oneOff = null }
         }
     }
     if (showEditor) ScheduleEditor(editing, day, state, actions) { showEditor = false }
     pendingDelete?.let { schedule -> Confirm("¿Eliminar ${schedule.title}?", "Esta actividad se eliminará de tu horario.",
         { pendingDelete = null }, { actions.deleteSchedule(schedule.id); pendingDelete = null }) }
+}
+
+private fun LocalDate.longDate(): String =
+    format(DateTimeFormatter.ofPattern("EEE d MMM", Locale.forLanguageTag("es")))
+
+@Composable
+private fun ScheduleOccurrenceEditor(
+    schedule: ScheduleDto, preferredDate: LocalDate, today: LocalDate,
+    state: AccountState, actions: AccountActions, dismiss: () -> Unit
+) {
+    val next = today.with(TemporalAdjusters.nextOrSame(DayOfWeek.of(schedule.dayOfWeek)))
+    val originals = (0L..3L).map(next::plusWeeks).let { dates ->
+        if (preferredDate >= today || schedule.occurrenceExceptions[preferredDate.toString()]?.date != null)
+            (dates + preferredDate).distinct().sorted() else dates
+    }
+    var originalText by rememberSaveable { mutableStateOf(originals.firstOrNull { it == preferredDate }?.toString() ?: next.toString()) }
+    val original = LocalDate.parse(originalText)
+    val existing = schedule.occurrenceExceptions[originalText]
+    val draftId = rememberSaveable { UUID.randomUUID().toString() }
+    var submitted by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.busy, state.savedScheduleDraftId) {
+        if (submitted && !state.busy && state.savedScheduleDraftId == draftId) dismiss()
+    }
+    Sheet(dismiss, "Solo esta vez", gesturesEnabled = false) {
+        Text(schedule.title, fontWeight = FontWeight.Bold)
+        ScheduleChoice("Fecha original", originals, original, { originalText = it.toString() }) { it.longDate() }
+        key(originalText) {
+            var moving by rememberSaveable { mutableStateOf(existing?.date != null) }
+            val moveDates = (0L..13L).map { maxOf(today, original.minusDays(6)).plusDays(it) }.let { dates ->
+                (dates + listOfNotNull(existing?.date?.let(LocalDate::parse))).distinct().sorted()
+            }
+            var dateText by rememberSaveable { mutableStateOf(existing?.date ?: maxOf(original, today).toString()) }
+            var start by rememberSaveable { mutableStateOf(existing?.startTime ?: schedule.startTime) }
+            var end by rememberSaveable { mutableStateOf(existing?.endTime ?: schedule.endTime) }
+            var overnight by rememberSaveable { mutableStateOf(existing?.endsNextDay ?: schedule.endsNextDay) }
+            Choices(listOf(false, true), moving, { moving = it }) { if (it) "Reprogramar" else "Cancelar actividad" }
+            if (moving) {
+                ScheduleChoice("Nueva fecha", moveDates, LocalDate.parse(dateText), { dateText = it.toString() }) { it.longDate() }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
+                    Box(Modifier.weight(1f)) { TimeField(end, { end = it }, "Fin") }
+                }
+                Row(Modifier.fillMaxWidth().toggleable(overnight, role = Role.Switch, onValueChange = { overnight = it }),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text("Termina al día siguiente", modifier = Modifier.weight(1f))
+                    Switch(checked = overnight, onCheckedChange = null)
+                }
+            }
+            val validation = if (moving) validateSchedule(schedule.dayOfWeek, start, end, schedule.title, overnight) else null
+            (validation ?: state.error?.takeIf { submitted })?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+            Button(onClick = {
+                submitted = true
+                val change = if (moving) ScheduleException(date = dateText, startTime = start, endTime = end, endsNextDay = overnight)
+                    else ScheduleException(cancelled = true)
+                actions.changeScheduleOccurrence(draftId, schedule.id, originalText, change)
+            }, enabled = !state.busy && validation == null, modifier = Modifier.fillMaxWidth()) {
+                Text(if (moving) "Guardar reprogramación" else "Cancelar solo esta fecha")
+            }
+            if (existing != null) TextButton(onClick = {
+                submitted = true
+                actions.changeScheduleOccurrence(draftId, schedule.id, originalText, null)
+            }, enabled = !state.busy) { Text("Restaurar horario habitual") }
+        }
+    }
 }
 
 @Composable
@@ -711,8 +819,10 @@ private fun People(state: AccountState, actions: AccountActions) {
         SectionHeading(Icons.Default.CalendarMonth, "Su semana", "Actividades de ${person.displayName}")
         var personDay by rememberSaveable(person.id) { mutableStateOf(ZonedDateTime.now(person.zone()).dayOfWeek.value) }
         Choices((1..7).toList(), personDay, { personDay = it }) { days[it - 1].take(3) }
-        val schedules = state.personSchedules.schedulesForDay(personDay)
-        if (schedules.isEmpty()) Text("Sin actividades para el ${days[personDay - 1].lowercase()}.", color = TextMuted)
+        val personDate = LocalDate.now(person.zone()).with(TemporalAdjusters.nextOrSame(DayOfWeek.of(personDay)))
+        Text(personDate.longDate(), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+        val schedules = state.personSchedules.occurrencesOn(personDate, person.zone()).map { it.schedule }
+        if (schedules.isEmpty()) Text("Sin actividades para el ${personDate.longDate()}.", color = TextMuted)
         schedules.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule, false,
             last = index == schedules.lastIndex, displayDay = personDay) }
         state.connections.find { it.otherPerson(state.profile?.id.orEmpty()) == person.id }?.let { connection ->

@@ -4,6 +4,7 @@ import com.example.findme.data.model.AccountProfile
 import com.example.findme.data.model.ConnectionPreference
 import com.example.findme.data.model.QuickMessage
 import com.example.findme.data.model.ScheduleDto
+import com.example.findme.data.model.ScheduleException
 import com.example.findme.data.local.AccountAlert
 import com.example.findme.data.local.AppAccent
 
@@ -24,6 +25,7 @@ interface AccountActions {
     fun setReminders(enabled: Boolean) {}
     fun setReminderMinutes(minutes: Int) {}
     fun saveSchedules(draftId: String, activities: List<ScheduleDto>) {}
+    fun changeScheduleOccurrence(draftId: String, id: String, originalDate: String, change: ScheduleException?) {}
     fun deleteSchedule(id: String) {}
     fun setStatus(text: String, minutes: Long) {}
     fun clearStatus() {}

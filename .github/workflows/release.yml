@@ -64,6 +64,7 @@ jobs:
           node scripts/test_migrations_replay.mjs
           node scripts/test_connection_preferences.mjs
           node scripts/test_push_notifications.mjs
+          node scripts/test_schedule_occurrences.mjs
       - name: Build release and run Android checks
         env:
           NEAR_FIREBASE_CONFIG: ${{ github.ref_type == 'tag' && secrets.NEAR_FIREBASE_CONFIG || '' }}
