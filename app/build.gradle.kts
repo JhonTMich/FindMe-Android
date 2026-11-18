@@ -101,6 +101,10 @@ dependencies {
     // Firebase Cloud Messaging (configured from res/values/firebase.xml, no google-services plugin)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    constraints {
+        // Firebase brings an older Fragment transitively; Activity Result requires 1.3 or newer.
+        implementation(libs.androidx.fragment)
+    }
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
