@@ -28,6 +28,8 @@ class AccountUiTest {
             customLocation = "En camino a casa", expiresAt = now.plusHours(1).toInstant().toString())),
         connections = listOf(PersonConnection("connection", "own", "other")), profiles = listOf(own, other),
         selectedPerson = other, personSchedules = listOf(schedule.copy(userId = "other")), messages = listOf(quick),
+        incomingVisibility = mapOf(other.id to ConnectionVisibility(other.id, true, true)),
+        peopleSchedulesFresh = true, peopleStatusesFresh = true,
         invitation = ConnectionInvitation("own", "ABCDEFGH", now.plusHours(24).toInstant().toString()))
 
     private fun show(actions: AccountActions = object : AccountActions {}, snapshot: AccountState = state) {
@@ -78,6 +80,22 @@ class AccountUiTest {
         current.value = AccountState(initializing = false)
         compose.onNodeWithText("Qué bueno verte.").assertIsDisplayed()
         screenshot("brand-login", composeOnly = true)
+    }
+
+    @Test fun peopleDistinguishesPrivateEmptyAndStaleSchedules() {
+        val snapshot = mutableStateOf(state.copy(personSchedules = emptyList(),
+            incomingVisibility = mapOf(other.id to ConnectionVisibility(other.id, false, true))))
+        compose.setContent { NearTheme { AccountContent(snapshot.value, object : AccountActions {}) } }
+        compose.onNodeWithText("Personas").performClick()
+        compose.onNodeWithText("Horario privado").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Sin actividades programadas").assertDoesNotExist()
+        compose.runOnIdle {
+            snapshot.value = snapshot.value.copy(incomingVisibility = mapOf(other.id to ConnectionVisibility(other.id, true, true)))
+        }
+        compose.onNodeWithText("Sin actividades programadas").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { snapshot.value = snapshot.value.copy(peopleSchedulesFresh = false) }
+        compose.onNodeWithText("Datos desactualizados", substring = false).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Sin actividades programadas").assertDoesNotExist()
     }
 
     @Test fun manualStatusIsVisibleDuringClassAndCanBeChanged() {
