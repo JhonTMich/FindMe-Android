@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.glance.appwidget.updateAll
 import androidx.work.*
 import com.example.findme.data.local.dataStore
+import com.example.findme.data.repository.StatusRepository
 import com.example.findme.domain.model.nextOccurrence
 import com.example.findme.domain.model.occurrencesOn
 import kotlinx.coroutines.CancellationException
