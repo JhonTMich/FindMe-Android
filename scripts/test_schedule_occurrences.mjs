@@ -56,6 +56,8 @@ try {
   const [replacement] = Object.values((await change(`'move', ${monday} + 1, '23:00', '02:00', true`)).rows[0].occurrence_exceptions);
   assert.equal(replacement.start_time, '23:00:00');
   assert.equal(replacement.ends_next_day, true);
+  await assert.rejects(db.exec(`insert into public.personal_schedule (user_id, day_of_week, start_time, end_time, title)
+    values ('${owner}', 3, '01:00', '03:00', 'Cruza la actividad reprogramada')`), { code: '23P01' });
   await assert.rejects(db.exec(`update public.personal_schedule set occurrence_exceptions = '{}' where id = '${activity}'`), { code: '42501' });
   // This is the form of the original client's upsert.
   await db.exec(`

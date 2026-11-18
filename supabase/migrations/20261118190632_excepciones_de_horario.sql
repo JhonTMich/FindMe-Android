@@ -25,6 +25,66 @@ language sql immutable security invoker set search_path = '' as $$
 $$;
 revoke all on function private.schedule_starts_on(public.personal_schedule, date) from public, anon, authenticated;
 
+-- Obtain the same lock before weekly writes and before changing an individual occurrence.
+create function private.lock_personal_schedule_write() returns trigger
+language plpgsql security invoker set search_path = '' as $$
+begin
+    if auth.uid() is not null then
+        perform pg_advisory_xact_lock(hashtext('findme:schedule:' || auth.uid()::text));
+    end if;
+    return null;
+end;
+$$;
+revoke all on function private.lock_personal_schedule_write() from public, anon, authenticated;
+create trigger findme_lock_personal_schedule before insert or update or delete on public.personal_schedule
+    for each statement execute function private.lock_personal_schedule_write();
+
+-- A later edit to the series must not create a clash with a previously moved occurrence.
+create function private.check_weekly_against_moved_occurrences() returns trigger
+language plpgsql security definer set search_path = '' as $$
+declare
+    today date;
+begin
+    if tg_op = 'UPDATE' and
+        row(old.user_id, old.day_of_week, old.start_time, old.end_time, old.ends_next_day, old.category, old.modality)
+        is not distinct from
+        row(new.user_id, new.day_of_week, new.start_time, new.end_time, new.ends_next_day, new.category, new.modality)
+    then
+        return new;
+    end if;
+    select (now() at time zone p.timezone)::date into today from public.account_profiles p where p.id = new.user_id;
+
+    if exists (
+        select 1 from public.personal_schedule other
+        cross join lateral jsonb_each(other.occurrence_exceptions) e
+        cross join lateral (
+            select (e.value->>'date')::date as date,
+                   (e.value->>'start_time')::time as starts,
+                   (e.value->>'end_time')::time as ends,
+                   (e.value->>'ends_next_day')::boolean as overnight
+        ) moved
+        cross join generate_series(-1, 1) offset_day
+        cross join lateral private.schedule_starts_on(new, moved.date + offset_day) candidate
+        where other.user_id = new.user_id and moved.date >= today - 1
+          and (other.id <> new.id or e.key::date <> candidate.original_date)
+          and not (
+              (new.category = 'work' and other.category = 'university' and other.modality = 'virtual')
+              or (other.category = 'work' and new.category = 'university' and new.modality = 'virtual')
+          )
+          and moved.date + moved.starts <
+              (moved.date + offset_day + case when candidate.ends_next_day then 1 else 0 end) + candidate.end_time
+          and (moved.date + offset_day) + candidate.start_time <
+              (moved.date + case when moved.overnight then 1 else 0 end) + moved.ends
+    ) then
+        raise exception 'Weekly schedule overlaps a moved activity' using errcode = '23P01';
+    end if;
+    return new;
+end;
+$$;
+revoke all on function private.check_weekly_against_moved_occurrences() from public, anon, authenticated;
+create trigger findme_check_weekly_against_moved after insert or update on public.personal_schedule
+    for each row execute function private.check_weekly_against_moved_occurrences();
+
 create function private.change_schedule_occurrence(
     schedule_id uuid, original_date date, action text, new_date date,
     new_start time, new_end time, new_overnight boolean
