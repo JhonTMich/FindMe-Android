@@ -262,6 +262,8 @@ class AccountUiTest {
         compose.onNodeWithText("Tu gente").assertIsDisplayed()
         compose.onNodeWithText("Configura un botón").assertDoesNotExist()
         screenshot("account-people")
+        compose.onNodeWithText("Enviar mensaje").performScrollTo().performClick()
+        compose.onNodeWithText("Mensaje para Ana").assertIsDisplayed()
         compose.onNodeWithText("¿Todo bien?").performScrollTo().performClick()
         assertEquals("quick", sent)
         compose.onNodeWithText("Mis mensajes").performScrollTo().performClick()
