@@ -10,6 +10,9 @@ on:
 permissions:
   contents: read
 
+env:
+  ANDROID_APPLICATION_ID: com.example.near
+
 concurrency:
   group: android-release-${{ github.ref }}
   cancel-in-progress: false
@@ -80,7 +83,7 @@ jobs:
       - name: Check the published Android application ID
         run: |
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/release/app-release-unsigned.apk > "$RUNNER_TEMP/unsigned-metadata.txt"
-          grep -q "^package: name='com\.example\.findme' " "$RUNNER_TEMP/unsigned-metadata.txt"
+          grep -Fq "package: name='$ANDROID_APPLICATION_ID' " "$RUNNER_TEMP/unsigned-metadata.txt"
       - name: Transfer the verified unsigned APK
         if: github.ref_type == 'tag'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -197,7 +200,7 @@ jobs:
           import os, pathlib, re
           text = pathlib.Path(os.environ['RUNNER_TEMP'], 'apk-metadata.txt').read_text()
           package = re.search(r"^package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'", text).groups()
-          assert package == ('com.example.findme', os.environ['RELEASE_VERSION_CODE'], os.environ['RELEASE_VERSION'])
+          assert package == (os.environ['ANDROID_APPLICATION_ID'], os.environ['RELEASE_VERSION_CODE'], os.environ['RELEASE_VERSION'])
           assert 'application-debuggable' not in text
           PY
           (cd dist && sha256sum "$APK_NAME" > SHA256SUMS.txt)
