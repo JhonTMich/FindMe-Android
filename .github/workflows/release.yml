@@ -66,6 +66,7 @@ jobs:
           node scripts/test_push_notifications.mjs
       - name: Build release and run Android checks
         env:
+          NEAR_FIREBASE_CONFIG: ${{ github.ref_type == 'tag' && secrets.NEAR_FIREBASE_CONFIG || '' }}
           RELEASE_VERSION: ${{ steps.metadata.outputs.version }}
           RELEASE_VERSION_CODE: ${{ steps.metadata.outputs.version_code }}
         run: |
@@ -75,6 +76,10 @@ jobs:
             options+=("-PreleaseVersionName=$RELEASE_VERSION" "-PreleaseVersionCode=$RELEASE_VERSION_CODE")
           fi
           ./gradlew "${options[@]}" :app:assembleRelease :app:testDebugUnitTest :app:lintDebug --no-daemon --console=plain
+      - name: Check the published Android application ID
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/release/app-release-unsigned.apk > "$RUNNER_TEMP/unsigned-metadata.txt"
+          grep -q "^package: name='com\.example\.findme' " "$RUNNER_TEMP/unsigned-metadata.txt"
       - name: Transfer the verified unsigned APK
         if: github.ref_type == 'tag'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
