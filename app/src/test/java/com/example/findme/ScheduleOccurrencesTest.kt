@@ -8,6 +8,7 @@ import com.example.findme.domain.model.nextActivityToday
 import com.example.findme.domain.model.nextOccurrence
 import com.example.findme.domain.model.occurrencesOn
 import com.example.findme.widget.widgetStatus
+import com.example.findme.reminders.ActivityReminders
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
@@ -26,6 +27,8 @@ class ScheduleOccurrencesTest {
         assertNull(nextActivityToday(listOf(cancelled), monday.atStartOfDay(lima)))
         assertTrue(StatusRepository.calculateStatus("Ana", listOf(cancelled), emptyList(), 1, now) is UserCurrentStatus.FreeTime)
         assertEquals(monday.plusWeeks(1), cancelled.nextOccurrence(now)?.date)
+        val reminder = ActivityReminders.next(listOf(cancelled), lima, monday.atStartOfDay(lima), 30)
+        assertEquals(monday.plusWeeks(1).atTime(8, 30).atZone(lima), reminder?.remindAt)
         assertTrue(widgetStatus("Ana", listOf(cancelled), emptyList(), now).next.contains("Clase"))
         assertEquals(1, listOf(cancelled).occurrencesOn(monday.plusWeeks(1), lima).size)
     }
@@ -36,6 +39,8 @@ class ScheduleOccurrencesTest {
             date = tuesday.toString(), startTime = "23:00", endTime = "02:00", endsNextDay = true
         )))
         assertTrue(listOf(moved).occurrencesOn(monday, lima).isEmpty())
+        val reminder = ActivityReminders.next(listOf(moved), lima, monday.atStartOfDay(lima), 10)
+        assertEquals(tuesday.atTime(22, 50).atZone(lima), reminder?.remindAt)
         val wednesday = tuesday.plusDays(1)
         val continuation = listOf(moved).occurrencesOn(wednesday, lima).single()
         assertEquals(monday, continuation.originalDate)
