@@ -217,7 +217,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 return@coroutineScope
             }
             val connections = remoteConnections ?: previous?.connections.orEmpty()
-            val peopleIds = connections.map { if (it.personA == id) it.personB else it.personA }.toSet()
+            val peopleIds = connections.map { it.otherPerson(id) }.toSet()
             val profiles = (remoteProfiles ?: previous?.profiles.orEmpty()).filter { it.id in peopleIds } + profile
             val visibleIds = profiles.mapTo(mutableSetOf()) { it.id }
             val messages = remoteMessages ?: previous?.messages.orEmpty()
@@ -257,9 +257,8 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                     NotificationHelper.showMessageNotification(getApplication(), signal.id, sender, signal.message)
                 }
             }
-            if (complete) {
-                saveCache(AccountSnapshot(id, profile, profiles, schedules, statuses, connections, messages, signals,
-                    requireNotNull(syncedAt).toString(), preferences))
+            if (complete || previous != null) saveCurrentCache()
+            if (remoteSchedules != null && remoteStatuses != null && remoteConnections != null && remoteProfiles != null) {
                 publishWidgetSnapshot()
             }
             if (remoteSchedules != null && remoteStatuses != null && remotePreferences != null) updateStatusNotifications()
@@ -272,6 +271,14 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         if (readSection("after saving") { load() } == null && repository.auth.currentUserOrNull()?.id == owner) {
             _state.update { it.copy(syncIssue = true) }
         }
+    }
+
+    private suspend fun saveCurrentCache() {
+        val current = _state.value
+        val profile = current.profile ?: return
+        saveCache(AccountSnapshot(profile.id, profile, current.profiles, allSchedules, allStatuses,
+            current.connections, current.messages, current.signals, current.lastSync?.toString().orEmpty(),
+            current.preferences))
     }
 
     private suspend fun saveCache(snapshot: AccountSnapshot) {
@@ -429,6 +436,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                     notice = if (rows.size == 1) "Actividad guardada." else "Actividad guardada en ${rows.size} días."
                 ) }
             } finally { scheduleSync.finishWrite() }
+            snapshotMutex.withLock { saveCurrentCache() }
             publishWidgetSnapshot()
         }
     }
@@ -444,6 +452,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 notice = "Actividad eliminada."
             ) }
         } finally { scheduleSync.finishWrite() }
+        snapshotMutex.withLock { saveCurrentCache() }
         publishWidgetSnapshot()
     }
     override fun setStatus(text: String, minutes: Long) = perform {
@@ -467,7 +476,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         val owner = repository.userId()
         repository.disconnect(id)
         if (repository.auth.currentUserOrNull()?.id != owner) return@perform
-        val removed = connection?.let { if (it.personA == owner) it.personB else it.personA }
+        val removed = connection?.otherPerson(owner)
         if (removed != null) {
             allSchedules = allSchedules.filterNot { it.userId == removed }
             allStatuses = allStatuses.filterNot { it.userId == removed }
