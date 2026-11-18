@@ -8,7 +8,7 @@ La versión 1.5 incorpora turnos nocturnos, un widget de estado configurable por
 
 ## Flujo de trabajo
 
-`main` exige un pull request para incorporar cambios. El ruleset activo no tiene actores con bypass y bloquea force-push y borrado de la rama. No exige aprobaciones externas para permitir trabajar en un repositorio personal; las conversaciones de revisión deben estar resueltas. La configuración está documentada en `.github/main-ruleset.json`; ese archivo por sí solo no aplica reglas, que se administran en GitHub.
+El flujo de [contribución](CONTRIBUTING.md) usa `develop` para integrar cambios y `main` para lanzamientos, documentación y hotfixes. Los rulesets activos en GitHub exigen pull requests y verificaciones de CI, y bloquean force-push y borrado de ambas ramas. Las configuraciones de referencia están en `.github/develop-ruleset.json` y `.github/main-ruleset.json`.
 
 ## Estructura
 
