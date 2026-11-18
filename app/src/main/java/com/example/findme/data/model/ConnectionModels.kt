@@ -17,6 +17,13 @@ data class AccountProfile(
 }
 
 @Serializable
+data class ConnectionVisibility(
+    @SerialName("person_id") val personId: String,
+    @SerialName("shares_schedule") val sharesSchedule: Boolean,
+    @SerialName("shares_status") val sharesStatus: Boolean
+)
+
+@Serializable
 data class PersonConnection(
     val id: String,
     @SerialName("person_a") val personA: String,

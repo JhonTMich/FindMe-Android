@@ -57,6 +57,9 @@ data class AccountState(
     val profiles: List<AccountProfile> = emptyList(),
     val selectedPerson: AccountProfile? = null,
     val personSchedules: List<ScheduleDto> = emptyList(),
+    val incomingVisibility: Map<String, ConnectionVisibility> = emptyMap(),
+    val peopleSchedulesFresh: Boolean = false,
+    val peopleStatusesFresh: Boolean = false,
     val personStatuses: List<StatusOverrideDto> = emptyList(),
     val messages: List<QuickMessage> = emptyList(),
     val signals: List<ConnectionSignal> = emptyList(),
@@ -204,6 +207,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             val signalsRequest = async { readSection("inbox", repository::receivedSignals) }
             val schedulesRequest = async { readSection("schedules", repository::accessibleSchedules) }
             val statusesRequest = async { readSection("statuses", repository::accessibleStatuses) }
+            val visibilityRequest = async { readSection("incoming visibility", repository::incomingConnectionVisibility) }
             val preferencesRequest = async { readSection("connection preferences", repository::connectionPreferences) }
             val remoteProfile = profileRequest.await()
             val remoteConnections = connectionsRequest.await()
@@ -213,6 +217,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             val remoteSchedules = schedulesRequest.await()
             val remoteStatuses = statusesRequest.await()
             val remotePreferences = preferencesRequest.await()
+            val remoteVisibility = visibilityRequest.await()
             if (repository.auth.currentUserOrNull()?.id != id) return@coroutineScope
 
             val old = _state.value
@@ -253,7 +258,9 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 schedules = ownSchedules, statuses = statuses.filter { it.userId == id },
                 connections = connections, profiles = profiles, messages = messages, signals = signals,
                 preferences = preferences, selectedPerson = selected, personSchedules = schedules.filter { it.userId == selected?.id },
-                personStatuses = statuses.filter { it.userId == selected?.id }, lastSync = syncedAt, syncIssue = !complete) }
+                personStatuses = statuses.filter { it.userId == selected?.id }, lastSync = syncedAt, syncIssue = !complete,
+                incomingVisibility = remoteVisibility.orEmpty().filter { it.personId in peopleIds }.associateBy { it.personId },
+                peopleSchedulesFresh = remoteSchedules != null, peopleStatusesFresh = remoteStatuses != null) }
             val current = _state.value
             if (remoteSignals != null && remotePreferences != null && remoteProfiles != null && remoteConnections != null) {
                 val newSignals = messageNotifications.update(id, signals, current.settings.messages)
@@ -529,6 +536,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
             _state.update { old ->
                 val wasSelected = old.selectedPerson?.id == removed
                 old.copy(connections = old.connections.filterNot { it.id == id },
+                    incomingVisibility = old.incomingVisibility - removed,
                     profiles = old.profiles.filterNot { it.id == removed },
                     preferences = old.preferences.filterNot { it.connectionId == id },
                     selectedPerson = if (wasSelected) null else old.selectedPerson,
