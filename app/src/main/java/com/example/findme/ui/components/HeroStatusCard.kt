@@ -27,10 +27,16 @@ fun formatDurationMinutes(minutes: Long): String {
 }
 
 @Composable
-fun HeroStatusCard(status: UserCurrentStatus, modifier: Modifier = Modifier) {
+fun HeroStatusCard(
+    status: UserCurrentStatus,
+    modifier: Modifier = Modifier,
+    heading: String = "Estado actual",
+    actions: (@Composable () -> Unit)? = null
+) {
     val accent = when (status) {
         is UserCurrentStatus.InClass -> ActivityCategory.fromKey(status.currentSchedule.category, status.currentSchedule.title).accentColor
         is UserCurrentStatus.Override -> BrandSky
+        is UserCurrentStatus.Error, is UserCurrentStatus.Loading -> TextSecondary
         else -> StatusGreenText
     }
     Card(modifier.fillMaxWidth().animateContentSize(), shape = RoundedCornerShape(28.dp),
@@ -41,7 +47,7 @@ fun HeroStatusCard(status: UserCurrentStatus, modifier: Modifier = Modifier) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     ProfileAvatar(status.displayName)
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("ESTADO ACTUAL", style = MaterialTheme.typography.labelSmall, color = TextSecondary, letterSpacing = 1.5.sp)
+                        Text(heading, style = MaterialTheme.typography.labelSmall, color = TextSecondary, letterSpacing = 1.5.sp)
                         Text(status.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
                     }
                 }
@@ -73,6 +79,7 @@ fun HeroStatusCard(status: UserCurrentStatus, modifier: Modifier = Modifier) {
                     LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().height(5.dp),
                         color = accent, trackColor = TextPrimary.copy(alpha = .12f))
                 }
+                actions?.invoke()
             }
         }
     }
