@@ -50,7 +50,8 @@ begin
     select (now() at time zone p.timezone)::date into today from public.account_profiles p where p.id = owner;
     if original_date is null or original_date > today + 366
        or (original_date < today and coalesce((activity.occurrence_exceptions->original_key->>'date')::date, original_date) < today)
-       or extract(isodow from original_date)::int <> activity.day_of_week
+       or (extract(isodow from original_date)::int <> activity.day_of_week
+           and not (activity.occurrence_exceptions ? original_key))
        or action is null or action not in ('cancel', 'move', 'restore') then
         raise exception 'Invalid occurrence date or action' using errcode = 'FM004';
     end if;
@@ -73,12 +74,12 @@ begin
         effective_start := new_start;
         effective_end := new_end;
         effective_overnight := new_overnight;
-    elsif action = 'restore' then
+    elsif action = 'restore' and extract(isodow from original_date)::int = activity.day_of_week then
         effective_date := original_date;
         effective_start := activity.start_time;
         effective_end := activity.end_time;
         effective_overnight := activity.ends_next_day;
-    else
+    elsif action = 'cancel' then
         replacement := jsonb_build_object('cancelled', true);
     end if;
 
@@ -88,7 +89,7 @@ begin
         cross join generate_series(-1, 1) offset_day
         cross join lateral private.schedule_starts_on(other, effective_date + offset_day) candidate
         where other.user_id = owner
-          and (other.id <> activity.id or candidate.original_date <> original_date)
+          and (other.id <> activity.id or candidate.original_date <> change_schedule_occurrence.original_date)
           and not (
               (activity.category = 'work' and other.category = 'university' and other.modality = 'virtual')
               or (other.category = 'work' and activity.category = 'university' and activity.modality = 'virtual')
