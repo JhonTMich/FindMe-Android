@@ -213,7 +213,7 @@ class AccountUiTest {
         }, snapshot = state.copy(schedules = listOf(night)))
         compose.onNodeWithText("Horario").performClick()
         compose.onNodeWithText("(+1 día)", substring = true).assertExists()
-        compose.onNodeWithText("Editar").performScrollTo().performClick()
+        compose.onNodeWithText("Serie semanal").performScrollTo().performClick()
         val overnight = compose.onNodeWithText("Termina al día siguiente")
         overnight.assertIsOn().performScrollTo().performClick()
         compose.onNodeWithText("Guardar actividad").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)

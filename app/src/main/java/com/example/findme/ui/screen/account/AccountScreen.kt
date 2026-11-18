@@ -532,12 +532,14 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
         val schedule = occurrence.schedule
         val recurring = state.schedules.first { it.id == schedule.id }
         val category = ActivityCategory.fromKey(schedule.category)
+        val reprogrammed = recurring.occurrenceExceptions.containsKey(occurrence.originalDate.toString())
         Panel {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 AccentIcon(category.icon, category.accentColor)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(schedule.timeRangeLabel(day), color = category.accentColor, style = MaterialTheme.typography.labelLarge)
                     Text(schedule.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    if (reprogrammed) StatusPill("Reprogramada", BrandSky)
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -545,28 +547,28 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
                 StatusPill(schedule.modality.replaceFirstChar(Char::titlecase), TextSecondary)
             }
             if (schedule.location.isNotBlank()) Text(schedule.location, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-            if (recurring.occurrenceExceptions.containsKey(occurrence.originalDate.toString())) {
-                Text("Horario modificado solo para esta fecha", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-            }
             HorizontalDivider(color = CardBorder)
-            TextButton(onClick = { oneOff = recurring.id to occurrence.originalDate }, enabled = !state.busy) {
-                Text("Solo esta vez")
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = { editing = recurring; showEditor = true }, enabled = !state.busy) {
-                    Icon(Icons.Default.Edit, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Editar", color = MaterialTheme.colorScheme.primary)
+            Text("Editar", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = { oneOff = recurring.id to occurrence.originalDate }, enabled = !state.busy) {
+                    Text("Solo esta fecha")
                 }
-                IconButton(onClick = { pendingDelete = recurring }, enabled = !state.busy) { Icon(Icons.Default.DeleteOutline, "Eliminar ${schedule.title}", tint = TextMuted) }
+                TextButton(onClick = { editing = recurring; showEditor = true }, enabled = !state.busy) {
+                    Text("Serie semanal")
+                }
+                IconButton(onClick = { pendingDelete = recurring }, enabled = !state.busy) { Icon(Icons.Default.DeleteOutline, "Eliminar serie de ${schedule.title}", tint = TextMuted) }
             }
         }
     }
     exceptions.forEach { (schedule, exception) ->
         Panel {
             Text(schedule.title, fontWeight = FontWeight.Bold)
-            Text(if (exception.cancelled) "Cancelada solo para esta fecha"
-                else "Reprogramada para ${LocalDate.parse(exception.date).longDate()}",
-                color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-            TextButton(onClick = { oneOff = schedule.id to date }, enabled = !state.busy) { Text("Cambiar excepción") }
+            StatusPill(if (exception.cancelled) "Cancelada" else "Reprogramada",
+                if (exception.cancelled) MaterialTheme.colorScheme.error else BrandSky)
+            exception.date?.takeUnless { exception.cancelled }?.let {
+                Text("Pasa al ${LocalDate.parse(it).longDate()}", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
+            TextButton(onClick = { oneOff = schedule.id to date }, enabled = !state.busy) { Text("Solo esta fecha") }
         }
     }
     oneOff?.let { (id, original) ->
@@ -575,7 +577,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
         }
     }
     if (showEditor) ScheduleEditor(editing, day, state, actions) { showEditor = false }
-    pendingDelete?.let { schedule -> Confirm("¿Eliminar ${schedule.title}?", "Esta actividad se eliminará de tu horario.",
+    pendingDelete?.let { schedule -> Confirm("¿Eliminar la serie de ${schedule.title}?", "Se eliminarán todas las repeticiones y sus cambios puntuales.",
         { pendingDelete = null }, { actions.deleteSchedule(schedule.id); pendingDelete = null }) }
 }
 
@@ -600,7 +602,7 @@ private fun ScheduleOccurrenceEditor(
     LaunchedEffect(state.busy, state.savedScheduleDraftId) {
         if (submitted && !state.busy && state.savedScheduleDraftId == draftId) dismiss()
     }
-    Sheet(dismiss, "Solo esta vez", gesturesEnabled = false) {
+    Sheet(dismiss, "Solo esta fecha", gesturesEnabled = false) {
         Text(schedule.title, fontWeight = FontWeight.Bold)
         ScheduleChoice("Fecha original", originals, original, { originalText = it.toString() }) { it.longDate() }
         key(originalText) {
@@ -672,7 +674,7 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
     LaunchedEffect(state.busy, state.savedScheduleDraftId) {
         if (submitted && !state.busy && state.savedScheduleDraftId == draftId) dismiss()
     }
-    Sheet(dismiss, if (editingId == null) "Nueva actividad" else "Editar actividad", gesturesEnabled = false) {
+    Sheet(dismiss, if (editingId == null) "Nueva actividad" else "Editar serie semanal", gesturesEnabled = false) {
         Field(title, { title = it.take(120) }, "Título", placeholder = "Ej. Clase de inglés")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (editingId == null) {
