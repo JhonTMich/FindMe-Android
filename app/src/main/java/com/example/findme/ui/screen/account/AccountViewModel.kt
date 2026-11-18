@@ -29,6 +29,7 @@ import com.example.findme.domain.model.UserCurrentStatus
 import com.example.findme.domain.model.ScheduleSyncGuard
 import com.example.findme.domain.model.ConnectionControls
 import com.example.findme.util.NotificationHelper
+import com.example.findme.push.PushAlerts
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -38,6 +39,7 @@ data class AccountState(
     val lastSync: Instant? = null,
     val syncIssue: Boolean = false,
     val peopleRevision: Int = 0,
+    val scheduleRevision: Int = 0,
     val initializing: Boolean = true,
     val signedIn: Boolean = false,
     val busy: Boolean = false,
@@ -94,6 +96,8 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 }
                 else if (_state.value.profile?.id != user.id) {
                     _state.update { old -> old.copy(initializing = false, signedIn = true) }
+                    // This device receives this account's pushes from now on.
+                    launch { com.example.findme.push.PushTokens.register() }
                     // Show the last successful sync at once, then refresh it from the network.
                     restoreCache(user.id)
                     refresh()
@@ -368,22 +372,39 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
                 val name = controls.nameOf(person)
                 when {
                     status is UserCurrentStatus.Override && state.settings.statuses ->
-                        NotificationHelper.showStatusNotification(getApplication(), name, status.customLocation)
+                        NotificationHelper.showStatusNotification(getApplication(), person.id, name,
+                            PushAlerts.statusText(status.customLocation, status.customMessage))
                     status is UserCurrentStatus.InClass && state.settings.activities ->
-                        NotificationHelper.showStatusNotification(getApplication(), name, "Actividad en curso: ${status.currentSchedule.title}")
+                        NotificationHelper.showStatusNotification(getApplication(), person.id, name,
+                            PushAlerts.activityText(status.currentSchedule.title, status.currentSchedule.location), activity = true)
                     previous.startsWith("status:") && state.settings.statuses ->
-                        NotificationHelper.showStatusNotification(getApplication(), name, "Vuelve a mostrar su horario.")
+                        NotificationHelper.showStatusNotification(getApplication(), person.id, name, PushAlerts.STATUS_ENDED)
                 }
             }
         }
     }
 
     fun openPeople() { _state.update { it.copy(peopleRevision = it.peopleRevision + 1) } }
+    fun openSchedule() { _state.update { it.copy(scheduleRevision = it.scheduleRevision + 1) } }
     override fun setAlert(alert: AccountAlert, enabled: Boolean) {
         val id = repository.auth.currentUserOrNull()?.id ?: return
         viewModelScope.launch { preferences.setAlert(id, alert, enabled) }
     }
     override fun setAccent(accent: AppAccent) { viewModelScope.launch { preferences.setAccent(accent) } }
+    override fun setReminders(enabled: Boolean) {
+        val id = repository.auth.currentUserOrNull()?.id ?: return
+        viewModelScope.launch {
+            preferences.setReminders(id, enabled)
+            com.example.findme.reminders.ActivityReminders.reschedule(getApplication())
+        }
+    }
+    override fun setReminderMinutes(minutes: Int) {
+        val id = repository.auth.currentUserOrNull()?.id ?: return
+        viewModelScope.launch {
+            preferences.setReminderMinutes(id, minutes)
+            com.example.findme.reminders.ActivityReminders.reschedule(getApplication())
+        }
+    }
 
     override fun refresh() = perform(quiet = true, failure = LOAD_FAILED) { load() }
     override fun register(name: String, email: String, username: String, password: String, confirmation: String) = perform {
@@ -407,6 +428,8 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         publishWidgetSnapshot()
     }
     override fun logout() = perform {
+        // While the session still exists, so the server accepts removing this device.
+        com.example.findme.push.PushTokens.unregister()
         repository.auth.signOut()
         _state.value = AccountState(initializing = false)
         com.example.findme.widget.WidgetStore.clear(getApplication())
