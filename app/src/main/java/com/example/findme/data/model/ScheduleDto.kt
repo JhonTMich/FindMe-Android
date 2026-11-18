@@ -3,6 +3,7 @@ package com.example.findme.data.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
 data class ScheduleDto(
     val id: String = "",
@@ -14,5 +15,7 @@ data class ScheduleDto(
     val location: String,
     val category: String = "university",
     val modality: String = "presencial",
-    @SerialName("ends_next_day") val endsNextDay: Boolean = false
+    @SerialName("ends_next_day") val endsNextDay: Boolean = false,
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    @SerialName("occurrence_exceptions") val occurrenceExceptions: Map<String, ScheduleException> = emptyMap()
 )

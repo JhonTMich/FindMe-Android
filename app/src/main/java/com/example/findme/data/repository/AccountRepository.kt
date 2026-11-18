@@ -81,7 +81,7 @@ class AccountRepository {
     suspend fun saveSchedules(activities: List<ScheduleDto>) {
         val ownerId = userId()
         require(activities.isNotEmpty() && activities.all { it.userId == ownerId })
-        client.postgrest["personal_schedule"].upsert(activities)
+        client.postgrest["personal_schedule"].upsert(activities.map { it.copy(occurrenceExceptions = emptyMap()) })
     }
 
     suspend fun deleteSchedule(id: String) {
