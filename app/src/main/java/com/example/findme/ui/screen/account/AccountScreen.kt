@@ -2,6 +2,7 @@
 
 package com.example.findme.ui.screen.account
 
+import android.app.NotificationManager
 import android.content.ClipData
 import android.content.Intent
 import android.provider.Settings
@@ -225,9 +226,9 @@ private fun NewPasswordSheet(state: AccountState, actions: AccountActions) {
 @Composable
 private fun PageHeading(eyebrow: String, title: String, subtitle: String) {
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-        Text(eyebrow.uppercase(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.5.sp)
+        if (eyebrow.isNotBlank()) Text(eyebrow.uppercase(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, letterSpacing = 1.5.sp)
         Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Text(subtitle, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+        if (subtitle.isNotBlank()) Text(subtitle, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -411,9 +412,23 @@ private fun profileClock(zone: ZoneId): ZonedDateTime {
 }
 
 @Composable
-private fun sharedStatus(profile: AccountProfile, schedules: List<ScheduleDto>, overrides: List<StatusOverrideDto>): UserCurrentStatus {
-    val now = profileClock(profile.zone())
-    return StatusRepository.calculateStatus(profile.displayName, schedules, overrides, now.dayOfWeek.value, now)
+private fun contactStatus(person: AccountProfile, state: AccountState): UserCurrentStatus {
+    val visibility = state.incomingVisibility[person.id]
+        ?: return UserCurrentStatus.Error("Datos desactualizados. Actualiza para ver qué comparte.", person.displayName)
+    if (!visibility.sharesSchedule && !visibility.sharesStatus) {
+        return UserCurrentStatus.Error("Su horario y su estado son privados.", person.displayName)
+    }
+    if ((visibility.sharesSchedule && !state.peopleSchedulesFresh) ||
+        (visibility.sharesStatus && !state.peopleStatusesFresh)) {
+        return UserCurrentStatus.Error("Datos desactualizados. Actualiza para ver su actividad.", person.displayName)
+    }
+    val now = profileClock(person.zone())
+    val status = StatusRepository.calculateStatus(person.displayName,
+        state.personSchedules.takeIf { visibility.sharesSchedule }.orEmpty(),
+        state.personStatuses.takeIf { visibility.sharesStatus }.orEmpty(), now.dayOfWeek.value, now)
+    return if (!visibility.sharesSchedule && status is UserCurrentStatus.FreeTime) {
+        UserCurrentStatus.Error("Horario privado. No hay un estado compartido en este momento.", person.displayName)
+    } else status
 }
 
 @Composable
@@ -423,24 +438,42 @@ private fun MyDay(state: AccountState, actions: AccountActions, onOpenSchedule: 
     val now = profileClock(profile?.zone() ?: ZoneId.systemDefault())
     val status = profile?.let { StatusRepository.calculateStatus(it.displayName, state.schedules, state.statuses, now.dayOfWeek.value, now) }
     val next = nextActivityToday(state.schedules, now)
-    PageHeading("Siempre cerca", "Mi día", now.format(DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es"))))
-    status?.let { HeroStatusCard(it) }
-    NextActivityCard(next, onOpenSchedule)
-    Panel {
-        SectionHeading(Icons.Default.EditLocationAlt, "¿Cambiaste de planes?", "Comparte lo que estás haciendo ahora.")
-        Text("Tu estado tiene prioridad sobre el horario hasta que termine o lo quites.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-        Button(onClick = { editStatus = true }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy) {
-            Icon(Icons.Default.Edit, null, Modifier.size(17.dp)); Spacer(Modifier.width(8.dp))
-            Text(if (status is UserCurrentStatus.Override) "Cambiar mi estado" else "Compartir mi estado")
+    PageHeading("", "Mi día", now.format(DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es"))))
+    status?.let { current ->
+        HeroStatusCard(current, heading = "Ahora") {
+            Button(onClick = { editStatus = true }, modifier = Modifier.fillMaxWidth(), enabled = !state.busy) {
+                Icon(Icons.Default.Edit, null, Modifier.size(17.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(if (current is UserCurrentStatus.Override) "Cambiar mi estado" else "Compartir mi estado")
+            }
+            if (current is UserCurrentStatus.Override) TextButton(onClick = actions::clearStatus, enabled = !state.busy) {
+                Text("Volver al horario")
+            }
         }
-        if (status is UserCurrentStatus.Override) TextButton(onClick = actions::clearStatus, enabled = !state.busy) { Text("Volver al horario", color = TextSecondary) }
     }
-    val today = state.schedules.occurrencesOn(now.toLocalDate(), now.zone).map { it.schedule }
-    SectionHeading(Icons.Default.CalendarToday, "Tu agenda de hoy", "${today.size} actividades programadas")
-    if (today.isEmpty()) EmptyPanel(Icons.Default.WbSunny, "Un día a tu ritmo", "Aún no tienes actividades para hoy. Puedes añadirlas en Horario.")
-    today.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule,
-        active = (status as? UserCurrentStatus.InClass)?.currentSchedule?.id == schedule.id,
-        last = index == today.lastIndex, displayDay = now.dayOfWeek.value) }
+    val today = state.schedules.occurrencesOn(now.toLocalDate(), now.zone)
+    if (today.isEmpty()) {
+        Panel {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Image(painterResource(R.drawable.near_mascot_head), null, modifier = Modifier.size(74.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Un día a tu ritmo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Nada más por hoy", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                }
+            }
+            TextButton(onClick = onOpenSchedule) { Text("Ver horario") }
+        }
+    } else {
+        SectionHeading(Icons.Default.Schedule, "Después")
+        NextActivityCard(next, onOpenSchedule)
+        SectionHeading(Icons.Default.CalendarToday, "Agenda de hoy")
+        today.forEachIndexed { index, occurrence ->
+            ActivityTimelineCard(occurrence.schedule,
+                active = status is UserCurrentStatus.InClass && !now.isBefore(occurrence.window.start) &&
+                    now.isBefore(occurrence.window.end) && status.currentSchedule.id == occurrence.schedule.id,
+                last = index == today.lastIndex, displayDay = now.dayOfWeek.value, compact = true)
+        }
+    }
     if (editStatus) StatusEditor(state, actions, status as? UserCurrentStatus.Override) { editStatus = false }
 }
 
@@ -500,12 +533,14 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
         val schedule = occurrence.schedule
         val recurring = state.schedules.first { it.id == schedule.id }
         val category = ActivityCategory.fromKey(schedule.category)
+        val reprogrammed = recurring.occurrenceExceptions.containsKey(occurrence.originalDate.toString())
         Panel {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 AccentIcon(category.icon, category.accentColor)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(schedule.timeRangeLabel(day), color = category.accentColor, style = MaterialTheme.typography.labelLarge)
                     Text(schedule.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    if (reprogrammed) StatusPill("Reprogramada", BrandSky)
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -513,28 +548,28 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
                 StatusPill(schedule.modality.replaceFirstChar(Char::titlecase), TextSecondary)
             }
             if (schedule.location.isNotBlank()) Text(schedule.location, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-            if (recurring.occurrenceExceptions.containsKey(occurrence.originalDate.toString())) {
-                Text("Horario modificado solo para esta fecha", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-            }
             HorizontalDivider(color = CardBorder)
-            TextButton(onClick = { oneOff = recurring.id to occurrence.originalDate }, enabled = !state.busy) {
-                Text("Solo esta vez")
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = { editing = recurring; showEditor = true }, enabled = !state.busy) {
-                    Icon(Icons.Default.Edit, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Editar", color = MaterialTheme.colorScheme.primary)
+            Text("Editar", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = { oneOff = recurring.id to occurrence.originalDate }, enabled = !state.busy) {
+                    Text("Solo esta fecha")
                 }
-                IconButton(onClick = { pendingDelete = recurring }, enabled = !state.busy) { Icon(Icons.Default.DeleteOutline, "Eliminar ${schedule.title}", tint = TextMuted) }
+                TextButton(onClick = { editing = recurring; showEditor = true }, enabled = !state.busy) {
+                    Text("Serie semanal")
+                }
+                IconButton(onClick = { pendingDelete = recurring }, enabled = !state.busy) { Icon(Icons.Default.DeleteOutline, "Eliminar serie de ${schedule.title}", tint = TextMuted) }
             }
         }
     }
     exceptions.forEach { (schedule, exception) ->
         Panel {
             Text(schedule.title, fontWeight = FontWeight.Bold)
-            Text(if (exception.cancelled) "Cancelada solo para esta fecha"
-                else "Reprogramada para ${LocalDate.parse(exception.date).longDate()}",
-                color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-            TextButton(onClick = { oneOff = schedule.id to date }, enabled = !state.busy) { Text("Cambiar excepción") }
+            StatusPill(if (exception.cancelled) "Cancelada" else "Reprogramada",
+                if (exception.cancelled) MaterialTheme.colorScheme.error else BrandSky)
+            exception.date?.takeUnless { exception.cancelled }?.let {
+                Text("Pasa al ${LocalDate.parse(it).longDate()}", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
+            TextButton(onClick = { oneOff = schedule.id to date }, enabled = !state.busy) { Text("Solo esta fecha") }
         }
     }
     oneOff?.let { (id, original) ->
@@ -543,7 +578,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
         }
     }
     if (showEditor) ScheduleEditor(editing, day, state, actions) { showEditor = false }
-    pendingDelete?.let { schedule -> Confirm("¿Eliminar ${schedule.title}?", "Esta actividad se eliminará de tu horario.",
+    pendingDelete?.let { schedule -> Confirm("¿Eliminar la serie de ${schedule.title}?", "Se eliminarán todas las repeticiones y sus cambios puntuales.",
         { pendingDelete = null }, { actions.deleteSchedule(schedule.id); pendingDelete = null }) }
 }
 
@@ -568,7 +603,7 @@ private fun ScheduleOccurrenceEditor(
     LaunchedEffect(state.busy, state.savedScheduleDraftId) {
         if (submitted && !state.busy && state.savedScheduleDraftId == draftId) dismiss()
     }
-    Sheet(dismiss, "Solo esta vez", gesturesEnabled = false) {
+    Sheet(dismiss, "Solo esta fecha", gesturesEnabled = false) {
         Text(schedule.title, fontWeight = FontWeight.Bold)
         ScheduleChoice("Fecha original", originals, original, { originalText = it.toString() }) { it.longDate() }
         key(originalText) {
@@ -640,7 +675,7 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
     LaunchedEffect(state.busy, state.savedScheduleDraftId) {
         if (submitted && !state.busy && state.savedScheduleDraftId == draftId) dismiss()
     }
-    Sheet(dismiss, if (editingId == null) "Nueva actividad" else "Editar actividad", gesturesEnabled = false) {
+    Sheet(dismiss, if (editingId == null) "Nueva actividad" else "Editar serie semanal", gesturesEnabled = false) {
         Field(title, { title = it.take(120) }, "Título", placeholder = "Ej. Clase de inglés")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (editingId == null) {
@@ -832,7 +867,7 @@ private fun People(state: AccountState, actions: AccountActions) {
     var disconnect by remember { mutableStateOf<PersonConnection?>(null) }
     var manageConnection by remember { mutableStateOf<PersonConnection?>(null) }
     val controls = state.controls
-    PageHeading("A tu lado", "Tu gente", "Un vistazo a su día. Un mensaje para estar cerca.")
+    PageHeading("", "Tu gente", "")
     state.lastSync?.let { updated ->
         Text("Actualizado ${updated.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("HH:mm"))}", color = TextMuted, style = MaterialTheme.typography.labelSmall)
     }
@@ -862,39 +897,57 @@ private fun People(state: AccountState, actions: AccountActions) {
     }
     state.selectedPerson?.let { selected ->
         val person = selected.copy(displayName = controls.nameOf(selected))
-        HeroStatusCard(sharedStatus(person, state.personSchedules, state.personStatuses))
+        val visibility = state.incomingVisibility[person.id]
         key(person.id) {
             var showAvailability by rememberSaveable { mutableStateOf(false) }
-            OutlinedButton(onClick = { showAvailability = true }, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.EventAvailable, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Ver horas libres en común")
+            var sendMessage by rememberSaveable { mutableStateOf(false) }
+            HeroStatusCard(contactStatus(person, state)) {
+                Button(onClick = { sendMessage = true }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Enviar mensaje")
+                }
+                OutlinedButton(onClick = { showAvailability = true }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.EventAvailable, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Ver horas libres en común")
+                }
+                TextButton(onClick = { manageMessages = true }) { Text("Mis mensajes") }
             }
             if (showAvailability) CommonAvailabilitySheet(person, actions) { showAvailability = false }
-        }
-        Panel {
-            SectionHeading(Icons.Default.ChatBubbleOutline, "Un mensaje para ${person.displayName}", "Envía un mensaje sin cambiar tu estado.")
-            if (state.messages.isEmpty()) Text("Guarda algo que suelas decir para enviarlo con un toque, desde Personas.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-            state.messages.forEach { quick ->
-                OutlinedButton(onClick = { actions.send(quick) }, enabled = !state.busy, modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = .5f))) {
-                    Text(quick.label, Modifier.weight(1f), color = TextPrimary, textAlign = TextAlign.Start)
-                    Icon(Icons.AutoMirrored.Filled.Send, "Enviar a ${person.displayName}", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+            if (sendMessage) Sheet({ sendMessage = false }, "Mensaje para ${person.displayName}", "Los mensajes caducan después de 24 horas.") {
+                if (state.messages.isEmpty()) Text("Crea un mensaje rápido para enviarlo desde aquí.", color = TextSecondary)
+                state.messages.forEach { quick ->
+                    OutlinedButton(onClick = { actions.send(quick); sendMessage = false }, enabled = !state.busy,
+                        modifier = Modifier.fillMaxWidth()) {
+                        Text(quick.label, Modifier.weight(1f), textAlign = TextAlign.Start)
+                        Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp))
+                    }
                 }
+                TextButton(onClick = { sendMessage = false; manageMessages = true }) { Text("Editar mensajes rápidos") }
             }
-            TextButton(onClick = { manageMessages = true }) {
-                Icon(Icons.Default.Tune, null, Modifier.size(17.dp)); Spacer(Modifier.width(8.dp)); Text("Mis mensajes", color = MaterialTheme.colorScheme.primary)
-            }
-            Text("Se actualizan automáticamente con Near abierta. Se borran después de 24 horas.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
         }
-        SectionHeading(Icons.Default.CalendarMonth, "Su semana", "Actividades de ${person.displayName}")
-        var personDay by rememberSaveable(person.id) { mutableStateOf(ZonedDateTime.now(person.zone()).dayOfWeek.value) }
-        Choices((1..7).toList(), personDay, { personDay = it }) { days[it - 1].take(3) }
-        val personDate = LocalDate.now(person.zone()).with(TemporalAdjusters.nextOrSame(DayOfWeek.of(personDay)))
-        Text(personDate.longDate(), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-        val schedules = state.personSchedules.occurrencesOn(personDate, person.zone()).map { it.schedule }
-        if (schedules.isEmpty()) Text("Sin actividades para el ${personDate.longDate()}.", color = TextMuted)
-        schedules.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule, false,
-            last = index == schedules.lastIndex, displayDay = personDay) }
+        SectionHeading(Icons.Default.CalendarMonth, "Su semana")
+        when {
+            visibility?.sharesSchedule == false -> Panel {
+                Text("Horario privado", fontWeight = FontWeight.Bold)
+                Text("Esta persona no comparte su horario contigo.", color = TextSecondary)
+            }
+            visibility == null || !state.peopleSchedulesFresh -> Panel {
+                Text("Datos desactualizados", fontWeight = FontWeight.Bold)
+                TextButton(onClick = actions::refresh, enabled = !state.busy) { Text("Actualizar horario") }
+            }
+            else -> {
+                var personDay by rememberSaveable(person.id) { mutableStateOf(ZonedDateTime.now(person.zone()).dayOfWeek.value) }
+                Choices((1..7).toList(), personDay, { personDay = it }) { days[it - 1].take(3) }
+                val personDate = LocalDate.now(person.zone()).with(TemporalAdjusters.nextOrSame(DayOfWeek.of(personDay)))
+                Text(personDate.longDate(), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                val schedules = state.personSchedules.occurrencesOn(personDate, person.zone()).map { it.schedule }
+                if (schedules.isEmpty()) Text("Sin actividades programadas", color = TextSecondary)
+                schedules.forEachIndexed { index, schedule -> ActivityTimelineCard(schedule, false,
+                    last = index == schedules.lastIndex, displayDay = personDay) }
+            }
+        }
         state.connections.find { it.otherPerson(state.profile?.id.orEmpty()) == person.id }?.let { connection ->
             TextButton(onClick = { manageConnection = connection }, enabled = !state.busy) { Text("Administrar conexión con ${person.displayName}", color = TextMuted) }
         }
@@ -975,24 +1028,48 @@ private fun MessageSheet(state: AccountState, actions: AccountActions, dismiss: 
 private fun AccountProfilePanel(state: AccountState, actions: AccountActions, updates: UpdateState,
     onCheckUpdates: () -> Unit, onInstallUpdate: () -> Unit) {
     val context = LocalContext.current
+    val notificationManager = remember(context) { context.getSystemService(NotificationManager::class.java) }
+    fun blockedChannels() = com.example.findme.util.NotificationHelper.Channel.entries.filter {
+        notificationManager?.getNotificationChannel(it.id)?.importance == NotificationManager.IMPORTANCE_NONE
+    }
     var notificationsAllowed by remember { mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled()) }
+    var silencedChannels by remember { mutableStateOf(blockedChannels()) }
+    var exact by remember { mutableStateOf(com.example.findme.reminders.ActivityReminders.exactAllowed(context)) }
     androidx.lifecycle.compose.LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         notificationsAllowed = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        silencedChannels = blockedChannels()
+        exact = com.example.findme.reminders.ActivityReminders.exactAllowed(context)
     }
-    PageHeading("A tu manera", "Perfil y ajustes", "Tu cuenta, tus avisos y tu estilo.")
+    val nearAlerts = with(state.settings) { activities || statuses || messages || reminders }
+    PageHeading("", "Perfil y ajustes", "")
     Panel {
         SectionHeading(Icons.Default.PersonOutline, state.profile?.displayName.orEmpty(), state.profile?.timezone)
         ProfileNameForm(state, actions)
     }
     Panel {
-        SectionHeading(Icons.Default.NotificationsNone, "Notificaciones", "Elige qué avisos recibir de tu gente.")
-        AccountSettingsSwitch("Inicio de actividades", "Cuando una persona conectada comienza una actividad.", state.settings.activities) { actions.setAlert(AccountAlert.Activities, it) }
+        SectionHeading(Icons.Default.NotificationsNone, "Notificaciones")
+        Text(if (nearAlerts) "Near · Hay avisos activados" else "Near · Todos los avisos desactivados",
+            color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+        Text(if (notificationsAllowed) "Android · Permite las notificaciones" else "Android · Bloquea las notificaciones",
+            color = if (notificationsAllowed) TextSecondary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }) {
+            Text("Abrir ajustes de Android")
+        }
+        if (notificationsAllowed) silencedChannels.forEach { channel ->
+            TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .putExtra(Settings.EXTRA_CHANNEL_ID, channel.id)) }) {
+                Text("Android silenció: ${channel.title}")
+            }
+        }
         HorizontalDivider(color = CardBorder)
-        AccountSettingsSwitch("Cambios de estado", "Cuando tu gente comparte o cambia su estado.", state.settings.statuses) { actions.setAlert(AccountAlert.Statuses, it) }
+        AccountSettingsSwitch("Inicio de actividades", "Cuando empieza una actividad de tu gente.", state.settings.activities) { actions.setAlert(AccountAlert.Activities, it) }
         HorizontalDivider(color = CardBorder)
-        AccountSettingsSwitch("Mensajes recibidos", "Avisar cuando llega un mensaje nuevo.", state.settings.messages) { actions.setAlert(AccountAlert.Messages, it) }
+        AccountSettingsSwitch("Cambios de estado", "Cuando tu gente cambia de planes.", state.settings.statuses) { actions.setAlert(AccountAlert.Statuses, it) }
         HorizontalDivider(color = CardBorder)
-        AccountSettingsSwitch("Antes de tus actividades", "Un recordatorio antes de que empiece cada actividad de tu horario.", state.settings.reminders) { actions.setReminders(it) }
+        AccountSettingsSwitch("Mensajes recibidos", "", state.settings.messages) { actions.setAlert(AccountAlert.Messages, it) }
+        HorizontalDivider(color = CardBorder)
+        AccountSettingsSwitch("Antes de tus actividades", "", state.settings.reminders) { actions.setReminders(it) }
         if (state.settings.reminders) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 com.example.findme.data.local.REMINDER_CHOICES.forEach { minutes ->
@@ -1000,7 +1077,6 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
                         label = { Text(if (minutes >= 60) "${minutes / 60} h antes" else "$minutes min antes", maxLines = 1, style = MaterialTheme.typography.labelMedium) })
                 }
             }
-            val exact = remember(state.settings.reminders) { com.example.findme.reminders.ActivityReminders.exactAllowed(context) }
             if (!exact && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 Text("Android puede retrasar el recordatorio unos minutos. Permite las alarmas exactas para que llegue a tiempo.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:${context.packageName}"))) }) {
@@ -1008,14 +1084,9 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
                 }
             }
         }
-        Text("Los avisos de tu gente llegan aunque Near esté cerrada. En algunos teléfonos (como Xiaomi o POCO) activa el inicio automático de Near y quítale el ahorro de batería para que no se retrasen.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
-        if (!notificationsAllowed) Text("Android tiene bloqueadas las notificaciones de Near.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }) {
-            Text("Abrir ajustes de Android")
-        }
     }
     Panel {
-        SectionHeading(Icons.Default.Palette, "Apariencia", "Tonos suaves, inspirados en el nuevo icono.")
+        SectionHeading(Icons.Default.Palette, "Apariencia")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AppAccent.entries.forEach { accent ->
                 FilterChip(selected = state.settings.accent == accent, onClick = { actions.setAccent(accent) },
@@ -1026,10 +1097,6 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
                         selectedLabelColor = MaterialTheme.colorScheme.primary))
             }
         }
-    }
-    Panel {
-        SectionHeading(Icons.Default.ChatBubbleOutline, "Mensajes ocasionales", "Un aviso para estar cerca.")
-        Text("Los mensajes enviados se conservan durante 24 horas y después se eliminan automáticamente. Tus botones de mensajes rápidos permanecen guardados.", color = TextSecondary)
     }
     Panel {
         SectionHeading(Icons.Default.SystemUpdate, "Actualizaciones", "Near ${BuildConfig.VERSION_NAME}")
@@ -1128,11 +1195,11 @@ private fun PasswordField(value: String, change: (String) -> Unit, label: String
 
 @Composable
 private fun AccountSettingsSwitch(title: String, description: String, checked: Boolean, change: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).toggleable(checked, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = change),
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).toggleable(checked, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = change),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(description, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            if (description.isNotBlank()) Text(description, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
         Switch(checked = checked, onCheckedChange = null)
     }

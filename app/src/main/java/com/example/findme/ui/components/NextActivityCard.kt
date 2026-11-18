@@ -27,10 +27,7 @@ fun NextActivityCard(next: ScheduleDto?, onOpenSchedule: () -> Unit) {
                 Text(if (next == null) "Nada más por hoy" else "Próxima en tu horario",
                     style = if (next == null) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelMedium,
                     color = if (next == null) TextPrimary else TextSecondary)
-                if (next == null) {
-                    Text("No tienes más actividades programadas para hoy.",
-                        style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
-                } else {
+                if (next != null) {
                     Text(next.title, style = MaterialTheme.typography.titleMedium, color = TextPrimary,
                         fontWeight = FontWeight.SemiBold)
                     val tomorrow = if (next.endsNextDay || next.endTime.trim().startsWith("24:00")) " · termina mañana" else ""

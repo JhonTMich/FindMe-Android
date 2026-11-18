@@ -40,9 +40,8 @@ configura el secreto `NEAR_FIREBASE_CONFIG` con el contenido completo de ese JSO
 la entrada de `com.example.near`.
 Una compilación sin esa configuración conserva los recordatorios locales y los avisos en primer plano.
 
-1. **Migraciones**: `npx supabase db push --remote` (aplica `..._notificaciones_push.sql`,
-   `..._programar_avisos_push.sql` y `..._secreto_avisos_push.sql`).
-2. **Función**: `npx supabase functions deploy send-push --project-ref ymqsgxmpqushzghkoncg --use-api`
+1. **Migraciones**: `npx supabase db push --remote --skip-vault` para aplicar las migraciones pendientes del lanzamiento.
+2. **Función**: `npx supabase functions deploy send-push --remote=ymqsgxmpqushzghkoncg --use-api`
    (`verify_jwt = false` viene de `supabase/config.toml`).
 3. **Secreto compartido**: lo genera la propia base de datos en Vault (`near_push_secret`, junto con la
    URL `near_push_url`); la función lo lee con la clave de servicio mediante `push_webhook_secret()`.

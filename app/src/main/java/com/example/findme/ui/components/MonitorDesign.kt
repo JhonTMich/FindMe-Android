@@ -49,7 +49,7 @@ fun StatusPill(text: String, color: Color = MaterialTheme.colorScheme.primary, p
 }
 
 @Composable
-fun ActivityTimelineCard(schedule: ScheduleDto, active: Boolean, last: Boolean = false, displayDay: Int = schedule.dayOfWeek) {
+fun ActivityTimelineCard(schedule: ScheduleDto, active: Boolean, last: Boolean = false, displayDay: Int = schedule.dayOfWeek, compact: Boolean = false) {
     val category = ActivityCategory.fromKey(schedule.category, schedule.title)
     val accent = category.accentColor
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -64,7 +64,7 @@ fun ActivityTimelineCard(schedule: ScheduleDto, active: Boolean, last: Boolean =
             colors = CardDefaults.cardColors(containerColor = Color.Transparent),
             border = BorderStroke(1.dp, if (active) accent.copy(alpha = .6f) else CardBorder)) {
             Column(Modifier.fillMaxWidth().background(Brush.linearGradient(listOf(accent.copy(alpha = if (active) .18f else .08f), CardBg)))
-                .padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                .padding(if (compact) 12.dp else 18.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(category.icon, null, tint = accent, modifier = Modifier.size(16.dp))
                     Text(category.label.uppercase(), style = MaterialTheme.typography.labelSmall, color = accent, modifier = Modifier.weight(1f))
