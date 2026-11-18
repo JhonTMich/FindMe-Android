@@ -1,12 +1,5 @@
 {
-  "conditions": {
-    "ref_name": {
-      "include": [
-        "refs/heads/develop"
-      ],
-      "exclude": []
-    }
-  },
+  "name": "Develop - integration via pull requests",
   "rules": [
     {
       "type": "deletion"
@@ -32,8 +25,8 @@
       }
     },
     {
-      "type": "required_status_checks",
       "parameters": {
+        "strict_required_status_checks_policy": false,
         "required_status_checks": [
           {
             "integration_id": 15368,
@@ -43,13 +36,20 @@
             "integration_id": 15368,
             "context": "Instrumented tests"
           }
-        ],
-        "strict_required_status_checks_policy": true
-      }
+        ]
+      },
+      "type": "required_status_checks"
     }
   ],
-  "target": "branch",
   "bypass_actors": [],
-  "name": "Develop - integration via pull requests",
-  "enforcement": "active"
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "exclude": [],
+      "include": [
+        "refs/heads/develop"
+      ]
+    }
+  }
 }
