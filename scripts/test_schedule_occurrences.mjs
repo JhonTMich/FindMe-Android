@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 const db = new PGlite({ extensions: { btree_gist } });
 const owner = '00000000-0000-0000-0000-000000000001';
 const contact = '00000000-0000-0000-0000-000000000002';
+const stranger = '00000000-0000-0000-0000-000000000003';
 const connection = '10000000-0000-0000-0000-000000000001';
 const activity = '20000000-0000-0000-0000-000000000001';
 const monday = "(date_trunc('week', now() at time zone 'UTC')::date + 7)";
@@ -19,6 +20,7 @@ async function migration(suffix) {
 }
 const as = user => db.exec(`reset role; set role authenticated; select set_config('request.jwt.claim.sub', '${user}', false)`);
 const change = args => db.query(`select occurrence_exceptions from public.change_schedule_occurrence('${activity}', ${monday}, ${args})`);
+const availability = contactId => db.query(`select * from public.shared_schedules_for_availability('${contactId}')`);
 const schedule = () => db.query(`select occurrence_exceptions from public.personal_schedule where id = '${activity}'`);
 const starts = date => db.query(`select o.start_time::text from public.personal_schedule s
   cross join lateral private.schedule_starts_on(s, ${date}) o where s.id = '${activity}'`);
@@ -32,16 +34,16 @@ try {
       select nullif(current_setting('request.jwt.claim.sub', true),'')::uuid
     $$;
     grant usage on schema auth to authenticated, anon;
-    insert into auth.users values ('${owner}'), ('${contact}');
+    insert into auth.users values ('${owner}'), ('${contact}'), ('${stranger}');
   `);
   for (const suffix of [
     '_crear_cuentas_horarios_y_conexiones.sql', '_mensajes_en_vivo_y_retencion_diaria.sql',
     '_validar_cruces_horarios.sql', '_permitir_turnos_nocturnos.sql', '_preferencias_por_conexion.sql',
-    '_excepciones_de_horario.sql',
+    '_excepciones_de_horario.sql', '_disponibilidad_en_comun.sql',
   ]) await migration(suffix);
   await db.exec(`
     insert into public.account_profiles (id, display_name, timezone)
-      values ('${owner}', 'Persona A', 'UTC'), ('${contact}', 'Persona B', 'UTC');
+      values ('${owner}', 'Persona A', 'UTC'), ('${contact}', 'Persona B', 'UTC'), ('${stranger}', 'Persona C', 'UTC');
     insert into public.person_connections (id, person_a, person_b) values ('${connection}', '${owner}', '${contact}');
     insert into public.personal_schedule (id, user_id, day_of_week, start_time, end_time, title)
       values ('${activity}', '${owner}', 1, '09:00', '10:00', 'Clase');
@@ -49,7 +51,15 @@ try {
       values ('${owner}', 2, '15:00', '16:00', 'Otra actividad');
   `);
 
+  await db.exec('set role anon');
+  await assert.rejects(availability(contact), { code: '42501' });
+  await as(stranger);
+  assert.deepEqual((await availability(owner)).rows, []);
   await as(owner);
+  const [pair] = (await availability(contact)).rows;
+  assert.deepEqual(pair.contact, [], 'An empty shared schedule is available');
+  assert.equal(pair.viewer.length, 2);
+  assert.deepEqual((await availability(owner)).rows, [], 'Does not compare a profile with itself');
   assert.deepEqual(Object.values((await change("'cancel'")).rows[0].occurrence_exceptions), [{ cancelled: true }]);
   await assert.rejects(change(`'move', ${monday} + 1, '15:30', '17:00', false`), { code: '23P01' });
   await assert.rejects(change(`'move', ${monday} + 1, '17:00', '17:00', false`), { code: 'FM004' });
@@ -75,13 +85,23 @@ try {
   await as(contact);
   assert.equal((await schedule()).rows.length, 1, 'A connected person can see the move');
   await assert.rejects(change("'restore'"), { code: '42501' });
+  const [withException] = (await availability(owner)).rows;
+  const exceptions = withException.contact.find(row => row.id === activity).occurrence_exceptions;
+  assert.equal(Object.values(exceptions)[0].date, replacement.date);
   await as(owner);
   await db.exec(`insert into public.connection_preferences (connection_id, owner_id, share_schedule)
     values ('${connection}', '${owner}', false)`);
+  assert.deepEqual((await availability(contact)).rows, [], 'The viewer must also share their own schedule');
   await as(contact);
+  assert.deepEqual((await availability(owner)).rows, [], 'A revoked schedule never appears as free');
   assert.equal((await schedule()).rows.length, 0, 'Revoking access hides the weekly activity and its exceptions');
   await as(owner);
   assert.deepEqual((await change("'restore'")).rows[0].occurrence_exceptions, {});
+  await db.exec('reset role');
+  await db.exec(`delete from public.person_connections where id = '${connection}'`);
+  await as(contact);
+  assert.deepEqual((await availability(owner)).rows, [], 'Disconnected people cannot compare schedules');
+  console.log('Shared availability: mutual permission, empty schedules, dated changes and revocation verified.');
   console.log('Dated schedule: cancel, move, restore, overlap checks, compatibility and access verified.');
 } finally {
   await db.close();

@@ -540,6 +540,12 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
         }
         refreshAfterSave("Conexión eliminada.")
     }
+    override suspend fun sharedSchedulesForAvailability(contactId: String): SharedSchedules? {
+        val owner = repository.userId()
+        val result = repository.sharedSchedulesForAvailability(contactId)
+        return result.takeIf { repository.auth.currentUserOrNull()?.id == owner }
+    }
+
     override fun selectPerson(profile: AccountProfile) = perform {
         val schedules = repository.schedules(profile.id)
         val statuses = repository.overrides(profile.id)

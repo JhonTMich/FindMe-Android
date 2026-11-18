@@ -86,6 +86,11 @@ class AccountRepository {
         }.decodeList<ScheduleDto>()
     }
 
+    suspend fun sharedSchedulesForAvailability(contactId: String): SharedSchedules? =
+        client.postgrest.rpc("shared_schedules_for_availability", buildJsonObject {
+            put("contact_id", contactId)
+        }).decodeList<SharedSchedules>().singleOrNull()
+
     suspend fun changeScheduleOccurrence(id: String, originalDate: String, change: ScheduleException?): ScheduleDto =
         client.postgrest.rpc("change_schedule_occurrence", buildJsonObject {
             put("schedule_id", id)

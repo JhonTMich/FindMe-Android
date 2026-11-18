@@ -62,6 +62,10 @@ import com.example.findme.domain.model.formatScheduleTime
 import com.example.findme.domain.model.validateSchedule
 import com.example.findme.domain.model.occurrencesOn
 import com.example.findme.data.model.ScheduleException
+import com.example.findme.data.model.SharedSchedules
+import com.example.findme.domain.model.commonFreeTime
+import kotlinx.coroutines.CancellationException
+import java.time.Instant
 import com.example.findme.domain.model.timeRangeLabel
 import com.example.findme.domain.model.nextActivityToday
 import com.example.findme.ui.components.*
@@ -765,6 +769,63 @@ private fun TimeField(value: String, change: (String) -> Unit, label: String) {
 }
 
 @Composable
+private fun CommonAvailabilitySheet(person: AccountProfile, actions: AccountActions, dismiss: () -> Unit) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    var schedules by remember { mutableStateOf<SharedSchedules?>(null) }
+    var error by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(true) }
+    var retry by remember { mutableIntStateOf(0) }
+    var allHours by rememberSaveable { mutableStateOf(false) }
+    var asOf by remember { mutableStateOf(Instant.now()) }
+    LaunchedEffect(lifecycle, person.id, retry) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                loading = true
+                schedules = null
+                error = false
+                try {
+                    schedules = actions.sharedSchedulesForAvailability(person.id)
+                    asOf = Instant.now()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    error = true
+                } finally {
+                    loading = false
+                }
+                delay(60_000)
+            }
+        }
+    }
+
+    Sheet(dismiss, "Horas libres con ${person.displayName}") {
+        val pair = schedules
+        when {
+            loading -> Text("Consultando ambos horarios…", color = TextSecondary)
+            error -> {
+                Text("No pudimos consultar la disponibilidad.", color = TextSecondary)
+                TextButton(onClick = { retry++ }) { Text("Reintentar") }
+            }
+            pair == null -> Text("Ambas personas deben compartir su horario en esta conexión.", color = TextSecondary)
+            else -> {
+                Text("Próximos 7 días. Huecos de 30 minutos o más, en tu zona horaria. Se calculan a partir de sus actividades programadas.",
+                    color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Choices(listOf(false, true), allHours, { allHours = it }) { if (it) "Todo el día" else "8:00–22:00" }
+                val freeDays = remember(pair, allHours, asOf) { commonFreeTime(pair, asOf, allHours) }
+                freeDays.forEach { day ->
+                    Text(day.date.longDate(), fontWeight = FontWeight.Bold)
+                    if (day.slots.isEmpty()) Text("Sin huecos de 30 min", color = TextSecondary)
+                    day.slots.forEach { slot ->
+                        val end = if (slot.end.toLocalDate() > day.date) "24:00" else slot.end.format(hourFormat)
+                        Text("${slot.start.format(hourFormat)} – $end", color = TextPrimary)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun People(state: AccountState, actions: AccountActions) {
     var connect by rememberSaveable { mutableStateOf(false) }
     var manageMessages by rememberSaveable { mutableStateOf(false) }
@@ -802,6 +863,15 @@ private fun People(state: AccountState, actions: AccountActions) {
     state.selectedPerson?.let { selected ->
         val person = selected.copy(displayName = controls.nameOf(selected))
         HeroStatusCard(sharedStatus(person, state.personSchedules, state.personStatuses))
+        key(person.id) {
+            var showAvailability by rememberSaveable { mutableStateOf(false) }
+            OutlinedButton(onClick = { showAvailability = true }, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.EventAvailable, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Ver horas libres en común")
+            }
+            if (showAvailability) CommonAvailabilitySheet(person, actions) { showAvailability = false }
+        }
         Panel {
             SectionHeading(Icons.Default.ChatBubbleOutline, "Un mensaje para ${person.displayName}", "Envía un mensaje sin cambiar tu estado.")
             if (state.messages.isEmpty()) Text("Guarda algo que suelas decir para enviarlo con un toque, desde Personas.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
