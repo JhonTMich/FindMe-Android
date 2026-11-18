@@ -29,7 +29,16 @@ Al iniciar una instancia de la app, se consulta `https://api.github.com/reposito
 
 La primera vez Android puede pedir autorizar a Near para instalar aplicaciones; al regresar se continúa con el APK ya descargado. La instalación requiere la confirmación que Android solicita. Si la app está en segundo plano, espera a que vuelva a estar visible para abrir el instalador. No requiere permisos generales de almacenamiento y solo comparte el APK mediante un FileProvider limitado a su carpeta de actualizaciones. Una descarga interrumpida se puede reintentar.
 
-Las instalaciones de la versión 1.2 todavía contienen el flujo anterior. Para habilitar este nuevo actualizador hay que instalar esta corrección una primera vez; las versiones siguientes podrán descargarse desde la app.
+### Pasar de Near 1.7 al nuevo paquete
+
+Near 1.7 se publicó como `com.example.findme`. El siguiente APK usa `com.example.near` y se instala
+una sola vez desde [GitHub Releases](https://github.com/JhonTMich/Near/releases). Inicia sesión con
+tu cuenta de siempre para recuperar los datos sincronizados. Vuelve a configurar los ajustes locales
+y añade los widgets desde la nueva app. Cuando compruebes tu cuenta, puedes desinstalar la app
+antigua. Si necesitas abrir un enlace de confirmación o recuperación durante la transición,
+selecciona la instalación nueva cuando Android te pregunte.
+
+Las actualizaciones posteriores de `com.example.near` se descargan desde Near como de costumbre.
 
 ## Publicar desde la terminal
 
@@ -56,7 +65,7 @@ Los cuatro secretos de firma de este repositorio ya están configurados en GitHu
 | `ANDROID_KEY_ALIAS` | Alias de la clave |
 | `ANDROID_KEY_PASSWORD` | Contraseña de la clave |
 
-Se utiliza el mismo certificado local de desarrollo de los APK publicados hasta ahora para conservar la compatibilidad de actualización. La clave privada no se incorpora al repositorio ni a los artefactos.
+El workflow usa el certificado de firma existente para publicar el APK. Las actualizaciones dentro del paquete `com.example.near` deben mantener una firma compatible. La clave privada no se incorpora al repositorio ni a los artefactos.
 
 ### Rotación a una clave de producción
 
@@ -87,7 +96,7 @@ Referencia: [API de releases de GitHub](https://docs.github.com/en/rest/releases
 
 ## Widget de estado actual
 
-Añade **Near · Estado actual** desde el selector de widgets de Android. Al añadirlo, elige **Mi estado** o una persona conectada. Puedes tener varios widgets con personas distintas y cambiar la selección tocando el nombre o **⋮**. El widget anterior «Mi gente» se actualiza al nuevo diseño y conserva su persona seleccionada; los mensajes rápidos se envían desde Personas.
+Añade **Near · Estado actual** desde el selector de widgets de Android. Al añadirlo, elige **Mi estado** o una persona conectada. Puedes tener varios widgets con personas distintas y cambiar la selección tocando el nombre o **⋮**. La selección del widget se conserva al actualizar dentro del mismo paquete; los mensajes rápidos se envían desde Personas.
 
 Muestra el estado manual vigente o la actividad del horario, la próxima actividad y la fecha de los últimos datos. El tamaño ampliado añade ubicación y hora de fin. El botón **↻** consulta los datos sin abrir la app. Sin conexión se conserva la última información y se siguen calculando las actividades y caducidades con esos datos.
 

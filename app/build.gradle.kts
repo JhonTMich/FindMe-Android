@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-val publishedApplicationId = "com.example.findme"
+val publishedApplicationId = "com.example.near"
 val firebaseConfig = providers.environmentVariable("NEAR_FIREBASE_CONFIG").orNull
     ?.takeIf { it.isNotBlank() }
     ?: providers.fileContents(layout.projectDirectory.file("google-services.json")).asText.orNull
@@ -38,7 +38,6 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        // Registered in Firebase (project near-c8d8c); the Kotlin namespace stays com.example.findme.
         applicationId = publishedApplicationId
         firebaseResources.forEach { (name, value) -> resValue("string", name, value) }
         minSdk = 26
