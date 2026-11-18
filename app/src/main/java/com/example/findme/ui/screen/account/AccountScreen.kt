@@ -2,6 +2,7 @@
 
 package com.example.findme.ui.screen.account
 
+import android.app.NotificationManager
 import android.content.ClipData
 import android.content.Intent
 import android.provider.Settings
@@ -914,7 +915,7 @@ private fun People(state: AccountState, actions: AccountActions) {
                 TextButton(onClick = { manageMessages = true }) { Text("Mis mensajes") }
             }
             if (showAvailability) CommonAvailabilitySheet(person, actions) { showAvailability = false }
-            if (sendMessage) Sheet({ sendMessage = false }, "Mensaje para ${person.displayName}") {
+            if (sendMessage) Sheet({ sendMessage = false }, "Mensaje para ${person.displayName}", "Los mensajes caducan después de 24 horas.") {
                 if (state.messages.isEmpty()) Text("Crea un mensaje rápido para enviarlo desde aquí.", color = TextSecondary)
                 state.messages.forEach { quick ->
                     OutlinedButton(onClick = { actions.send(quick); sendMessage = false }, enabled = !state.busy,
@@ -1027,24 +1028,48 @@ private fun MessageSheet(state: AccountState, actions: AccountActions, dismiss: 
 private fun AccountProfilePanel(state: AccountState, actions: AccountActions, updates: UpdateState,
     onCheckUpdates: () -> Unit, onInstallUpdate: () -> Unit) {
     val context = LocalContext.current
+    val notificationManager = remember(context) { context.getSystemService(NotificationManager::class.java) }
+    fun blockedChannels() = com.example.findme.util.NotificationHelper.Channel.entries.filter {
+        notificationManager?.getNotificationChannel(it.id)?.importance == NotificationManager.IMPORTANCE_NONE
+    }
     var notificationsAllowed by remember { mutableStateOf(NotificationManagerCompat.from(context).areNotificationsEnabled()) }
+    var silencedChannels by remember { mutableStateOf(blockedChannels()) }
+    var exact by remember { mutableStateOf(com.example.findme.reminders.ActivityReminders.exactAllowed(context)) }
     androidx.lifecycle.compose.LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         notificationsAllowed = NotificationManagerCompat.from(context).areNotificationsEnabled()
+        silencedChannels = blockedChannels()
+        exact = com.example.findme.reminders.ActivityReminders.exactAllowed(context)
     }
-    PageHeading("A tu manera", "Perfil y ajustes", "Tu cuenta, tus avisos y tu estilo.")
+    val nearAlerts = with(state.settings) { activities || statuses || messages || reminders }
+    PageHeading("", "Perfil y ajustes", "")
     Panel {
         SectionHeading(Icons.Default.PersonOutline, state.profile?.displayName.orEmpty(), state.profile?.timezone)
         ProfileNameForm(state, actions)
     }
     Panel {
-        SectionHeading(Icons.Default.NotificationsNone, "Notificaciones", "Elige qué avisos recibir de tu gente.")
-        AccountSettingsSwitch("Inicio de actividades", "Cuando una persona conectada comienza una actividad.", state.settings.activities) { actions.setAlert(AccountAlert.Activities, it) }
+        SectionHeading(Icons.Default.NotificationsNone, "Notificaciones")
+        Text(if (nearAlerts) "Near · Hay avisos activados" else "Near · Todos los avisos desactivados",
+            color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+        Text(if (notificationsAllowed) "Android · Permite las notificaciones" else "Android · Bloquea las notificaciones",
+            color = if (notificationsAllowed) TextSecondary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }) {
+            Text("Abrir ajustes de Android")
+        }
+        if (notificationsAllowed) silencedChannels.forEach { channel ->
+            TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                .putExtra(Settings.EXTRA_CHANNEL_ID, channel.id)) }) {
+                Text("Android silenció: ${channel.title}")
+            }
+        }
         HorizontalDivider(color = CardBorder)
-        AccountSettingsSwitch("Cambios de estado", "Cuando tu gente comparte o cambia su estado.", state.settings.statuses) { actions.setAlert(AccountAlert.Statuses, it) }
+        AccountSettingsSwitch("Inicio de actividades", "Cuando empieza una actividad de tu gente.", state.settings.activities) { actions.setAlert(AccountAlert.Activities, it) }
         HorizontalDivider(color = CardBorder)
-        AccountSettingsSwitch("Mensajes recibidos", "Avisar cuando llega un mensaje nuevo.", state.settings.messages) { actions.setAlert(AccountAlert.Messages, it) }
+        AccountSettingsSwitch("Cambios de estado", "Cuando tu gente cambia de planes.", state.settings.statuses) { actions.setAlert(AccountAlert.Statuses, it) }
         HorizontalDivider(color = CardBorder)
-        AccountSettingsSwitch("Antes de tus actividades", "Un recordatorio antes de que empiece cada actividad de tu horario.", state.settings.reminders) { actions.setReminders(it) }
+        AccountSettingsSwitch("Mensajes recibidos", "", state.settings.messages) { actions.setAlert(AccountAlert.Messages, it) }
+        HorizontalDivider(color = CardBorder)
+        AccountSettingsSwitch("Antes de tus actividades", "", state.settings.reminders) { actions.setReminders(it) }
         if (state.settings.reminders) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 com.example.findme.data.local.REMINDER_CHOICES.forEach { minutes ->
@@ -1052,7 +1077,6 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
                         label = { Text(if (minutes >= 60) "${minutes / 60} h antes" else "$minutes min antes", maxLines = 1, style = MaterialTheme.typography.labelMedium) })
                 }
             }
-            val exact = remember(state.settings.reminders) { com.example.findme.reminders.ActivityReminders.exactAllowed(context) }
             if (!exact && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 Text("Android puede retrasar el recordatorio unos minutos. Permite las alarmas exactas para que llegue a tiempo.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
                 TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:${context.packageName}"))) }) {
@@ -1060,14 +1084,9 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
                 }
             }
         }
-        Text("Los avisos de tu gente llegan aunque Near esté cerrada. En algunos teléfonos (como Xiaomi o POCO) activa el inicio automático de Near y quítale el ahorro de batería para que no se retrasen.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
-        if (!notificationsAllowed) Text("Android tiene bloqueadas las notificaciones de Near.", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }) {
-            Text("Abrir ajustes de Android")
-        }
     }
     Panel {
-        SectionHeading(Icons.Default.Palette, "Apariencia", "Tonos suaves, inspirados en el nuevo icono.")
+        SectionHeading(Icons.Default.Palette, "Apariencia")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AppAccent.entries.forEach { accent ->
                 FilterChip(selected = state.settings.accent == accent, onClick = { actions.setAccent(accent) },
@@ -1078,10 +1097,6 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
                         selectedLabelColor = MaterialTheme.colorScheme.primary))
             }
         }
-    }
-    Panel {
-        SectionHeading(Icons.Default.ChatBubbleOutline, "Mensajes ocasionales", "Un aviso para estar cerca.")
-        Text("Los mensajes enviados se conservan durante 24 horas y después se eliminan automáticamente. Tus botones de mensajes rápidos permanecen guardados.", color = TextSecondary)
     }
     Panel {
         SectionHeading(Icons.Default.SystemUpdate, "Actualizaciones", "Near ${BuildConfig.VERSION_NAME}")
@@ -1180,11 +1195,11 @@ private fun PasswordField(value: String, change: (String) -> Unit, label: String
 
 @Composable
 private fun AccountSettingsSwitch(title: String, description: String, checked: Boolean, change: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).toggleable(checked, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = change),
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).toggleable(checked, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = change),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(description, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            if (description.isNotBlank()) Text(description, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
         Switch(checked = checked, onCheckedChange = null)
     }
