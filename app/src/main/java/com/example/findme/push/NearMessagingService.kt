@@ -1,6 +1,5 @@
 package com.example.findme.push
 
-import android.app.ActivityManager
 import android.content.Context
 import com.example.findme.data.local.AccountSettingsRepository
 import com.example.findme.data.network.SupabaseClientProvider
@@ -35,20 +34,30 @@ class NearMessagingService : FirebaseMessagingService() {
     }
 
     companion object {
-        /** While Near is on screen its own refresh already notifies; skip the push so nothing shows twice. */
-        private fun visible(): Boolean {
-            val info = ActivityManager.RunningAppProcessInfo()
-            ActivityManager.getMyMemoryState(info)
-            return info.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+        @Volatile
+        internal var accountScreenVisible = false
+            private set
+
+        internal suspend fun observeAccountScreen(observe: suspend () -> Unit) {
+            accountScreenVisible = true
+            try {
+                observe()
+            } finally {
+                accountScreenVisible = false
+            }
         }
 
         suspend fun show(context: Context, data: Map<String, String>) {
-            if (visible()) return
+            if (accountScreenVisible) return
             val alert = PushAlerts.from(data) ?: return
-            // The widget cache holds the signed-in account and is cleared on sign-out.
-            val owner = WidgetStore.data(context)?.owner ?: return
+            val auth = SupabaseClientProvider.client.auth
+            auth.awaitInitialization()
+            val owner = auth.currentUserOrNull()?.id ?: return
+            if (owner != data["recipient_id"]) return
+            val people = WidgetStore.data(context)?.takeIf { it.owner == owner }?.profiles.orEmpty()
+            if (people.none { it.id == data["user_id"] }) return
             val settings = AccountSettingsRepository(context).settings(owner).first()
-            if (!PushAlerts.allowed(alert, settings)) return
+            if (auth.currentUserOrNull()?.id != owner || !PushAlerts.allowed(alert, settings)) return
             NotificationHelper.show(context, alert.channel, alert.id, alert.title, alert.text)
         }
     }

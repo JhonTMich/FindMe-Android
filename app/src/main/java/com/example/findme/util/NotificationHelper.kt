@@ -16,8 +16,8 @@ object NotificationHelper {
     /** One Android channel per kind, so each can also be silenced from the system settings. */
     enum class Channel(val id: String, val title: String, val description: String) {
         Activities("near_activities", "Actividades de tu gente", "Cuando una persona conectada comienza una actividad."),
-        Statuses("near_statuses", "Estados de tu gente", "Cuando tu gente comparte, cambia o quita su estado."),
-        Messages("near_messages", "Mensajes de tu gente", "Mensajes rápidos que recibes."),
+        Statuses("findme_status_channel", "Estados de tu gente", "Cuando tu gente comparte, cambia o quita su estado."),
+        Messages("findme_messages", "Mensajes de tu gente", "Mensajes rápidos que recibes."),
         Reminders("near_reminders", "Recordatorios de tus actividades", "Un aviso antes de que empiece cada actividad de tu horario.")
     }
 
@@ -45,7 +45,7 @@ object NotificationHelper {
             .setSmallIcon(R.drawable.ic_notification).setContentTitle(title).setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(open(context, if (channel == Channel.Reminders) OPEN_SCHEDULE else OPEN_PEOPLE))
-            .setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOnlyAlertOnce(true).setAutoCancel(true).setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(if (channel == Channel.Messages) NotificationCompat.CATEGORY_MESSAGE else if (channel == Channel.Reminders) NotificationCompat.CATEGORY_REMINDER else NotificationCompat.CATEGORY_STATUS)
             .build()
         try { (context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager)?.notify(id, notification) }

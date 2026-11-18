@@ -39,6 +39,7 @@ data class AccountState(
     val lastSync: Instant? = null,
     val syncIssue: Boolean = false,
     val peopleRevision: Int = 0,
+    val scheduleRevision: Int = 0,
     val initializing: Boolean = true,
     val signedIn: Boolean = false,
     val busy: Boolean = false,
@@ -342,6 +343,7 @@ class AccountViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun openPeople() { _state.update { it.copy(peopleRevision = it.peopleRevision + 1) } }
+    fun openSchedule() { _state.update { it.copy(scheduleRevision = it.scheduleRevision + 1) } }
     override fun setAlert(alert: AccountAlert, enabled: Boolean) {
         val id = repository.auth.currentUserOrNull()?.id ?: return
         viewModelScope.launch { preferences.setAlert(id, alert, enabled) }

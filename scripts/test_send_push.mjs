@@ -60,7 +60,8 @@ test('sends a data message to every device and forgets uninstalled ones', async 
   assert.equal(lookup.init.headers.Authorization, 'Bearer service');
 
   const messages = services.calls.filter((call) => call.url.includes('fcm.googleapis.com')).map((call) => JSON.parse(call.init.body).message);
-  assert.deepEqual(messages[0].data, { type: 'status', name: 'Ana', location: 'Biblioteca' }, 'Data values are strings, nulls dropped');
+  assert.deepEqual(messages[0].data, { type: 'status', name: 'Ana', location: 'Biblioteca', recipient_id: a }, 'Data values are strings, nulls dropped');
+  assert.equal(messages[2].data.recipient_id, b, 'Each device only displays pushes for its signed-in account');
   assert.equal(messages[0].android.priority, 'HIGH');
   assert.ok(services.calls.some((call) => call.url.endsWith('push_tokens?token=eq.device-old') && call.init.method === 'DELETE'));
 

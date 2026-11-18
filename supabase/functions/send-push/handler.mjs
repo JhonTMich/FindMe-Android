@@ -110,7 +110,7 @@ export function createSendPushHandler({ url, serviceKey, secret, serviceAccount 
     for (const device of devices) {
       const response = await request(`https://fcm.googleapis.com/v1/projects/${account.project_id}/messages:send`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ message: { token: device.token, data: payload, android: { priority: 'HIGH', ttl: '3600s' } } }),
+        body: JSON.stringify({ message: { token: device.token, data: { ...payload, recipient_id: device.user_id }, android: { priority: 'HIGH', ttl: '3600s' } } }),
         signal: AbortSignal.timeout(10000),
       }).catch(() => null);
       if (response?.ok) { sent++; continue; }

@@ -92,7 +92,9 @@ fun AccountScreen(viewModel: AccountViewModel, updates: UpdateState = UpdateStat
     val state by viewModel.state.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner, viewModel) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { viewModel.observeWhileVisible() }
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            com.example.findme.push.NearMessagingService.observeAccountScreen { viewModel.observeWhileVisible() }
+        }
     }
     AccountContent(state, viewModel, updates, onCheckUpdates, onInstallUpdate)
 }
@@ -111,6 +113,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
     }
     var tab by rememberSaveable(state.signedIn) { mutableStateOf("Mi día") }
     LaunchedEffect(state.peopleRevision, state.signedIn) { if (state.peopleRevision > 0 && state.signedIn) tab = "Personas" }
+    LaunchedEffect(state.scheduleRevision, state.signedIn) { if (state.scheduleRevision > 0 && state.signedIn) tab = "Horario" }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.notice) { state.notice?.let { snackbar.showSnackbar(it) } }
     Scaffold(containerColor = AppBackground, snackbarHost = { SnackbarHost(snackbar) }, topBar = {
