@@ -1,130 +1,25 @@
 # Near para Android
 
-Aplicación Kotlin con Jetpack Compose para organizar horarios y compartir actividades y estados entre personas conectadas. El registro requiere un correo autorizado. [Configuración de cuentas y conexiones](docs/cuentas-conexiones.md).
+Near te ayuda a organizar tu día y estar al tanto de tu gente. Consulta qué tienes ahora y qué viene después, comparte un cambio de planes y encuentra un momento libre para hablar o quedar.
 
-La versión publicada se puede consultar en [GitHub Releases](https://github.com/JhonTMich/Near/releases/latest).
+[Descargar Near para Android](https://github.com/JhonTMich/Near/releases/latest)
 
-La versión 1.5 incorpora turnos nocturnos, un widget de estado configurable por persona, la identidad azul del nuevo icono, un acceso más claro y la próxima actividad en Hoy.
+## Qué puedes hacer
 
-## Flujo de trabajo
+- **Hoy.** Mira tu actividad actual, lo que viene después y tu agenda del día. Si cambias de planes, comparte un estado como «En camino a casa» y elige cuánto dura.
+- **Horario.** Organiza tus clases, turnos y actividades personales. Puedes mover o cancelar una actividad para una sola fecha sin cambiar su horario semanal.
+- **Personas.** Conecta mediante un código, consulta los horarios y estados que te comparten, y envía mensajes rápidos como «¿Todo bien?». Cuando ambos comparten su horario, puedes ver sus horas libres en común.
+- **Perfil.** Elige qué avisos quieres recibir, activa recordatorios para tus actividades y personaliza el color de la app.
+- **Widget.** Añade **Near · Estado actual** a tu pantalla de inicio para ver tu estado o el de una persona conectada de un vistazo.
 
-El flujo de [contribución](CONTRIBUTING.md) usa `develop` para integrar cambios y `main` para lanzamientos, documentación y hotfixes. Los rulesets activos en GitHub exigen pull requests y verificaciones de CI, y bloquean force-push y borrado de ambas ramas. Las configuraciones de referencia están en `.github/develop-ruleset.json` y `.github/main-ruleset.json`.
+Tú decides con quién compartes tu horario y tu estado. También puedes silenciar avisos o gestionar cada conexión desde **Personas**.
 
-## Estructura
+## Registro con acceso limitado
 
-- `MainActivity`: entrada al flujo de cuentas, confirmación de correo, permisos y actualizaciones.
-- `AccountViewModel` y `AccountRepository`: cuentas, horarios, conexiones, estados y mensajes en Supabase.
-- `StatusRepository`: cálculo de la actividad en curso y vigencia del estado manual.
-- `AccountSettingsRepository`: preferencias de avisos y tema con DataStore.
+**Solo puedes crear una cuenta si tu correo ha sido autorizado previamente.** Usa ese correo al registrarte y revisa tu bandeja de entrada para confirmarlo. Si ya tienes una cuenta, entra con tu usuario y contraseña.
 
-## Interfaz
+## Instalación y actualizaciones
 
-**Hoy** muestra las actividades del día según la zona horaria del perfil. **Horario** permite consultar los siete días de la semana. Un estado manual vigente tiene prioridad sobre la actividad programada y, al vencer, la app vuelve a mostrar el horario.
+Descarga el archivo `Near-*.apk` de la [última versión](https://github.com/JhonTMich/Near/releases/latest) y ábrelo en tu teléfono Android. Puedes consultar actualizaciones desde **Perfil → Actualizaciones**.
 
-**Personas** permite compartir horarios mediante conexiones mutuas. **Perfil** incluye ajustes de avisos, tema, permisos de Android y actualizaciones.
-
-## Actualizaciones desde GitHub
-
-Al iniciar una instancia de la app, se consulta `https://api.github.com/repositories/1429916859/releases/latest` (el identificador del repositorio, que no cambia aunque se renombre), en segundo plano y con tiempos de espera. También se puede comprobar manualmente desde Perfil. Una actualización disponible muestra un único aviso breve con el botón Actualizar, sin notas de parche ni enlaces al repositorio. Al aceptarlo, la app descarga el APK y muestra el progreso en ese mismo aviso. Antes de abrir el instalador de Android comprueba el tamaño, el SHA-256 publicado por GitHub cuando está disponible, el identificador del paquete, la versión y la firma del APK.
-
-La primera vez Android puede pedir autorizar a Near para instalar aplicaciones; al regresar se continúa con el APK ya descargado. La instalación requiere la confirmación que Android solicita. Si la app está en segundo plano, espera a que vuelva a estar visible para abrir el instalador. No requiere permisos generales de almacenamiento y solo comparte el APK mediante un FileProvider limitado a su carpeta de actualizaciones. Una descarga interrumpida se puede reintentar.
-
-### Pasar de Near 1.7 al nuevo paquete
-
-Near 1.7 se publicó como `com.example.findme`. El siguiente APK usa `com.example.near` y se instala
-una sola vez desde [GitHub Releases](https://github.com/JhonTMich/Near/releases). Inicia sesión con
-tu cuenta de siempre para recuperar los datos sincronizados. Vuelve a configurar los ajustes locales
-y añade los widgets desde la nueva app. Cuando compruebes tu cuenta, puedes desinstalar la app
-antigua. Si necesitas abrir un enlace de confirmación o recuperación durante la transición,
-selecciona la instalación nueva cuando Android te pregunte.
-
-Las actualizaciones posteriores de `com.example.near` se descargan desde Near como de costumbre.
-
-## Publicar desde la terminal
-
-Después de fusionar los cambios en `main`, basta con crear y subir un tag nuevo. No necesitas compilar, descargar ni adjuntar el APK manualmente:
-
-```powershell
-git fetch origin
-git tag v1.2.3 origin/main
-git push origin v1.2.3
-```
-
-Usa un número superior al último release publicado. Los tags admiten versiones estables como `v1.2.3` o `v1.3`; no se aceptan sufijos de prerelease. El tag debe señalar un commit que ya esté integrado en `main` y que contenga el workflow.
-
-El workflow `.github/workflows/release.yml` comprueba el tag, instala Java 25 y el SDK `platforms;android-37.0`, ejecuta las pruebas unitarias y lint, compila el APK de release y lo firma. Después publica un release estable marcado como Latest con `Near-VERSION.apk` y `SHA256SUMS.txt`. El release lleva únicamente un mensaje breve, sin notas de parche generadas.
-
-La versión del APK sale del tag mediante las propiedades Gradle `releaseVersionName` y `releaseVersionCode`. Por ejemplo, `v1.2.3` produce `versionName = 1.2.3` y `versionCode = 1002003`. Se calcula `major * 1000000 + minor * 1000 + patch` para que las actualizaciones mantengan un código creciente y reproducible. Minor y patch admiten valores hasta 999. Los valores de `defaultConfig` se conservan como respaldo para compilaciones locales sin esas propiedades.
-
-Los cuatro secretos de firma de este repositorio ya están configurados en GitHub Actions:
-
-| Secreto | Contenido |
-| --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | Archivo de firma codificado en Base64 |
-| `ANDROID_KEYSTORE_PASSWORD` | Contraseña del archivo |
-| `ANDROID_KEY_ALIAS` | Alias de la clave |
-| `ANDROID_KEY_PASSWORD` | Contraseña de la clave |
-
-El workflow usa el certificado de firma existente para publicar el APK. Las actualizaciones dentro del paquete `com.example.near` deben mantener una firma compatible. La clave privada no se incorpora al repositorio ni a los artefactos.
-
-### Rotación a una clave de producción
-
-Cambiar de clave sin más obligaría a desinstalar la app. Android 9 y posteriores admiten la rotación de firma (APK Signature Scheme v3): la clave original firma un *linaje* que autoriza a la nueva, y las versiones antiguas de Android siguen validando la clave original. El workflow y el validador de actualizaciones de la app ya la admiten. Pasos, en un equipo de confianza y con build-tools 36:
-
-```bash
-keytool -genkeypair -v -keystore findme-release.jks -alias findme-release -keyalg RSA -keysize 4096 -validity 10000
-apksigner rotate --out findme.lineage --old-signer --ks <clave-actual>.jks --ks-key-alias <alias-actual> --new-signer --ks findme-release.jks --ks-key-alias findme-release
-```
-
-Después se añaden estos secretos, además de los cuatro anteriores, que deben conservarse:
-
-| Secreto | Contenido |
-| --- | --- |
-| `ANDROID_NEW_KEYSTORE_BASE64` | `findme-release.jks` en Base64 |
-| `ANDROID_NEW_KEYSTORE_PASSWORD` | Contraseña del archivo nuevo |
-| `ANDROID_NEW_KEY_ALIAS` | `findme-release` |
-| `ANDROID_NEW_KEY_PASSWORD` | Contraseña de la clave nueva |
-| `ANDROID_SIGNING_LINEAGE_BASE64` | `findme.lineage` en Base64 |
-
-Si falta alguno de los cinco, el workflow falla en vez de firmar a medias. Con `apksigner` 33 o posterior, la clave nueva se aplica en Android 13 y posteriores; los dispositivos anteriores siguen viendo la clave original. Por eso esa clave debe seguir guardándose. Antes de publicar conviene instalar un APK rotado sobre la versión actual en un dispositivo de prueba. La nueva clave y su contraseña se guardan fuera del repositorio, con copia de seguridad cifrada: perderlas impide publicar actualizaciones.
-
-Los PR solo ejecutan comprobaciones y compilación sin acceso a los secretos de firma. La firma y publicación están reservadas a tags integrados en `main`. Se puede consultar el progreso en [Actions](https://github.com/JhonTMich/Near/actions/workflows/release.yml).
-
-Si falla una ejecución por una incidencia temporal, puedes volver a ejecutarla desde Actions. Los borradores incompletos se completan antes de publicarse; un release ya publicado no se sobrescribe y requiere un tag nuevo.
-
-Referencia: [API de releases de GitHub](https://docs.github.com/en/rest/releases/releases#get-the-latest-release).
-
-## Widget de estado actual
-
-Añade **Near · Estado actual** desde el selector de widgets de Android. Al añadirlo, elige **Mi estado** o una persona conectada. Puedes tener varios widgets con personas distintas y cambiar la selección tocando el nombre o **⋮**. La selección del widget se conserva al actualizar dentro del mismo paquete; los mensajes rápidos se envían desde Personas.
-
-Muestra el estado manual vigente o la actividad del horario, la próxima actividad y la fecha de los últimos datos. El tamaño ampliado añade ubicación y hora de fin. El botón **↻** consulta los datos sin abrir la app. Sin conexión se conserva la última información y se siguen calculando las actividades y caducidades con esos datos.
-
-Los cambios sincronizados o guardados en la app actualizan la caché del widget. Con la app cerrada se consulta periódicamente cada 15 minutos y se programa un recálculo local para el siguiente comienzo, fin o vencimiento conocido. Android puede retrasar estos trabajos por ahorro de batería; no se promete actualización instantánea de cambios remotos con la app cerrada. No se necesitan permisos de alarmas exactas.
-
-## Verificación
-
-```powershell
-.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
-.\gradlew.bat :app:connectedDebugAndroidTest
-```
-
-Las pruebas de dispositivo requieren un emulador o teléfono conectado. Incluyen ajustes del perfil, confirmación de desvinculación, presentación del estado y selector semanal. Las pruebas unitarias cubren comparación de versiones y límites de las actividades.
-
-## Pruebas en teléfonos
-
-Desde [Android release en Actions](https://github.com/JhonTMich/Near/actions/workflows/release.yml), ejecuta
-el workflow sobre `develop` con la versión prevista. El artefacto `near-candidate-*` contiene el APK firmado
-para probarlo en teléfonos. La publicación se hace con el tag de la versión desde `main` tras la prueba.
-La [guía de notificaciones](docs/notificaciones.md) describe qué verificar entre dos teléfonos.
-
-La [guía de cuentas y conexiones](docs/cuentas-conexiones.md) explica los permisos por contacto,
-los horarios y la disponibilidad. Las alertas dependen de los ajustes de Near y Android.
-
-## Identidad visual
-
-La interfaz usa azul noche, superficies claras de contraste en el acceso y la mascota de Near. Los widgets conservan su diseño ilustrado. **Perfil → Apariencia** permite cambiar el acento de color.
-
-El símbolo de la cabecera reutiliza los trazados del icono adaptativo, sin el margen de seguridad del launcher. La cabecera muestra un único logo. La recuperación del correo de confirmación se ofrece desde el registro y desde la pantalla posterior a crear la cuenta. En **Hoy**, una tarjeta presenta la siguiente actividad que empieza en la fecha y zona del perfil, o «Nada más por hoy», y permite abrir Horario.
-
-La prueba `brandScreensAcrossNavigationAndAppearance` recorre las pantallas y guarda capturas en `Pictures/NearTests` del emulador. Actions las adjunta como `near-screens` para revisarlas desde el PR.
+Si vienes de **Near 1.7 o anterior**, instala la versión nueva manualmente una vez. Entra con la misma cuenta para recuperar tus horarios y conexiones, vuelve a añadir tus widgets y revisa tus ajustes de avisos.
