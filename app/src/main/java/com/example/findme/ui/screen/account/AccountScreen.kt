@@ -161,10 +161,19 @@ fun AccountContent(state: AccountState, actions: AccountActions,
                         Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     }
                 } }
+                if (state.signedIn && state.syncIssue) Panel {
+                    Text(
+                        if (state.profile == null) "No pudimos cargar tu perfil."
+                        else "Sincronización incompleta. Puedes seguir consultando los datos disponibles.",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    TextButton(onClick = actions::refresh, enabled = !state.busy) { Text("Reintentar sincronización") }
+                }
                 if (!state.signedIn) LoginForm(state, actions)
                 else if (state.profile == null) {
                     Panel {
-                        Text("Cargando tu perfil…", color = TextSecondary)
+                        if (!state.syncIssue) Text("Cargando tu perfil…", color = TextSecondary)
                         OutlinedButton(onClick = actions::logout, enabled = !state.busy) { Text("Cerrar sesión") }
                     }
                 }
@@ -779,7 +788,6 @@ private fun People(state: AccountState, actions: AccountActions) {
             }
         }
     }
-    if (state.syncIssue) Text("No se pudo sincronizar. Comprueba tu conexión; volveremos a intentarlo automáticamente.", color = TextSecondary)
     if (state.signals.isNotEmpty()) Panel {
         SectionHeading(Icons.Default.MarkChatUnread, "Te han escrito", "Mensajes recientes · Últimas 24 horas")
         state.signals.forEach { signal ->
