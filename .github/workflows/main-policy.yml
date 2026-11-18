@@ -1,0 +1,90 @@
+name: Main pull request policy
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+
+permissions:
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: main-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Validate the proposed merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          import time
+
+          def api(path, *args):
+              return subprocess.check_output(
+                  ["gh", "api", path, *args], text=True
+              )
+
+          with open(os.environ["GITHUB_EVENT_PATH"]) as event_file:
+              event = json.load(event_file)
+          repo = os.environ["GITHUB_REPOSITORY"]
+          pr_path = f"repos/{repo}/pulls/{event['number']}"
+
+          # GitHub calculates the test merge asynchronously.
+          for attempt in range(12):
+              pr = json.loads(api(pr_path))
+              if pr["state"] != "open" or pr["base"]["ref"] != "main":
+                  raise SystemExit("The pull request no longer targets main.")
+              if pr["head"]["sha"] != event["pull_request"]["head"]["sha"]:
+                  raise SystemExit("A newer revision has its own policy run.")
+              if pr["mergeable"] is not None:
+                  break
+              time.sleep(5)
+          if not pr["mergeable"] or not pr["merge_commit_sha"]:
+              raise SystemExit("GitHub could not create a test merge for this revision.")
+
+          head = pr["head"]
+          same_repo = (head.get("repo") or {}).get("full_name") == repo
+          docs = re.compile(
+              r"(?:README|CHANGELOG|CONTRIBUTING|SECURITY)(?:[._-][A-Za-z0-9_-]+)?\.md"
+              r"|docs/(?:[^/]+/)*[^/]+\.(?:md|rst|adoc|png|jpg|jpeg|webp|gif)"
+          )
+
+          if same_repo and head["ref"] == "develop":
+              allowed, description = True, "Release from develop"
+          elif same_repo and head["ref"].startswith("hotfix/"):
+              allowed, description = True, "Hotfix from a repository branch"
+          else:
+              pages = json.loads(api(f"{pr_path}/files?per_page=100", "--paginate", "--slurp"))
+              files = [file for page in pages for file in page]
+              allowed = bool(files) and len(files) == pr["changed_files"] and all(
+                  docs.fullmatch(file["filename"])
+                  and docs.fullmatch(file.get("previous_filename", file["filename"]))
+                  for file in files
+              )
+              description = (
+                  "Documentation only" if allowed else
+                  "Use develop for a release, a hotfix branch, or change documentation only"
+              )
+
+          # Publish on the test merge so another PR cannot reuse the result from the same head.
+          api(
+              f"repos/{repo}/statuses/{pr['merge_commit_sha']}",
+              "--method", "POST",
+              "-f", "context=main-policy",
+              "-f", f"state={'success' if allowed else 'failure'}",
+              "-f", f"description={description}",
+              "-f", f"target_url={os.environ['GITHUB_SERVER_URL']}/{repo}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+          )
+          print(description)
+          raise SystemExit(0 if allowed else 1)
+          PY
