@@ -1,14 +1,10 @@
 {
-  "name": "Protect main - pull requests only",
-  "target": "branch",
-  "enforcement": "active",
-  "bypass_actors": [],
   "conditions": {
     "ref_name": {
+      "exclude": [],
       "include": [
         "refs/heads/main"
-      ],
-      "exclude": []
+      ]
     }
   },
   "rules": [
@@ -21,12 +17,40 @@
     {
       "type": "pull_request",
       "parameters": {
+        "required_review_thread_resolution": true,
         "required_approving_review_count": 0,
-        "dismiss_stale_reviews_on_push": true,
         "require_code_owner_review": false,
-        "require_last_push_approval": false,
-        "required_review_thread_resolution": true
+        "allowed_merge_methods": [
+          "merge"
+        ],
+        "require_extra_approval_for_unattributed_changes": true,
+        "dismiss_stale_reviews_on_push": true,
+        "require_last_push_approval": false
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "required_status_checks": [
+          {
+            "integration_id": 15368,
+            "context": "Build and verify APK"
+          },
+          {
+            "integration_id": 15368,
+            "context": "Instrumented tests"
+          },
+          {
+            "integration_id": 15368,
+            "context": "main-policy"
+          }
+        ],
+        "strict_required_status_checks_policy": true
       }
     }
-  ]
+  ],
+  "target": "branch",
+  "bypass_actors": [],
+  "name": "Main - releases, documentation and hotfixes",
+  "enforcement": "active"
 }
