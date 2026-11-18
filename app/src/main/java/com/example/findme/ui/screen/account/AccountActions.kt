@@ -5,6 +5,7 @@ import com.example.findme.data.model.ConnectionPreference
 import com.example.findme.data.model.QuickMessage
 import com.example.findme.data.model.ScheduleDto
 import com.example.findme.data.model.ScheduleException
+import com.example.findme.data.model.SharedSchedules
 import com.example.findme.data.local.AccountAlert
 import com.example.findme.data.local.AppAccent
 
@@ -32,6 +33,7 @@ interface AccountActions {
     fun invite() {}
     fun accept(code: String) {}
     fun disconnect(id: String) {}
+    suspend fun sharedSchedulesForAvailability(contactId: String): SharedSchedules? = null
     fun selectPerson(profile: AccountProfile) {}
     fun saveMessage(label: String, message: String) {}
     fun deleteMessage(id: String) {}
