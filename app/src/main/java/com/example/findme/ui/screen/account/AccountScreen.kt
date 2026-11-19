@@ -549,17 +549,22 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
                 StatusPill(category.label, category.accentColor)
                 StatusPill(schedule.modality.replaceFirstChar(Char::titlecase), TextSecondary)
             }
-            if (schedule.location.isNotBlank()) Text(schedule.location, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            if (schedule.location.isNotBlank()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp), tint = TextMuted)
+                Text(schedule.location, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
             HorizontalDivider(color = CardBorder)
-            Text("Editar", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = { oneOff = recurring.id to occurrence.originalDate }, enabled = !state.busy) {
-                    Text("Solo esta fecha")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                CardAction(Icons.Default.EventRepeat, "Solo esta fecha", enabled = !state.busy, modifier = Modifier.weight(1f)) {
+                    oneOff = recurring.id to occurrence.originalDate
                 }
-                TextButton(onClick = { editing = recurring; showEditor = true }, enabled = !state.busy) {
-                    Text("Serie semanal")
+                CardAction(Icons.Default.Edit, "Serie semanal", enabled = !state.busy, modifier = Modifier.weight(1f)) {
+                    editing = recurring; showEditor = true
                 }
-                IconButton(onClick = { pendingDelete = recurring }, enabled = !state.busy) { Icon(Icons.Default.DeleteOutline, "Eliminar serie de ${schedule.title}", tint = TextMuted) }
+                IconButton(onClick = { pendingDelete = recurring }, enabled = !state.busy,
+                    colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = .10f))) {
+                    Icon(Icons.Default.DeleteOutline, "Eliminar serie de ${schedule.title}", tint = MaterialTheme.colorScheme.error.copy(alpha = .85f))
+                }
             }
         }
     }
@@ -571,7 +576,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
             exception.date?.takeUnless { exception.cancelled }?.let {
                 Text("Pasa al ${LocalDate.parse(it).longDate()}", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
-            TextButton(onClick = { oneOff = schedule.id to date }, enabled = !state.busy) { Text("Solo esta fecha") }
+            CardAction(Icons.Default.EventRepeat, "Solo esta fecha", enabled = !state.busy) { oneOff = schedule.id to date }
         }
     }
     oneOff?.let { (id, original) ->
@@ -824,11 +829,22 @@ private fun CommonAvailabilitySheet(person: AccountProfile, actions: AccountActi
                 Choices(listOf(false, true), allHours, { allHours = it }) { if (it) "Todo el día" else "8:00–22:00" }
                 val freeDays = remember(pair, allHours, asOf) { commonFreeTime(pair, asOf, allHours) }
                 freeDays.forEach { day ->
-                    Text(day.date.longDate(), fontWeight = FontWeight.Bold)
-                    if (day.slots.isEmpty()) Text("Sin huecos de 30 min", color = TextSecondary)
-                    day.slots.forEach { slot ->
-                        val end = if (slot.end.toLocalDate() > day.date) "24:00" else slot.end.format(hourFormat)
-                        Text("${slot.start.format(hourFormat)} – $end", color = TextPrimary)
+                    Surface(shape = RoundedCornerShape(18.dp), color = CardBg, border = BorderStroke(1.dp, CardBorder)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(day.date.longDate().replaceFirstChar(Char::titlecase), style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                if (day.slots.isNotEmpty()) Text("${day.slots.size} ${if (day.slots.size == 1) "hueco" else "huecos"}",
+                                    color = TextMuted, style = MaterialTheme.typography.labelMedium)
+                            }
+                            if (day.slots.isEmpty()) Text("Sin huecos de 30 min", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+                            else FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                day.slots.forEach { slot ->
+                                    val end = if (slot.end.toLocalDate() > day.date) "24:00" else slot.end.format(hourFormat)
+                                    StatusPill("${slot.start.format(hourFormat)} – $end", BrandSky)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1181,6 +1197,19 @@ private fun NearSnackbarHost(state: SnackbarHostState) {
         Snackbar(data, Modifier.padding(horizontal = 16.dp), shape = RoundedCornerShape(16.dp),
             containerColor = InnerBg, contentColor = TextPrimary,
             actionColor = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** Compact secondary action used inside cards, with an icon so it reads as a button and not as loose text. */
+@Composable
+private fun CardAction(icon: ImageVector, label: String, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    FilledTonalButton(onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 40.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp), shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = .7f),
+            contentColor = MaterialTheme.colorScheme.primary)) {
+        Icon(icon, null, Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
     }
 }
 
