@@ -123,7 +123,9 @@ fun AccountContent(state: AccountState, actions: AccountActions,
     LaunchedEffect(state.scheduleRevision, state.signedIn) { if (state.scheduleRevision > 0 && state.signedIn) tab = "Horario" }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.notice) { state.notice?.let { snackbar.showSnackbar(it) } }
-    Scaffold(containerColor = AppBackground, snackbarHost = { SnackbarHost(snackbar) }, topBar = {
+    // One continuous backdrop behind the top bar and the content, so no seam shows under the header.
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(AppSurface, AppBackground), endY = 1400f))) {
+    Scaffold(containerColor = Color.Transparent, snackbarHost = { NearSnackbarHost(snackbar) }, topBar = {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BrandMark(Modifier.size(46.dp))
@@ -159,8 +161,9 @@ fun AccountContent(state: AccountState, actions: AccountActions,
         }
     }) { padding ->
         Crossfade(tab, modifier = Modifier.fillMaxSize().padding(padding), label = "accountNavigation") { activeTab ->
-            Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(AppSurface, AppBackground), endY = 1100f))
-                .verticalScroll(rememberScrollState()).imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Column(Modifier.fillMaxSize()
+                .verticalScroll(rememberScrollState()).imePadding()
+                .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 state.error?.let { error -> Panel {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.error)
@@ -192,6 +195,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
                 }
             }
         }
+    }
     }
     if (state.passwordRecovery && state.signedIn) NewPasswordSheet(state, actions)
 }
@@ -1174,6 +1178,16 @@ private fun AccountSettingsSwitch(title: String, description: String, checked: B
             if (description.isNotBlank()) Text(description, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
         Switch(checked = checked, onCheckedChange = null)
+    }
+}
+
+/** Snackbars on a raised card with the accent for actions, instead of the cream inverse surface. */
+@Composable
+private fun NearSnackbarHost(state: SnackbarHostState) {
+    SnackbarHost(state) { data ->
+        Snackbar(data, Modifier.padding(horizontal = 16.dp), shape = RoundedCornerShape(16.dp),
+            containerColor = InnerBg, contentColor = TextPrimary,
+            actionColor = MaterialTheme.colorScheme.primary)
     }
 }
 
