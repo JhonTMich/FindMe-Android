@@ -126,7 +126,7 @@ fun SelectMenuField(
 fun SelectMenu(expanded: Boolean, onDismiss: () -> Unit, width: Dp, content: @Composable ColumnScope.() -> Unit) {
     DropdownMenu(
         expanded = expanded, onDismissRequest = onDismiss,
-        modifier = Modifier.widthIn(min = maxOf(width, 180.dp)).heightIn(max = 360.dp),
+        modifier = Modifier.widthIn(min = maxOf(width, 180.dp)).heightIn(max = 440.dp),
         offset = DpOffset(0.dp, 6.dp), shape = MenuShape, containerColor = CardBg,
         tonalElevation = 0.dp, shadowElevation = 12.dp, border = BorderStroke(1.dp, CardBorder)
     ) {
