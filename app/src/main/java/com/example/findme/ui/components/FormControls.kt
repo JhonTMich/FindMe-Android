@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -186,3 +187,39 @@ fun nearSwitchColors(): SwitchColors = SwitchDefaults.colors(
     uncheckedTrackColor = FieldContainer,
     uncheckedBorderColor = MaterialTheme.colorScheme.outline
 )
+
+/**
+ * Two or three mutually exclusive options shown as one segmented control, so the choice reads as
+ * a switch between modes rather than as loose chips.
+ */
+@Composable
+fun <T> SegmentedChoice(values: List<T>, selected: T, change: (T) -> Unit, modifier: Modifier = Modifier, label: (T) -> String) {
+    val primary = MaterialTheme.colorScheme.primary
+    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(FieldContainer)
+        .border(1.dp, CardBorder, RoundedCornerShape(16.dp)).padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        values.forEach { value ->
+            val active = value == selected
+            val background by animateColorAsState(if (active) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                tween(180), label = "segment")
+            Box(Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(12.dp)).background(background)
+                .then(if (active) Modifier.border(1.dp, primary.copy(alpha = .45f), RoundedCornerShape(12.dp)) else Modifier)
+                .selectable(active, role = Role.RadioButton, onClick = { change(value) })
+                .padding(horizontal = 4.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+                Text(label(value), style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    color = if (active) primary else TextSecondary,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
+            }
+        }
+    }
+}
+
+/** A single-choice chip with the shared colours and a check mark on the active option. */
+@Composable
+fun ChoiceChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier,
+    enabled: Boolean = true, leading: (@Composable () -> Unit)? = null) {
+    FilterChip(selected = selected, onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 40.dp),
+        label = { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelLarge) },
+        leadingIcon = leading ?: if (selected) { { Icon(Icons.Default.Check, null, Modifier.size(18.dp)) } } else null,
+        shape = RoundedCornerShape(12.dp), colors = nearChipColors(), border = nearChipBorder(selected))
+}

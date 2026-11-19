@@ -856,10 +856,9 @@ private fun People(state: AccountState, actions: AccountActions) {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             state.connections.forEach { connection ->
                 state.profiles.find { it.id == connection.otherPerson(state.profile?.id.orEmpty()) }?.let { person ->
-                    FilterChip(selected = state.selectedPerson?.id == person.id, onClick = { actions.selectPerson(person) }, enabled = !state.busy,
-                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.primary),
-                        leadingIcon = { Icon(if (controls.isMuted(person.id)) Icons.Default.NotificationsOff else Icons.Default.PersonOutline, null, Modifier.size(18.dp)) },
-                        label = { Text(controls.nameOf(person)) })
+                    ChoiceChip(controls.nameOf(person), state.selectedPerson?.id == person.id, onClick = { actions.selectPerson(person) },
+                        enabled = !state.busy,
+                        leading = { Icon(if (controls.isMuted(person.id)) Icons.Default.NotificationsOff else Icons.Default.PersonOutline, null, Modifier.size(18.dp)) })
                 }
             }
         }
@@ -915,7 +914,7 @@ private fun People(state: AccountState, actions: AccountActions) {
             }
             else -> {
                 var personDay by rememberSaveable(person.id) { mutableStateOf(ZonedDateTime.now(person.zone()).dayOfWeek.value) }
-                Choices((1..7).toList(), personDay, { personDay = it }) { days[it - 1].take(3) }
+                SegmentedChoice((1..7).toList(), personDay, { personDay = it }) { days[it - 1].take(3) }
                 val personDate = LocalDate.now(person.zone()).with(TemporalAdjusters.nextOrSame(DayOfWeek.of(personDay)))
                 Text(personDate.longDate(), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                 val schedules = state.personSchedules.occurrencesOn(personDate, person.zone()).map { it.schedule }
@@ -1047,11 +1046,8 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         HorizontalDivider(color = CardBorder)
         AccountSettingsSwitch("Antes de tus actividades", "", state.settings.reminders) { actions.setReminders(it) }
         if (state.settings.reminders) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                com.example.findme.data.local.REMINDER_CHOICES.forEach { minutes ->
-                    FilterChip(selected = state.settings.reminderMinutes == minutes, onClick = { actions.setReminderMinutes(minutes) },
-                        label = { Text(if (minutes >= 60) "${minutes / 60} h antes" else "$minutes min antes", maxLines = 1, style = MaterialTheme.typography.labelMedium) })
-                }
+            Choices(com.example.findme.data.local.REMINDER_CHOICES, state.settings.reminderMinutes, actions::setReminderMinutes) { minutes ->
+                if (minutes >= 60) "${minutes / 60} h antes" else "$minutes min antes"
             }
             if (!exact && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 Text("Android puede retrasar el recordatorio unos minutos. Permite las alarmas exactas para que llegue a tiempo.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
@@ -1065,12 +1061,9 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         SectionHeading(Icons.Default.Palette, "Apariencia")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AppAccent.entries.forEach { accent ->
-                FilterChip(selected = state.settings.accent == accent, onClick = { actions.setAccent(accent) },
-                    label = { Text(accent.label, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
-                    leadingIcon = { Box(Modifier.size(10.dp).background(brandAccent(accent), CircleShape)) },
+                ChoiceChip(accent.label, state.settings.accent == accent, onClick = { actions.setAccent(accent) },
                     modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.primary))
+                    leading = { Box(Modifier.size(12.dp).background(brandAccent(accent), CircleShape)) })
             }
         }
     }
@@ -1241,9 +1234,12 @@ private fun Field(value: String, change: (String) -> Unit, label: String, placeh
 
 @Composable
 private fun <T> Choices(values: List<T>, selected: T, change: (T) -> Unit, label: (T) -> String) {
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        values.forEach { value -> FilterChip(selected = selected == value, onClick = { change(value) }, label = { Text(label(value)) },
-            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.primary), shape = RoundedCornerShape(12.dp)) }
+    if (values.size <= 2) {
+        SegmentedChoice(values, selected, change, label = label)
+    } else {
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            values.forEach { value -> ChoiceChip(label(value), selected == value, onClick = { change(value) }) }
+        }
     }
 }
 
