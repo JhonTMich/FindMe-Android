@@ -55,7 +55,8 @@ class NearMessagingService : FirebaseMessagingService() {
             val owner = auth.currentUserOrNull()?.id ?: return
             if (owner != data["recipient_id"]) return
             val people = WidgetStore.data(context)?.takeIf { it.owner == owner }?.profiles.orEmpty()
-            if (people.none { it.id == data["user_id"] }) return
+            // Only people this account is connected to (and still sees) can alert it.
+            if (people.none { it.id == alert.person }) return
             val settings = AccountSettingsRepository(context).settings(owner).first()
             if (auth.currentUserOrNull()?.id != owner || !PushAlerts.allowed(alert, settings)) return
             NotificationHelper.show(context, alert.channel, alert.id, alert.title, alert.text)
