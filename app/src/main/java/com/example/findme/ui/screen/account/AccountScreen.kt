@@ -18,6 +18,8 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +30,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,8 +45,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -125,7 +128,9 @@ fun AccountContent(state: AccountState, actions: AccountActions,
     LaunchedEffect(state.scheduleRevision, state.signedIn) { if (state.scheduleRevision > 0 && state.signedIn) tab = "Horario" }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.notice) { state.notice?.let { snackbar.showSnackbar(it) } }
-    Scaffold(containerColor = AppBackground, snackbarHost = { SnackbarHost(snackbar) }, topBar = {
+    // One continuous backdrop behind the top bar and the content, so no seam shows under the header.
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(AppSurface, AppBackground), endY = 1400f))) {
+    Scaffold(containerColor = Color.Transparent, contentColor = TextPrimary, snackbarHost = { NearSnackbarHost(snackbar) }, topBar = {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BrandMark(Modifier.size(46.dp))
@@ -161,8 +166,9 @@ fun AccountContent(state: AccountState, actions: AccountActions,
         }
     }) { padding ->
         Crossfade(tab, modifier = Modifier.fillMaxSize().padding(padding), label = "accountNavigation") { activeTab ->
-            Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(AppSurface, AppBackground), endY = 1100f))
-                .verticalScroll(rememberScrollState()).imePadding().padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            Column(Modifier.fillMaxSize()
+                .verticalScroll(rememberScrollState()).imePadding()
+                .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
                 state.error?.let { error -> Panel {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.error)
@@ -195,6 +201,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
             }
         }
     }
+    }
     if (state.passwordRecovery && state.signedIn) NewPasswordSheet(state, actions)
 }
 
@@ -213,7 +220,7 @@ private fun NewPasswordSheet(state: AccountState, actions: AccountActions) {
                 visualTransformation = if (visible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = { IconButton(onClick = { visible = !visible }) {
                     Icon(if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (visible) "Ocultar contraseña" else "Mostrar contraseña")
-                } }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                } }, shape = FieldShape, modifier = Modifier.fillMaxWidth(), colors = nearTextFieldColors())
         }
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(onClick = { actions.setRecoveredPassword(password, confirmation) },
@@ -290,7 +297,7 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
     val passwordToggle: @Composable () -> Unit = {
         IconButton(onClick = { passwordVisible = !passwordVisible }) {
             Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña", tint = TextSecondary)
+                if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
         }
     }
     LoginStage {
@@ -547,17 +554,22 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
                 StatusPill(category.label, category.accentColor)
                 StatusPill(schedule.modality.replaceFirstChar(Char::titlecase), TextSecondary)
             }
-            if (schedule.location.isNotBlank()) Text(schedule.location, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            if (schedule.location.isNotBlank()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icons.Default.LocationOn, null, Modifier.size(16.dp), tint = TextMuted)
+                Text(schedule.location, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+            }
             HorizontalDivider(color = CardBorder)
-            Text("Editar", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = { oneOff = recurring.id to occurrence.originalDate }, enabled = !state.busy) {
-                    Text("Solo esta fecha")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                CardAction(Icons.Default.EventRepeat, "Solo esta fecha", enabled = !state.busy, modifier = Modifier.weight(1f)) {
+                    oneOff = recurring.id to occurrence.originalDate
                 }
-                TextButton(onClick = { editing = recurring; showEditor = true }, enabled = !state.busy) {
-                    Text("Serie semanal")
+                CardAction(Icons.Default.Edit, "Serie semanal", enabled = !state.busy, modifier = Modifier.weight(1f)) {
+                    editing = recurring; showEditor = true
                 }
-                IconButton(onClick = { pendingDelete = recurring }, enabled = !state.busy) { Icon(Icons.Default.DeleteOutline, "Eliminar serie de ${schedule.title}", tint = TextMuted) }
+                IconButton(onClick = { pendingDelete = recurring }, enabled = !state.busy,
+                    colors = IconButtonDefaults.iconButtonColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = .10f))) {
+                    Icon(Icons.Default.DeleteOutline, "Eliminar serie de ${schedule.title}", tint = MaterialTheme.colorScheme.error.copy(alpha = .85f))
+                }
             }
         }
     }
@@ -569,7 +581,7 @@ private fun ScheduleManager(state: AccountState, actions: AccountActions) {
             exception.date?.takeUnless { exception.cancelled }?.let {
                 Text("Pasa al ${LocalDate.parse(it).longDate()}", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             }
-            TextButton(onClick = { oneOff = schedule.id to date }, enabled = !state.busy) { Text("Solo esta fecha") }
+            CardAction(Icons.Default.EventRepeat, "Solo esta fecha", enabled = !state.busy) { oneOff = schedule.id to date }
         }
     }
     oneOff?.let { (id, original) ->
@@ -605,7 +617,7 @@ private fun ScheduleOccurrenceEditor(
     }
     Sheet(dismiss, "Solo esta fecha", gesturesEnabled = false) {
         Text(schedule.title, fontWeight = FontWeight.Bold)
-        ScheduleChoice("Fecha original", originals, original, { originalText = it.toString() }) { it.longDate() }
+        ScheduleChoice("Fecha original", originals, original, { originalText = it.toString() }, leading = Icons.Default.Event) { it.longDate() }
         key(originalText) {
             var moving by rememberSaveable { mutableStateOf(existing?.date != null) }
             val moveDates = (0L..13L).map { maxOf(today, original.minusDays(6)).plusDays(it) }.let { dates ->
@@ -617,7 +629,7 @@ private fun ScheduleOccurrenceEditor(
             var overnight by rememberSaveable { mutableStateOf(existing?.endsNextDay ?: schedule.endsNextDay) }
             Choices(listOf(false, true), moving, { moving = it }) { if (it) "Reprogramar" else "Cancelar actividad" }
             if (moving) {
-                ScheduleChoice("Nueva fecha", moveDates, LocalDate.parse(dateText), { dateText = it.toString() }) { it.longDate() }
+                ScheduleChoice("Nueva fecha", moveDates, LocalDate.parse(dateText), { dateText = it.toString() }, leading = Icons.Default.EventRepeat) { it.longDate() }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
                     Box(Modifier.weight(1f)) { TimeField(end, { end = it }, "Fin") }
@@ -625,7 +637,7 @@ private fun ScheduleOccurrenceEditor(
                 Row(Modifier.fillMaxWidth().toggleable(overnight, role = Role.Switch, onValueChange = { overnight = it }),
                     verticalAlignment = Alignment.CenterVertically) {
                     Text("Termina al día siguiente", modifier = Modifier.weight(1f))
-                    Switch(checked = overnight, onCheckedChange = null)
+                    Switch(checked = overnight, onCheckedChange = null, colors = nearSwitchColors())
                 }
             }
             val validation = if (moving) validateSchedule(schedule.dayOfWeek, start, end, schedule.title, overnight) else null
@@ -685,7 +697,7 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
                     { selectedDays = listOf(it) }, Modifier.weight(1f)) { days[it - 1] }
             }
             ScheduleChoice("Tipo", ActivityCategory.entries, ActivityCategory.fromKey(category),
-                { category = it.key }, Modifier.weight(1f)) { it.label }
+                { category = it.key }, Modifier.weight(1f), leading = ActivityCategory.fromKey(category).icon) { it.label }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
@@ -699,9 +711,10 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text("Termina al día siguiente", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Switch(checked = endsNextDay, onCheckedChange = null)
+            Switch(checked = endsNextDay, onCheckedChange = null, colors = nearSwitchColors())
         }
-        ScheduleChoice("Modalidad", listOf("presencial", "virtual"), modality, { modality = it }) {
+        ScheduleChoice("Modalidad", listOf("presencial", "virtual"), modality, { modality = it },
+            leading = if (modality == "virtual") Icons.Default.Videocam else Icons.Default.LocationOn) {
             it.replaceFirstChar(Char::titlecase)
         }
         val feedback = if (selectedDays.isEmpty()) "Elige al menos un día."
@@ -722,7 +735,6 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
 
 @Composable
 private fun ScheduleDays(chosen: List<Int>, onSelect: (List<Int>) -> Unit, modifier: Modifier = Modifier) {
-    var expanded by remember { mutableStateOf(false) }
     val summary = when (chosen.size) {
         0 -> "Elegir días"
         1 -> days[chosen.single() - 1]
@@ -730,23 +742,19 @@ private fun ScheduleDays(chosen: List<Int>, onSelect: (List<Int>) -> Unit, modif
         7 -> "Todos los días"
         else -> "${chosen.size} días"
     }
-    Box(modifier) {
-        ScheduleField("Días", summary, onClick = { expanded = true }, dropdown = true)
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            days.forEachIndexed { index, name ->
-                val day = index + 1
-                val checked = day in chosen
-                DropdownMenuItem(
-                    text = { Text(name) },
-                    leadingIcon = { Checkbox(checked = checked, onCheckedChange = null) },
-                    modifier = Modifier.semantics { selected = checked },
-                    onClick = { onSelect(if (checked) chosen - day else (chosen + day).sorted()) }
-                )
-            }
-            HorizontalDivider()
-            DropdownMenuItem(text = { Text("Listo", color = MaterialTheme.colorScheme.primary) },
-                onClick = { expanded = false })
+    SelectMenuField("Días", summary, modifier) { close ->
+        days.forEachIndexed { index, name ->
+            val day = index + 1
+            val checked = day in chosen
+            SelectMenuItem(name, checked, showCheck = false,
+                leading = { Checkbox(checked = checked, onCheckedChange = null,
+                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary,
+                        uncheckedColor = TextMuted, checkmarkColor = MaterialTheme.colorScheme.onPrimary)) },
+                onClick = { onSelect(if (checked) chosen - day else (chosen + day).sorted()) })
         }
+        HorizontalDivider(Modifier.padding(vertical = 4.dp), color = CardBorder)
+        DropdownMenuItem(text = { Text("Listo", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }, onClick = close)
     }
 }
 
@@ -757,43 +765,21 @@ private fun <T> ScheduleChoice(
     selected: T,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
+    leading: ImageVector? = null,
     name: (T) -> String
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Box(modifier) {
-        ScheduleField(label, name(selected), onClick = { expanded = true }, dropdown = true)
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            choices.forEach { choice ->
-                DropdownMenuItem(text = { Text(name(choice)) }, onClick = {
-                    onSelect(choice)
-                    expanded = false
-                })
-            }
+    SelectMenuField(label, name(selected), modifier, leading = leading) { close ->
+        choices.forEach { choice ->
+            SelectMenuItem(name(choice), choice == selected, onClick = { onSelect(choice); close() })
         }
-    }
-}
-
-@Composable
-private fun ScheduleField(label: String, value: String, onClick: () -> Unit, dropdown: Boolean = false) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, CardBorder),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp)
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, color = TextSecondary, style = MaterialTheme.typography.labelSmall)
-            Text(value, color = TextPrimary, style = MaterialTheme.typography.titleSmall)
-        }
-        if (dropdown) Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp), tint = TextMuted)
     }
 }
 
 @Composable
 private fun TimeField(value: String, change: (String) -> Unit, label: String) {
     var picking by rememberSaveable { mutableStateOf(false) }
-    ScheduleField(label, formatScheduleTime(value), onClick = { picking = true })
+    SelectField(label, formatScheduleTime(value), onClick = { picking = true }, expanded = picking,
+        trailing = Icons.Default.Schedule)
     if (picking) {
         val initial = StatusRepository.parseLocalTimeOrNull(value) ?: LocalTime.of(9, 0)
         ScheduleTimePicker("Hora de ${label.lowercase()}", initial, dismiss = { picking = false }) { time ->
@@ -848,11 +834,22 @@ private fun CommonAvailabilitySheet(person: AccountProfile, actions: AccountActi
                 Choices(listOf(false, true), allHours, { allHours = it }) { if (it) "Todo el día" else "8:00–22:00" }
                 val freeDays = remember(pair, allHours, asOf) { commonFreeTime(pair, asOf, allHours) }
                 freeDays.forEach { day ->
-                    Text(day.date.longDate(), fontWeight = FontWeight.Bold)
-                    if (day.slots.isEmpty()) Text("Sin huecos de 30 min", color = TextSecondary)
-                    day.slots.forEach { slot ->
-                        val end = if (slot.end.toLocalDate() > day.date) "24:00" else slot.end.format(hourFormat)
-                        Text("${slot.start.format(hourFormat)} – $end", color = TextPrimary)
+                    Surface(shape = RoundedCornerShape(18.dp), color = CardBg, border = BorderStroke(1.dp, CardBorder)) {
+                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(day.date.longDate().replaceFirstChar(Char::titlecase), style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                if (day.slots.isNotEmpty()) Text("${day.slots.size} ${if (day.slots.size == 1) "hueco" else "huecos"}",
+                                    color = TextMuted, style = MaterialTheme.typography.labelMedium)
+                            }
+                            if (day.slots.isEmpty()) Text("Sin huecos de 30 min", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+                            else FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                day.slots.forEach { slot ->
+                                    val end = if (slot.end.toLocalDate() > day.date) "24:00" else slot.end.format(hourFormat)
+                                    StatusPill("${slot.start.format(hourFormat)} – $end", BrandSky)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -880,10 +877,9 @@ private fun People(state: AccountState, actions: AccountActions) {
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             state.connections.forEach { connection ->
                 state.profiles.find { it.id == connection.otherPerson(state.profile?.id.orEmpty()) }?.let { person ->
-                    FilterChip(selected = state.selectedPerson?.id == person.id, onClick = { actions.selectPerson(person) }, enabled = !state.busy,
-                        colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.primary),
-                        leadingIcon = { Icon(if (controls.isMuted(person.id)) Icons.Default.NotificationsOff else Icons.Default.PersonOutline, null, Modifier.size(18.dp)) },
-                        label = { Text(controls.nameOf(person)) })
+                    ChoiceChip(controls.nameOf(person), state.selectedPerson?.id == person.id, onClick = { actions.selectPerson(person) },
+                        enabled = !state.busy,
+                        leading = { Icon(if (controls.isMuted(person.id)) Icons.Default.NotificationsOff else Icons.Default.PersonOutline, null, Modifier.size(18.dp)) })
                 }
             }
         }
@@ -919,9 +915,11 @@ private fun People(state: AccountState, actions: AccountActions) {
                 if (state.messages.isEmpty()) Text("Crea un mensaje rápido para enviarlo desde aquí.", color = TextSecondary)
                 state.messages.forEach { quick ->
                     OutlinedButton(onClick = { actions.send(quick); sendMessage = false }, enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth()) {
-                        Text(quick.label, Modifier.weight(1f), textAlign = TextAlign.Start)
-                        Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp))
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp), shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, CardBorder), contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp)) {
+                        Text(quick.label, Modifier.weight(1f), textAlign = TextAlign.Start, color = TextPrimary,
+                            style = MaterialTheme.typography.bodyLarge)
+                        Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
                 TextButton(onClick = { sendMessage = false; manageMessages = true }) { Text("Editar mensajes rápidos") }
@@ -939,7 +937,7 @@ private fun People(state: AccountState, actions: AccountActions) {
             }
             else -> {
                 var personDay by rememberSaveable(person.id) { mutableStateOf(ZonedDateTime.now(person.zone()).dayOfWeek.value) }
-                Choices((1..7).toList(), personDay, { personDay = it }) { days[it - 1].take(3) }
+                SegmentedChoice((1..7).toList(), personDay, { personDay = it }) { days[it - 1].take(3) }
                 val personDate = LocalDate.now(person.zone()).with(TemporalAdjusters.nextOrSame(DayOfWeek.of(personDay)))
                 Text(personDate.longDate(), color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                 val schedules = state.personSchedules.occurrencesOn(personDate, person.zone()).map { it.schedule }
@@ -991,11 +989,15 @@ private fun ConnectionSheet(state: AccountState, actions: AccountActions, dismis
                     }
                     Button(onClick = {
                         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "Conecta conmigo en Near. Mi código es $display. Es válido durante 24 horas.") }, "Compartir invitación"))
-                    }, modifier = Modifier.weight(1f)) { Text("Compartir") }
+                    }, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Default.Share, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Compartir")
+                    }
                 }
             } ?: EmptyPanel(Icons.Default.Key, "Invita a una persona", "Envíale tu código y pídele que lo introduzca en su app.")
-            Button(onClick = actions::invite, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
-                Text(if (state.invitation == null) "Crear mi código" else "Generar otro código")
+            if (state.invitation == null) Button(onClick = actions::invite, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Key, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Crear mi código")
+            } else TextButton(onClick = actions::invite, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Refresh, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Generar otro código")
             }
         } else {
             Field(code, { code = it.take(40) }, "Código de invitación", placeholder = "ABCD-EFGH", keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Characters))
@@ -1015,10 +1017,17 @@ private fun MessageSheet(state: AccountState, actions: AccountActions, dismiss: 
         Field(message, { message = it.take(240) }, "¿Qué quieres decir?", placeholder = "Escribe tu mensaje")
         Button(onClick = { actions.saveMessage(message.trim().take(30), message) }, enabled = !state.busy && message.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Guardar mensaje") }
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (state.messages.isNotEmpty()) Text("Guardados", style = MaterialTheme.typography.titleSmall, color = TextSecondary)
         state.messages.forEach { quick ->
-            Panel {
-                Text(quick.message, fontWeight = FontWeight.SemiBold)
-                TextButton(onClick = { actions.deleteMessage(quick.id) }, enabled = !state.busy) { Text("Eliminar mensaje", color = TextMuted) }
+            Surface(shape = RoundedCornerShape(16.dp), color = CardBg, border = BorderStroke(1.dp, CardBorder)) {
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.ChatBubbleOutline, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Text(quick.message, Modifier.weight(1f).padding(vertical = 10.dp), fontWeight = FontWeight.SemiBold)
+                    IconButton(onClick = { actions.deleteMessage(quick.id) }, enabled = !state.busy) {
+                        Icon(Icons.Default.DeleteOutline, "Eliminar mensaje", tint = TextMuted)
+                    }
+                }
             }
         }
     }
@@ -1048,18 +1057,22 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
     }
     Panel {
         SectionHeading(Icons.Default.NotificationsNone, "Notificaciones")
-        Text(if (nearAlerts) "Near · Hay avisos activados" else "Near · Todos los avisos desactivados",
-            color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-        Text(if (notificationsAllowed) "Android · Permite las notificaciones" else "Android · Bloquea las notificaciones",
-            color = if (notificationsAllowed) TextSecondary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }) {
-            Text("Abrir ajustes de Android")
-        }
-        if (notificationsAllowed) silencedChannels.forEach { channel ->
-            TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
-                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                .putExtra(Settings.EXTRA_CHANNEL_ID, channel.id)) }) {
-                Text("Android silenció: ${channel.title}")
+        Surface(shape = RoundedCornerShape(16.dp), color = AppBackground.copy(alpha = .35f), border = BorderStroke(1.dp, CardBorder)) {
+            Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusLine(if (nearAlerts) "Near · Hay avisos activados" else "Near · Todos los avisos desactivados", nearAlerts)
+                StatusLine(if (notificationsAllowed) "Android · Permite las notificaciones" else "Android · Bloquea las notificaciones",
+                    notificationsAllowed, problem = !notificationsAllowed)
+                if (notificationsAllowed) silencedChannels.forEach { channel ->
+                    SettingsRow(Icons.Default.NotificationsOff, "Android silenció: ${channel.title}", tint = MaterialTheme.colorScheme.error) {
+                        context.startActivity(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            .putExtra(Settings.EXTRA_CHANNEL_ID, channel.id))
+                    }
+                }
+                SettingsRow(Icons.AutoMirrored.Filled.OpenInNew, "Abrir ajustes de Android") {
+                    context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+                }
             }
         }
         HorizontalDivider(color = CardBorder)
@@ -1071,16 +1084,13 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         HorizontalDivider(color = CardBorder)
         AccountSettingsSwitch("Antes de tus actividades", "", state.settings.reminders) { actions.setReminders(it) }
         if (state.settings.reminders) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                com.example.findme.data.local.REMINDER_CHOICES.forEach { minutes ->
-                    FilterChip(selected = state.settings.reminderMinutes == minutes, onClick = { actions.setReminderMinutes(minutes) },
-                        label = { Text(if (minutes >= 60) "${minutes / 60} h antes" else "$minutes min antes", maxLines = 1, style = MaterialTheme.typography.labelMedium) })
-                }
+            Choices(com.example.findme.data.local.REMINDER_CHOICES, state.settings.reminderMinutes, actions::setReminderMinutes) { minutes ->
+                if (minutes >= 60) "${minutes / 60} h antes" else "$minutes min antes"
             }
             if (!exact && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 Text("Android puede retrasar el recordatorio unos minutos. Permite las alarmas exactas para que llegue a tiempo.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:${context.packageName}"))) }) {
-                    Text("Permitir alarmas exactas")
+                SettingsRow(Icons.Default.Alarm, "Permitir alarmas exactas") {
+                    context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:${context.packageName}")))
                 }
             }
         }
@@ -1089,20 +1099,26 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
         SectionHeading(Icons.Default.Palette, "Apariencia")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             AppAccent.entries.forEach { accent ->
-                FilterChip(selected = state.settings.accent == accent, onClick = { actions.setAccent(accent) },
-                    label = { Text(accent.label, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
-                    leadingIcon = { Box(Modifier.size(10.dp).background(brandAccent(accent), CircleShape)) },
+                ChoiceChip(accent.label, state.settings.accent == accent, onClick = { actions.setAccent(accent) },
                     modifier = Modifier.weight(1f),
-                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.primary))
+                    leading = { Box(Modifier.size(12.dp).background(brandAccent(accent), CircleShape)) })
             }
         }
     }
     Panel {
         SectionHeading(Icons.Default.SystemUpdate, "Actualizaciones", "Near ${BuildConfig.VERSION_NAME}")
-        Text(updates.message, color = TextSecondary)
-        OutlinedButton(onClick = onCheckUpdates, enabled = !updates.checking && !updates.downloading) { Text(if (updates.checking) "Comprobando…" else "Buscar actualizaciones") }
-        if (updates.release != null && !updates.downloading) TextButton(onClick = onInstallUpdate) { Text("Actualizar ahora") }
+        Text(updates.message, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+        OutlinedButton(onClick = onCheckUpdates, enabled = !updates.checking && !updates.downloading, modifier = Modifier.fillMaxWidth()) {
+            if (updates.checking) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            else Icon(Icons.Default.Refresh, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(if (updates.checking) "Comprobando…" else "Buscar actualizaciones", maxLines = 1)
+        }
+        if (updates.release != null && !updates.downloading) Button(onClick = onInstallUpdate, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.SystemUpdate, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Actualizar ahora")
+        }
     }
     var accountSheet by remember { mutableStateOf<AccountSheet?>(null) }
     val scope = rememberCoroutineScope()
@@ -1119,13 +1135,19 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
     }
     Panel {
         SectionHeading(Icons.Default.PrivacyTip, "Tu privacidad")
-        Text("Tu horario y tus estados solo se comparten con las personas que conectes. Puedes retirar la conexión desde Personas.", color = TextSecondary)
-        OutlinedButton(onClick = { accountSheet = AccountSheet.Password }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Cambiar contraseña") }
-        OutlinedButton(onClick = { exportLauncher.launch("near-${state.profile?.username ?: "datos"}.json") },
-            enabled = !state.busy && state.profile != null, modifier = Modifier.fillMaxWidth()) { Text("Exportar mis datos") }
-        OutlinedButton(onClick = actions::logout, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Cerrar sesión") }
-        TextButton(onClick = { accountSheet = AccountSheet.Delete }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
-            Text("Eliminar mi cuenta", color = MaterialTheme.colorScheme.error)
+        Text("Tu horario y tus estados solo se comparten con las personas que conectes. Puedes retirar la conexión desde Personas.",
+            color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+        Column {
+            SettingsRow(Icons.Default.Lock, "Cambiar contraseña", enabled = !state.busy) { accountSheet = AccountSheet.Password }
+            HorizontalDivider(color = CardBorder)
+            SettingsRow(Icons.Default.Download, "Exportar mis datos", enabled = !state.busy && state.profile != null) {
+                exportLauncher.launch("near-${state.profile?.username ?: "datos"}.json")
+            }
+            HorizontalDivider(color = CardBorder)
+            SettingsRow(Icons.AutoMirrored.Filled.Logout, "Cerrar sesión", enabled = !state.busy, chevron = false, onClick = actions::logout)
+            HorizontalDivider(color = CardBorder)
+            SettingsRow(Icons.Default.DeleteForever, "Eliminar mi cuenta", enabled = !state.busy,
+                tint = MaterialTheme.colorScheme.error) { accountSheet = AccountSheet.Delete }
         }
     }
     when (accountSheet) {
@@ -1190,7 +1212,31 @@ private fun PasswordField(value: String, change: (String) -> Unit, label: String
             IconButton(onClick = { visible = !visible }) {
                 Icon(if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (visible) "Ocultar contraseña" else "Mostrar contraseña")
             }
-        }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+        }, shape = FieldShape, modifier = Modifier.fillMaxWidth(), colors = nearTextFieldColors())
+}
+
+/** A tappable settings row: icon, label and an optional chevron, with a 52dp touch target. */
+@Composable
+private fun SettingsRow(icon: ImageVector, label: String, enabled: Boolean = true, tint: Color = TextPrimary,
+    chevron: Boolean = true, onClick: () -> Unit) {
+    val color = if (enabled) tint else TextMuted
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp))
+        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Icon(icon, null, Modifier.size(20.dp), tint = if (tint == TextPrimary && enabled) TextSecondary else color)
+        Text(label, Modifier.weight(1f), color = color, style = MaterialTheme.typography.bodyLarge)
+        if (chevron) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp), tint = TextMuted)
+    }
+}
+
+/** A status line with a coloured dot: green when everything is fine, red when something needs attention. */
+@Composable
+private fun StatusLine(text: String, on: Boolean, problem: Boolean = false) {
+    val color = when { problem -> MaterialTheme.colorScheme.error; on -> StatusGreenText; else -> TextMuted }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.size(8.dp).background(color, CircleShape))
+        Text(text, color = if (problem) color else TextSecondary, style = MaterialTheme.typography.bodySmall)
+    }
 }
 
 @Composable
@@ -1201,7 +1247,30 @@ private fun AccountSettingsSwitch(title: String, description: String, checked: B
             Text(title, style = MaterialTheme.typography.titleSmall)
             if (description.isNotBlank()) Text(description, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, colors = nearSwitchColors())
+    }
+}
+
+/** Snackbars on a raised card with the accent for actions, instead of the cream inverse surface. */
+@Composable
+private fun NearSnackbarHost(state: SnackbarHostState) {
+    SnackbarHost(state) { data ->
+        Snackbar(data, Modifier.padding(horizontal = 16.dp), shape = RoundedCornerShape(16.dp),
+            containerColor = InnerBg, contentColor = TextPrimary,
+            actionColor = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** Compact secondary action used inside cards, with an icon so it reads as a button and not as loose text. */
+@Composable
+private fun CardAction(icon: ImageVector, label: String, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    FilledTonalButton(onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 40.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp), shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = .7f),
+            contentColor = MaterialTheme.colorScheme.primary)) {
+        Icon(icon, null, Modifier.size(16.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -1227,16 +1296,25 @@ private fun Sheet(
         containerColor = AppSurface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         sheetGesturesEnabled = gesturesEnabled,
-        dragHandle = if (gesturesEnabled) { { BottomSheetDefaults.DragHandle() } } else null
+        dragHandle = if (gesturesEnabled) { { BottomSheetDefaults.DragHandle(color = TextMuted.copy(alpha = .6f)) } } else null
     ) {
         val scroll = rememberScrollState()
         val scrollModifier = if (gesturesEnabled) Modifier.verticalScroll(scroll).imePadding()
             else Modifier.imePadding().verticalScroll(scroll, overscrollEffect = null)
         Column(Modifier.fillMaxWidth().then(scrollModifier).padding(horizontal = 22.dp)
-            .padding(top = if (gesturesEnabled) 0.dp else 22.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(if (gesturesEnabled) 16.dp else 12.dp)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            description?.let { Text(it, color = TextSecondary, style = MaterialTheme.typography.bodyMedium) }
+            .padding(top = if (gesturesEnabled) 0.dp else 18.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.weight(1f).padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    description?.let { Text(it, color = TextSecondary, style = MaterialTheme.typography.bodyMedium) }
+                }
+                // Sheets without drag gestures need a visible way out besides the back gesture.
+                if (!gesturesEnabled) IconButton(onClick = dismiss,
+                    colors = IconButtonDefaults.iconButtonColors(containerColor = InnerBg, contentColor = TextSecondary)) {
+                    Icon(Icons.Default.Close, "Cerrar")
+                }
+            }
             content()
         }
     }
@@ -1246,26 +1324,32 @@ private fun Sheet(
 private fun Field(value: String, change: (String) -> Unit, label: String, placeholder: String? = null, keyboard: KeyboardOptions = KeyboardOptions.Default,
     leading: androidx.compose.ui.graphics.vector.ImageVector? = null, trailing: (@Composable () -> Unit)? = null,
     hidden: Boolean = false, enabled: Boolean = true, isError: Boolean = false) {
-    OutlinedTextField(value, change, label = { Text(label) }, placeholder = { placeholder?.let { Text(it, color = TextMuted) } },
-        leadingIcon = leading?.let { icon -> { Icon(icon, null, tint = TextSecondary) } }, trailingIcon = trailing,
+    OutlinedTextField(value, change, label = { Text(label) }, placeholder = placeholder?.let { { Text(it) } },
+        leadingIcon = leading?.let { icon -> { Icon(icon, null, Modifier.size(20.dp)) } }, trailingIcon = trailing,
         visualTransformation = if (hidden) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
         keyboardOptions = keyboard, singleLine = true, enabled = enabled, isError = isError,
-        shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = CardBorder, focusedLabelColor = MaterialTheme.colorScheme.primary,
-            focusedContainerColor = AppBackground.copy(alpha = .5f), unfocusedContainerColor = AppBackground.copy(alpha = .35f)))
+        shape = FieldShape, modifier = Modifier.fillMaxWidth(), colors = nearTextFieldColors())
 }
 
 @Composable
 private fun <T> Choices(values: List<T>, selected: T, change: (T) -> Unit, label: (T) -> String) {
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        values.forEach { value -> FilterChip(selected = selected == value, onClick = { change(value) }, label = { Text(label(value)) },
-            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.primary), shape = RoundedCornerShape(12.dp)) }
+    if (values.size <= 2) {
+        SegmentedChoice(values, selected, change, label = label)
+    } else {
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            values.forEach { value -> ChoiceChip(label(value), selected == value, onClick = { change(value) }) }
+        }
     }
 }
 
 @Composable
 private fun Confirm(title: String, message: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(title) }, text = { Text(message) }, containerColor = CardBg,
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Confirmar") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+    // Every confirmation in the app removes something, so the confirm action uses the error colour.
+    AlertDialog(onDismissRequest = onDismiss, shape = RoundedCornerShape(28.dp), containerColor = CardBg,
+        icon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) },
+        title = { Text(title, textAlign = TextAlign.Center) },
+        text = { Text(message, color = TextSecondary, textAlign = TextAlign.Center) },
+        confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError)) { Text("Confirmar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
 }

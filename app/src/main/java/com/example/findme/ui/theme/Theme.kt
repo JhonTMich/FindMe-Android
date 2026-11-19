@@ -33,7 +33,7 @@ private val BrandColors = darkColorScheme(
     surfaceContainer = AppSurface,
     surfaceContainerHigh = CardBg,
     surfaceContainerHighest = InnerBg,
-    outline = Color(0xFF5A6390), outlineVariant = CardBorder,
+    outline = Color(0xFF6E78A6), outlineVariant = CardBorder,
     error = Color(0xFFFFB4AB), onError = Color(0xFF690005),
     errorContainer = Color(0xFF93000A), onErrorContainer = Color(0xFFFFDAD6),
     inverseSurface = BrandCream, inverseOnSurface = BrandNight, inversePrimary = BrandIconBlue,
