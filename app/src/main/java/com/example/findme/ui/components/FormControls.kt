@@ -175,3 +175,14 @@ fun nearChipBorder(selected: Boolean): BorderStroke = FilterChipDefaults.filterC
     borderColor = CardBorder, selectedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = .55f),
     borderWidth = 1.dp, selectedBorderWidth = 1.dp
 )
+
+/** Switches with a visible "off" state: the default thumb almost disappeared on the night background. */
+@Composable
+fun nearSwitchColors(): SwitchColors = SwitchDefaults.colors(
+    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+    checkedTrackColor = MaterialTheme.colorScheme.primary,
+    checkedBorderColor = Color.Transparent,
+    uncheckedThumbColor = TextSecondary,
+    uncheckedTrackColor = FieldContainer,
+    uncheckedBorderColor = MaterialTheme.colorScheme.outline
+)

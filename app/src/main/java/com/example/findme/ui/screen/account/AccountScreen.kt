@@ -627,7 +627,7 @@ private fun ScheduleOccurrenceEditor(
                 Row(Modifier.fillMaxWidth().toggleable(overnight, role = Role.Switch, onValueChange = { overnight = it }),
                     verticalAlignment = Alignment.CenterVertically) {
                     Text("Termina al día siguiente", modifier = Modifier.weight(1f))
-                    Switch(checked = overnight, onCheckedChange = null)
+                    Switch(checked = overnight, onCheckedChange = null, colors = nearSwitchColors())
                 }
             }
             val validation = if (moving) validateSchedule(schedule.dayOfWeek, start, end, schedule.title, overnight) else null
@@ -701,7 +701,7 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text("Termina al día siguiente", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Switch(checked = endsNextDay, onCheckedChange = null)
+            Switch(checked = endsNextDay, onCheckedChange = null, colors = nearSwitchColors())
         }
         ScheduleChoice("Modalidad", listOf("presencial", "virtual"), modality, { modality = it },
             leading = if (modality == "virtual") Icons.Default.Videocam else Icons.Default.LocationOn) {
@@ -1177,7 +1177,7 @@ private fun AccountSettingsSwitch(title: String, description: String, checked: B
             Text(title, style = MaterialTheme.typography.titleSmall)
             if (description.isNotBlank()) Text(description, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, colors = nearSwitchColors())
     }
 }
 

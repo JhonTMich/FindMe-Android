@@ -21,6 +21,7 @@ import com.example.findme.data.model.ConnectionPreference
 import com.example.findme.data.model.ConnectionSignal
 import com.example.findme.ui.components.FieldShape
 import com.example.findme.ui.components.nearTextFieldColors
+import com.example.findme.ui.components.nearSwitchColors
 import com.example.findme.ui.theme.AppSurface
 import com.example.findme.ui.theme.TextMuted
 import com.example.findme.ui.theme.TextSecondary
@@ -105,6 +106,6 @@ private fun PreferenceSwitch(title: String, description: String, checked: Boolea
             Text(title, style = MaterialTheme.typography.titleSmall)
             Text(description, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, colors = nearSwitchColors())
     }
 }
