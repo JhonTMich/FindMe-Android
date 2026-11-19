@@ -211,7 +211,7 @@ private fun NewPasswordSheet(state: AccountState, actions: AccountActions) {
                 visualTransformation = if (visible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = { IconButton(onClick = { visible = !visible }) {
                     Icon(if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (visible) "Ocultar contraseña" else "Mostrar contraseña")
-                } }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                } }, shape = FieldShape, modifier = Modifier.fillMaxWidth(), colors = nearTextFieldColors())
         }
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(onClick = { actions.setRecoveredPassword(password, confirmation) },
@@ -288,7 +288,7 @@ private fun LoginForm(state: AccountState, actions: AccountActions) {
     val passwordToggle: @Composable () -> Unit = {
         IconButton(onClick = { passwordVisible = !passwordVisible }) {
             Icon(if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña", tint = TextSecondary)
+                if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
         }
     }
     LoginStage {
@@ -1162,7 +1162,7 @@ private fun PasswordField(value: String, change: (String) -> Unit, label: String
             IconButton(onClick = { visible = !visible }) {
                 Icon(if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (visible) "Ocultar contraseña" else "Mostrar contraseña")
             }
-        }, shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+        }, shape = FieldShape, modifier = Modifier.fillMaxWidth(), colors = nearTextFieldColors())
 }
 
 @Composable
@@ -1218,14 +1218,11 @@ private fun Sheet(
 private fun Field(value: String, change: (String) -> Unit, label: String, placeholder: String? = null, keyboard: KeyboardOptions = KeyboardOptions.Default,
     leading: androidx.compose.ui.graphics.vector.ImageVector? = null, trailing: (@Composable () -> Unit)? = null,
     hidden: Boolean = false, enabled: Boolean = true, isError: Boolean = false) {
-    OutlinedTextField(value, change, label = { Text(label) }, placeholder = { placeholder?.let { Text(it, color = TextMuted) } },
-        leadingIcon = leading?.let { icon -> { Icon(icon, null, tint = TextSecondary) } }, trailingIcon = trailing,
+    OutlinedTextField(value, change, label = { Text(label) }, placeholder = placeholder?.let { { Text(it) } },
+        leadingIcon = leading?.let { icon -> { Icon(icon, null, Modifier.size(20.dp)) } }, trailingIcon = trailing,
         visualTransformation = if (hidden) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
         keyboardOptions = keyboard, singleLine = true, enabled = enabled, isError = isError,
-        shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = CardBorder, focusedLabelColor = MaterialTheme.colorScheme.primary,
-            focusedContainerColor = AppBackground.copy(alpha = .5f), unfocusedContainerColor = AppBackground.copy(alpha = .35f)))
+        shape = FieldShape, modifier = Modifier.fillMaxWidth(), colors = nearTextFieldColors())
 }
 
 @Composable

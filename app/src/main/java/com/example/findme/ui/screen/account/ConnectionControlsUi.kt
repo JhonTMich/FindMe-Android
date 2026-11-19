@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import com.example.findme.data.model.AccountProfile
 import com.example.findme.data.model.ConnectionPreference
 import com.example.findme.data.model.ConnectionSignal
+import com.example.findme.ui.components.FieldShape
+import com.example.findme.ui.components.nearTextFieldColors
 import com.example.findme.ui.theme.AppSurface
 import com.example.findme.ui.theme.TextMuted
 import com.example.findme.ui.theme.TextSecondary
@@ -76,8 +78,8 @@ internal fun ConnectionSettingsSheet(
             Text("Tu conexión con ${person.displayName}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Text("Solo tú ves estas opciones. Se aplican únicamente a esta persona.", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
             OutlinedTextField(nickname, { nickname = it.take(40) }, label = { Text("Apodo (opcional)") },
-                placeholder = { Text(person.displayName, color = TextMuted) }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                placeholder = { Text(person.displayName) }, singleLine = true,
+                shape = FieldShape, modifier = Modifier.fillMaxWidth(), colors = nearTextFieldColors())
             Text("El apodo solo lo ves tú, en lugar de su nombre.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             PreferenceSwitch("Compartir mi horario", "Si lo desactivas, esta persona deja de ver tus actividades.", shareSchedule) { shareSchedule = it }
             PreferenceSwitch("Compartir mi estado", "Si lo desactivas, esta persona deja de ver tu estado compartido.", shareStatus) { shareStatus = it }
