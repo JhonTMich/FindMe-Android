@@ -40,8 +40,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -605,7 +603,7 @@ private fun ScheduleOccurrenceEditor(
     }
     Sheet(dismiss, "Solo esta fecha", gesturesEnabled = false) {
         Text(schedule.title, fontWeight = FontWeight.Bold)
-        ScheduleChoice("Fecha original", originals, original, { originalText = it.toString() }) { it.longDate() }
+        ScheduleChoice("Fecha original", originals, original, { originalText = it.toString() }, leading = Icons.Default.Event) { it.longDate() }
         key(originalText) {
             var moving by rememberSaveable { mutableStateOf(existing?.date != null) }
             val moveDates = (0L..13L).map { maxOf(today, original.minusDays(6)).plusDays(it) }.let { dates ->
@@ -617,7 +615,7 @@ private fun ScheduleOccurrenceEditor(
             var overnight by rememberSaveable { mutableStateOf(existing?.endsNextDay ?: schedule.endsNextDay) }
             Choices(listOf(false, true), moving, { moving = it }) { if (it) "Reprogramar" else "Cancelar actividad" }
             if (moving) {
-                ScheduleChoice("Nueva fecha", moveDates, LocalDate.parse(dateText), { dateText = it.toString() }) { it.longDate() }
+                ScheduleChoice("Nueva fecha", moveDates, LocalDate.parse(dateText), { dateText = it.toString() }, leading = Icons.Default.EventRepeat) { it.longDate() }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
                     Box(Modifier.weight(1f)) { TimeField(end, { end = it }, "Fin") }
@@ -685,7 +683,7 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
                     { selectedDays = listOf(it) }, Modifier.weight(1f)) { days[it - 1] }
             }
             ScheduleChoice("Tipo", ActivityCategory.entries, ActivityCategory.fromKey(category),
-                { category = it.key }, Modifier.weight(1f)) { it.label }
+                { category = it.key }, Modifier.weight(1f), leading = ActivityCategory.fromKey(category).icon) { it.label }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.weight(1f)) { TimeField(start, { start = it }, "Inicio") }
@@ -701,7 +699,8 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
             Text("Termina al día siguiente", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
             Switch(checked = endsNextDay, onCheckedChange = null)
         }
-        ScheduleChoice("Modalidad", listOf("presencial", "virtual"), modality, { modality = it }) {
+        ScheduleChoice("Modalidad", listOf("presencial", "virtual"), modality, { modality = it },
+            leading = if (modality == "virtual") Icons.Default.Videocam else Icons.Default.LocationOn) {
             it.replaceFirstChar(Char::titlecase)
         }
         val feedback = if (selectedDays.isEmpty()) "Elige al menos un día."
@@ -722,7 +721,6 @@ private fun ScheduleEditor(existing: ScheduleDto?, initialDay: Int, state: Accou
 
 @Composable
 private fun ScheduleDays(chosen: List<Int>, onSelect: (List<Int>) -> Unit, modifier: Modifier = Modifier) {
-    var expanded by remember { mutableStateOf(false) }
     val summary = when (chosen.size) {
         0 -> "Elegir días"
         1 -> days[chosen.single() - 1]
@@ -730,23 +728,19 @@ private fun ScheduleDays(chosen: List<Int>, onSelect: (List<Int>) -> Unit, modif
         7 -> "Todos los días"
         else -> "${chosen.size} días"
     }
-    Box(modifier) {
-        ScheduleField("Días", summary, onClick = { expanded = true }, dropdown = true)
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            days.forEachIndexed { index, name ->
-                val day = index + 1
-                val checked = day in chosen
-                DropdownMenuItem(
-                    text = { Text(name) },
-                    leadingIcon = { Checkbox(checked = checked, onCheckedChange = null) },
-                    modifier = Modifier.semantics { selected = checked },
-                    onClick = { onSelect(if (checked) chosen - day else (chosen + day).sorted()) }
-                )
-            }
-            HorizontalDivider()
-            DropdownMenuItem(text = { Text("Listo", color = MaterialTheme.colorScheme.primary) },
-                onClick = { expanded = false })
+    SelectMenuField("Días", summary, modifier) { close ->
+        days.forEachIndexed { index, name ->
+            val day = index + 1
+            val checked = day in chosen
+            SelectMenuItem(name, checked, showCheck = false,
+                leading = { Checkbox(checked = checked, onCheckedChange = null,
+                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary,
+                        uncheckedColor = TextMuted, checkmarkColor = MaterialTheme.colorScheme.onPrimary)) },
+                onClick = { onSelect(if (checked) chosen - day else (chosen + day).sorted()) })
         }
+        HorizontalDivider(Modifier.padding(vertical = 4.dp), color = CardBorder)
+        DropdownMenuItem(text = { Text("Listo", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()) }, onClick = close)
     }
 }
 
@@ -757,43 +751,21 @@ private fun <T> ScheduleChoice(
     selected: T,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
+    leading: ImageVector? = null,
     name: (T) -> String
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    Box(modifier) {
-        ScheduleField(label, name(selected), onClick = { expanded = true }, dropdown = true)
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            choices.forEach { choice ->
-                DropdownMenuItem(text = { Text(name(choice)) }, onClick = {
-                    onSelect(choice)
-                    expanded = false
-                })
-            }
+    SelectMenuField(label, name(selected), modifier, leading = leading) { close ->
+        choices.forEach { choice ->
+            SelectMenuItem(name(choice), choice == selected, onClick = { onSelect(choice); close() })
         }
-    }
-}
-
-@Composable
-private fun ScheduleField(label: String, value: String, onClick: () -> Unit, dropdown: Boolean = false) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, CardBorder),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp)
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(label, color = TextSecondary, style = MaterialTheme.typography.labelSmall)
-            Text(value, color = TextPrimary, style = MaterialTheme.typography.titleSmall)
-        }
-        if (dropdown) Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp), tint = TextMuted)
     }
 }
 
 @Composable
 private fun TimeField(value: String, change: (String) -> Unit, label: String) {
     var picking by rememberSaveable { mutableStateOf(false) }
-    ScheduleField(label, formatScheduleTime(value), onClick = { picking = true })
+    SelectField(label, formatScheduleTime(value), onClick = { picking = true }, expanded = picking,
+        trailing = Icons.Default.Schedule)
     if (picking) {
         val initial = StatusRepository.parseLocalTimeOrNull(value) ?: LocalTime.of(9, 0)
         ScheduleTimePicker("Hora de ${label.lowercase()}", initial, dismiss = { picking = false }) { time ->
