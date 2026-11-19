@@ -1,5 +1,6 @@
 package com.example.findme.ui.screen.account
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -22,7 +23,9 @@ import com.example.findme.data.model.ConnectionSignal
 import com.example.findme.ui.components.FieldShape
 import com.example.findme.ui.components.nearTextFieldColors
 import com.example.findme.ui.components.nearSwitchColors
+import com.example.findme.ui.theme.AppBackground
 import com.example.findme.ui.theme.AppSurface
+import com.example.findme.ui.theme.CardBorder
 import com.example.findme.ui.theme.TextMuted
 import com.example.findme.ui.theme.TextSecondary
 import java.time.Instant
@@ -34,7 +37,10 @@ import java.util.Locale
 @Composable
 internal fun ReceivedSignalItem(signal: ConnectionSignal, sender: String, busy: Boolean, actions: AccountActions) {
     val unread = signal.readAt == null
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Surface(shape = RoundedCornerShape(16.dp),
+        color = if (unread) MaterialTheme.colorScheme.primaryContainer.copy(alpha = .45f) else AppBackground.copy(alpha = .3f),
+        border = BorderStroke(1.dp, if (unread) MaterialTheme.colorScheme.primary.copy(alpha = .35f) else CardBorder)) {
+    Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(if (unread) "$sender · Nuevo" else sender, color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelMedium, fontWeight = if (unread) FontWeight.Bold else null)
         Text(signal.message, style = MaterialTheme.typography.bodyMedium, fontWeight = if (unread) FontWeight.SemiBold else null)
@@ -49,9 +55,10 @@ internal fun ReceivedSignalItem(signal: ConnectionSignal, sender: String, busy: 
                 Icon(Icons.Default.DoneAll, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Marcar como leído")
             }
             TextButton(onClick = { actions.deleteSignal(signal.id) }, enabled = !busy) {
-                Icon(Icons.Default.DeleteOutline, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Borrar", color = TextMuted)
+                Icon(Icons.Default.DeleteOutline, null, Modifier.size(16.dp), tint = TextMuted); Spacer(Modifier.width(6.dp)); Text("Borrar", color = TextMuted)
             }
         }
+    }
     }
 }
 

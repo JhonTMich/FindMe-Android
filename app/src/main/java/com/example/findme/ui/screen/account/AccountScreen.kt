@@ -915,9 +915,11 @@ private fun People(state: AccountState, actions: AccountActions) {
                 if (state.messages.isEmpty()) Text("Crea un mensaje rápido para enviarlo desde aquí.", color = TextSecondary)
                 state.messages.forEach { quick ->
                     OutlinedButton(onClick = { actions.send(quick); sendMessage = false }, enabled = !state.busy,
-                        modifier = Modifier.fillMaxWidth()) {
-                        Text(quick.label, Modifier.weight(1f), textAlign = TextAlign.Start)
-                        Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp))
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp), shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, CardBorder), contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp)) {
+                        Text(quick.label, Modifier.weight(1f), textAlign = TextAlign.Start, color = TextPrimary,
+                            style = MaterialTheme.typography.bodyLarge)
+                        Icon(Icons.AutoMirrored.Filled.Send, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
                 TextButton(onClick = { sendMessage = false; manageMessages = true }) { Text("Editar mensajes rápidos") }
@@ -987,11 +989,15 @@ private fun ConnectionSheet(state: AccountState, actions: AccountActions, dismis
                     }
                     Button(onClick = {
                         context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "Conecta conmigo en Near. Mi código es $display. Es válido durante 24 horas.") }, "Compartir invitación"))
-                    }, modifier = Modifier.weight(1f)) { Text("Compartir") }
+                    }, modifier = Modifier.weight(1f)) {
+                        Icon(Icons.Default.Share, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Compartir")
+                    }
                 }
             } ?: EmptyPanel(Icons.Default.Key, "Invita a una persona", "Envíale tu código y pídele que lo introduzca en su app.")
-            Button(onClick = actions::invite, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
-                Text(if (state.invitation == null) "Crear mi código" else "Generar otro código")
+            if (state.invitation == null) Button(onClick = actions::invite, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Key, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Crear mi código")
+            } else TextButton(onClick = actions::invite, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Refresh, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Generar otro código")
             }
         } else {
             Field(code, { code = it.take(40) }, "Código de invitación", placeholder = "ABCD-EFGH", keyboard = KeyboardOptions(capitalization = KeyboardCapitalization.Characters))
@@ -1011,10 +1017,17 @@ private fun MessageSheet(state: AccountState, actions: AccountActions, dismiss: 
         Field(message, { message = it.take(240) }, "¿Qué quieres decir?", placeholder = "Escribe tu mensaje")
         Button(onClick = { actions.saveMessage(message.trim().take(30), message) }, enabled = !state.busy && message.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Guardar mensaje") }
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (state.messages.isNotEmpty()) Text("Guardados", style = MaterialTheme.typography.titleSmall, color = TextSecondary)
         state.messages.forEach { quick ->
-            Panel {
-                Text(quick.message, fontWeight = FontWeight.SemiBold)
-                TextButton(onClick = { actions.deleteMessage(quick.id) }, enabled = !state.busy) { Text("Eliminar mensaje", color = TextMuted) }
+            Surface(shape = RoundedCornerShape(16.dp), color = CardBg, border = BorderStroke(1.dp, CardBorder)) {
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.ChatBubbleOutline, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Text(quick.message, Modifier.weight(1f).padding(vertical = 10.dp), fontWeight = FontWeight.SemiBold)
+                    IconButton(onClick = { actions.deleteMessage(quick.id) }, enabled = !state.busy) {
+                        Icon(Icons.Default.DeleteOutline, "Eliminar mensaje", tint = TextMuted)
+                    }
+                }
             }
         }
     }
