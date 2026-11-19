@@ -80,7 +80,8 @@ internal fun ConnectionSettingsSheet(
     var submitted by remember { mutableStateOf(false) }
     LaunchedEffect(state.notice, state.busy) { if (submitted && !state.busy && state.notice == "Preferencias guardadas.") dismiss() }
     ModalBottomSheet(onDismissRequest = dismiss, containerColor = AppSurface,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        dragHandle = { BottomSheetDefaults.DragHandle(color = TextMuted.copy(alpha = .6f)) }) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 22.dp).padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("Tu conexión con ${person.displayName}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)

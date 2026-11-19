@@ -1296,16 +1296,26 @@ private fun Sheet(
         containerColor = AppSurface,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         sheetGesturesEnabled = gesturesEnabled,
-        dragHandle = if (gesturesEnabled) { { BottomSheetDefaults.DragHandle() } } else null
+        dragHandle = if (gesturesEnabled) { { BottomSheetDefaults.DragHandle(color = TextMuted.copy(alpha = .6f)) } } else null
     ) {
         val scroll = rememberScrollState()
         val scrollModifier = if (gesturesEnabled) Modifier.verticalScroll(scroll).imePadding()
             else Modifier.imePadding().verticalScroll(scroll, overscrollEffect = null)
         Column(Modifier.fillMaxWidth().then(scrollModifier).padding(horizontal = 22.dp)
-            .padding(top = if (gesturesEnabled) 0.dp else 22.dp, bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(if (gesturesEnabled) 16.dp else 12.dp)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            description?.let { Text(it, color = TextSecondary, style = MaterialTheme.typography.bodyMedium) }
+            .padding(top = if (gesturesEnabled) 0.dp else 18.dp, bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.weight(1f).padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    description?.let { Text(it, color = TextSecondary, style = MaterialTheme.typography.bodyMedium) }
+                }
+                // Sheets without drag gestures need a visible way out besides the back gesture.
+                if (!gesturesEnabled) IconButton(onClick = dismiss,
+                    colors = IconButtonDefaults.iconButtonColors(containerColor = InnerBg, contentColor = TextSecondary)) {
+                    Icon(Icons.Default.Close, "Cerrar")
+                }
+            }
+            Spacer(Modifier.height(2.dp))
             content()
         }
     }
@@ -1335,6 +1345,12 @@ private fun <T> Choices(values: List<T>, selected: T, change: (T) -> Unit, label
 
 @Composable
 private fun Confirm(title: String, message: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(title) }, text = { Text(message) }, containerColor = CardBg,
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Confirmar") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+    // Every confirmation in the app removes something, so the confirm action uses the error colour.
+    AlertDialog(onDismissRequest = onDismiss, shape = RoundedCornerShape(28.dp), containerColor = CardBg,
+        icon = { Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) },
+        title = { Text(title, textAlign = TextAlign.Center) },
+        text = { Text(message, color = TextSecondary, textAlign = TextAlign.Center) },
+        confirmButton = { Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.error, contentColor = MaterialTheme.colorScheme.onError)) { Text("Confirmar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
 }
