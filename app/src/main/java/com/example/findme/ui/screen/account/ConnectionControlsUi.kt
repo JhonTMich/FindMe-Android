@@ -1,5 +1,6 @@
 package com.example.findme.ui.screen.account
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -19,7 +20,12 @@ import androidx.compose.ui.unit.dp
 import com.example.findme.data.model.AccountProfile
 import com.example.findme.data.model.ConnectionPreference
 import com.example.findme.data.model.ConnectionSignal
+import com.example.findme.ui.components.FieldShape
+import com.example.findme.ui.components.nearTextFieldColors
+import com.example.findme.ui.components.nearSwitchColors
+import com.example.findme.ui.theme.AppBackground
 import com.example.findme.ui.theme.AppSurface
+import com.example.findme.ui.theme.CardBorder
 import com.example.findme.ui.theme.TextMuted
 import com.example.findme.ui.theme.TextSecondary
 import java.time.Instant
@@ -31,7 +37,10 @@ import java.util.Locale
 @Composable
 internal fun ReceivedSignalItem(signal: ConnectionSignal, sender: String, busy: Boolean, actions: AccountActions) {
     val unread = signal.readAt == null
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Surface(shape = RoundedCornerShape(16.dp),
+        color = if (unread) MaterialTheme.colorScheme.primaryContainer.copy(alpha = .45f) else AppBackground.copy(alpha = .3f),
+        border = BorderStroke(1.dp, if (unread) MaterialTheme.colorScheme.primary.copy(alpha = .35f) else CardBorder)) {
+    Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp, top = 12.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(if (unread) "$sender · Nuevo" else sender, color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelMedium, fontWeight = if (unread) FontWeight.Bold else null)
         Text(signal.message, style = MaterialTheme.typography.bodyMedium, fontWeight = if (unread) FontWeight.SemiBold else null)
@@ -46,9 +55,10 @@ internal fun ReceivedSignalItem(signal: ConnectionSignal, sender: String, busy: 
                 Icon(Icons.Default.DoneAll, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Marcar como leído")
             }
             TextButton(onClick = { actions.deleteSignal(signal.id) }, enabled = !busy) {
-                Icon(Icons.Default.DeleteOutline, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp)); Text("Borrar", color = TextMuted)
+                Icon(Icons.Default.DeleteOutline, null, Modifier.size(16.dp), tint = TextMuted); Spacer(Modifier.width(6.dp)); Text("Borrar", color = TextMuted)
             }
         }
+    }
     }
 }
 
@@ -70,14 +80,15 @@ internal fun ConnectionSettingsSheet(
     var submitted by remember { mutableStateOf(false) }
     LaunchedEffect(state.notice, state.busy) { if (submitted && !state.busy && state.notice == "Preferencias guardadas.") dismiss() }
     ModalBottomSheet(onDismissRequest = dismiss, containerColor = AppSurface,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        dragHandle = { BottomSheetDefaults.DragHandle(color = TextMuted.copy(alpha = .6f)) }) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 22.dp).padding(bottom = 28.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("Tu conexión con ${person.displayName}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Text("Solo tú ves estas opciones. Se aplican únicamente a esta persona.", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
             OutlinedTextField(nickname, { nickname = it.take(40) }, label = { Text("Apodo (opcional)") },
-                placeholder = { Text(person.displayName, color = TextMuted) }, singleLine = true,
-                shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth())
+                placeholder = { Text(person.displayName) }, singleLine = true,
+                shape = FieldShape, modifier = Modifier.fillMaxWidth(), colors = nearTextFieldColors())
             Text("El apodo solo lo ves tú, en lugar de su nombre.", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
             PreferenceSwitch("Compartir mi horario", "Si lo desactivas, esta persona deja de ver tus actividades.", shareSchedule) { shareSchedule = it }
             PreferenceSwitch("Compartir mi estado", "Si lo desactivas, esta persona deja de ver tu estado compartido.", shareStatus) { shareStatus = it }
@@ -103,6 +114,6 @@ private fun PreferenceSwitch(title: String, description: String, checked: Boolea
             Text(title, style = MaterialTheme.typography.titleSmall)
             Text(description, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
         }
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, colors = nearSwitchColors())
     }
 }
