@@ -23,7 +23,7 @@ class NotificationsTest {
         ScheduleDto(id = id, userId = "me", dayOfWeek = day, startTime = start, endTime = "23:00:00", title = title, location = location)
 
     @Test fun eachPushBecomesTheRightAlert() {
-        val message = PushAlerts.from(mapOf("type" to "message", "id" to "m1", "name" to "Ana", "message" to "¿Todo bien?"))!!
+        val message = PushAlerts.from(mapOf("type" to "message", "id" to "m1", "sender_id" to "u1", "name" to "Ana", "message" to "¿Todo bien?"))!!
         assertEquals(AccountAlert.Messages, message.alert)
         assertEquals(NotificationHelper.Channel.Messages, message.channel)
         assertEquals("Ana" to "¿Todo bien?", message.title to message.text)
@@ -40,6 +40,18 @@ class NotificationsTest {
         assertEquals(status.id, activity.id)
     }
 
+    @Test fun eachPushNamesThePersonItIsAbout() {
+        // Same keys the database sends (supabase/migrations/20261117210000_notificaciones_push.sql).
+        val message = PushAlerts.from(mapOf("type" to "message", "id" to "m1", "sender_id" to "sender", "message" to "Hola",
+            "recipient_id" to "me"))!!
+        assertEquals("sender", message.person)
+        assertEquals("u1", PushAlerts.from(mapOf("type" to "status", "user_id" to "u1", "location" to "Casa"))!!.person)
+        assertEquals("u1", PushAlerts.from(mapOf("type" to "status_end", "user_id" to "u1"))!!.person)
+        assertEquals("u1", PushAlerts.from(mapOf("type" to "activity", "user_id" to "u1", "title" to "Clase"))!!.person)
+        // A message without its author cannot be checked against the people you are connected to.
+        assertNull(PushAlerts.from(mapOf("type" to "message", "id" to "m1", "message" to "Hola", "user_id" to "u1")))
+    }
+
     @Test fun incompleteOrUnknownPushesShowNothing() {
         assertNull(PushAlerts.from(mapOf("type" to "message", "id" to "m1")))
         assertNull(PushAlerts.from(mapOf("type" to "status", "name" to "Ana", "location" to "Casa")))
@@ -48,7 +60,7 @@ class NotificationsTest {
     }
 
     @Test fun switchesDecideWhichPushesShow() {
-        val message = PushAlerts.from(mapOf("type" to "message", "id" to "m1", "message" to "Hola"))!!
+        val message = PushAlerts.from(mapOf("type" to "message", "id" to "m1", "sender_id" to "u1", "message" to "Hola"))!!
         assertTrue(PushAlerts.allowed(message, AccountSettings()))
         assertFalse(PushAlerts.allowed(message, AccountSettings(messages = false)))
         val activity = PushAlerts.from(mapOf("type" to "activity", "user_id" to "u1", "title" to "Clase"))!!
