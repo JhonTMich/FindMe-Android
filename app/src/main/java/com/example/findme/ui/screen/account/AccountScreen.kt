@@ -130,7 +130,7 @@ fun AccountContent(state: AccountState, actions: AccountActions,
     LaunchedEffect(state.notice) { state.notice?.let { snackbar.showSnackbar(it) } }
     // One continuous backdrop behind the top bar and the content, so no seam shows under the header.
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(AppSurface, AppBackground), endY = 1400f))) {
-    Scaffold(containerColor = Color.Transparent, snackbarHost = { NearSnackbarHost(snackbar) }, topBar = {
+    Scaffold(containerColor = Color.Transparent, contentColor = TextPrimary, snackbarHost = { NearSnackbarHost(snackbar) }, topBar = {
         Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 20.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             BrandMark(Modifier.size(46.dp))
@@ -1265,12 +1265,12 @@ private fun NearSnackbarHost(state: SnackbarHostState) {
 @Composable
 private fun CardAction(icon: ImageVector, label: String, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     FilledTonalButton(onClick = onClick, enabled = enabled, modifier = modifier.heightIn(min = 40.dp),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp), shape = RoundedCornerShape(12.dp),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp), shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = .7f),
             contentColor = MaterialTheme.colorScheme.primary)) {
         Icon(icon, null, Modifier.size(16.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -1315,7 +1315,6 @@ private fun Sheet(
                     Icon(Icons.Default.Close, "Cerrar")
                 }
             }
-            Spacer(Modifier.height(2.dp))
             content()
         }
     }
