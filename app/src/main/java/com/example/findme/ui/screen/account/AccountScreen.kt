@@ -18,6 +18,8 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -28,6 +30,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -1039,18 +1044,22 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
     }
     Panel {
         SectionHeading(Icons.Default.NotificationsNone, "Notificaciones")
-        Text(if (nearAlerts) "Near · Hay avisos activados" else "Near · Todos los avisos desactivados",
-            color = TextSecondary, style = MaterialTheme.typography.bodySmall)
-        Text(if (notificationsAllowed) "Android · Permite las notificaciones" else "Android · Bloquea las notificaciones",
-            color = if (notificationsAllowed) TextSecondary else MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }) {
-            Text("Abrir ajustes de Android")
-        }
-        if (notificationsAllowed) silencedChannels.forEach { channel ->
-            TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
-                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-                .putExtra(Settings.EXTRA_CHANNEL_ID, channel.id)) }) {
-                Text("Android silenció: ${channel.title}")
+        Surface(shape = RoundedCornerShape(16.dp), color = AppBackground.copy(alpha = .35f), border = BorderStroke(1.dp, CardBorder)) {
+            Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 10.dp, top = 12.dp, bottom = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatusLine(if (nearAlerts) "Near · Hay avisos activados" else "Near · Todos los avisos desactivados", nearAlerts)
+                StatusLine(if (notificationsAllowed) "Android · Permite las notificaciones" else "Android · Bloquea las notificaciones",
+                    notificationsAllowed, problem = !notificationsAllowed)
+                if (notificationsAllowed) silencedChannels.forEach { channel ->
+                    SettingsRow(Icons.Default.NotificationsOff, "Android silenció: ${channel.title}", tint = MaterialTheme.colorScheme.error) {
+                        context.startActivity(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            .putExtra(Settings.EXTRA_CHANNEL_ID, channel.id))
+                    }
+                }
+                SettingsRow(Icons.AutoMirrored.Filled.OpenInNew, "Abrir ajustes de Android") {
+                    context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
+                }
             }
         }
         HorizontalDivider(color = CardBorder)
@@ -1067,8 +1076,8 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
             }
             if (!exact && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 Text("Android puede retrasar el recordatorio unos minutos. Permite las alarmas exactas para que llegue a tiempo.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
-                TextButton(onClick = { context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:${context.packageName}"))) }) {
-                    Text("Permitir alarmas exactas")
+                SettingsRow(Icons.Default.Alarm, "Permitir alarmas exactas") {
+                    context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:${context.packageName}")))
                 }
             }
         }
@@ -1085,9 +1094,18 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
     }
     Panel {
         SectionHeading(Icons.Default.SystemUpdate, "Actualizaciones", "Near ${BuildConfig.VERSION_NAME}")
-        Text(updates.message, color = TextSecondary)
-        OutlinedButton(onClick = onCheckUpdates, enabled = !updates.checking && !updates.downloading) { Text(if (updates.checking) "Comprobando…" else "Buscar actualizaciones") }
-        if (updates.release != null && !updates.downloading) TextButton(onClick = onInstallUpdate) { Text("Actualizar ahora") }
+        Text(updates.message, color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+        OutlinedButton(onClick = onCheckUpdates, enabled = !updates.checking && !updates.downloading, modifier = Modifier.fillMaxWidth()) {
+            if (updates.checking) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            else Icon(Icons.Default.Refresh, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(if (updates.checking) "Comprobando…" else "Buscar actualizaciones", maxLines = 1)
+        }
+        if (updates.release != null && !updates.downloading) Button(onClick = onInstallUpdate, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.SystemUpdate, null, Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Actualizar ahora")
+        }
     }
     var accountSheet by remember { mutableStateOf<AccountSheet?>(null) }
     val scope = rememberCoroutineScope()
@@ -1104,13 +1122,19 @@ private fun AccountProfilePanel(state: AccountState, actions: AccountActions, up
     }
     Panel {
         SectionHeading(Icons.Default.PrivacyTip, "Tu privacidad")
-        Text("Tu horario y tus estados solo se comparten con las personas que conectes. Puedes retirar la conexión desde Personas.", color = TextSecondary)
-        OutlinedButton(onClick = { accountSheet = AccountSheet.Password }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Cambiar contraseña") }
-        OutlinedButton(onClick = { exportLauncher.launch("near-${state.profile?.username ?: "datos"}.json") },
-            enabled = !state.busy && state.profile != null, modifier = Modifier.fillMaxWidth()) { Text("Exportar mis datos") }
-        OutlinedButton(onClick = actions::logout, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) { Text("Cerrar sesión") }
-        TextButton(onClick = { accountSheet = AccountSheet.Delete }, enabled = !state.busy, modifier = Modifier.fillMaxWidth()) {
-            Text("Eliminar mi cuenta", color = MaterialTheme.colorScheme.error)
+        Text("Tu horario y tus estados solo se comparten con las personas que conectes. Puedes retirar la conexión desde Personas.",
+            color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+        Column {
+            SettingsRow(Icons.Default.Lock, "Cambiar contraseña", enabled = !state.busy) { accountSheet = AccountSheet.Password }
+            HorizontalDivider(color = CardBorder)
+            SettingsRow(Icons.Default.Download, "Exportar mis datos", enabled = !state.busy && state.profile != null) {
+                exportLauncher.launch("near-${state.profile?.username ?: "datos"}.json")
+            }
+            HorizontalDivider(color = CardBorder)
+            SettingsRow(Icons.AutoMirrored.Filled.Logout, "Cerrar sesión", enabled = !state.busy, chevron = false, onClick = actions::logout)
+            HorizontalDivider(color = CardBorder)
+            SettingsRow(Icons.Default.DeleteForever, "Eliminar mi cuenta", enabled = !state.busy,
+                tint = MaterialTheme.colorScheme.error) { accountSheet = AccountSheet.Delete }
         }
     }
     when (accountSheet) {
@@ -1176,6 +1200,30 @@ private fun PasswordField(value: String, change: (String) -> Unit, label: String
                 Icon(if (visible) Icons.Default.VisibilityOff else Icons.Default.Visibility, if (visible) "Ocultar contraseña" else "Mostrar contraseña")
             }
         }, shape = FieldShape, modifier = Modifier.fillMaxWidth(), colors = nearTextFieldColors())
+}
+
+/** A tappable settings row: icon, label and an optional chevron, with a 52dp touch target. */
+@Composable
+private fun SettingsRow(icon: ImageVector, label: String, enabled: Boolean = true, tint: Color = TextPrimary,
+    chevron: Boolean = true, onClick: () -> Unit) {
+    val color = if (enabled) tint else TextMuted
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(RoundedCornerShape(12.dp))
+        .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Icon(icon, null, Modifier.size(20.dp), tint = if (tint == TextPrimary && enabled) TextSecondary else color)
+        Text(label, Modifier.weight(1f), color = color, style = MaterialTheme.typography.bodyLarge)
+        if (chevron) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp), tint = TextMuted)
+    }
+}
+
+/** A status line with a coloured dot: green when everything is fine, red when something needs attention. */
+@Composable
+private fun StatusLine(text: String, on: Boolean, problem: Boolean = false) {
+    val color = when { problem -> MaterialTheme.colorScheme.error; on -> StatusGreenText; else -> TextMuted }
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.size(8.dp).background(color, CircleShape))
+        Text(text, color = if (problem) color else TextSecondary, style = MaterialTheme.typography.bodySmall)
+    }
 }
 
 @Composable
